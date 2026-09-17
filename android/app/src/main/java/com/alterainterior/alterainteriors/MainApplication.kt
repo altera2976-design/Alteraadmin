@@ -1,4 +1,4 @@
-package com.alterainterior.employeemanagement
+package com.alterainterior.alterainteriors
 
 import android.app.Application
 import android.content.res.Configuration

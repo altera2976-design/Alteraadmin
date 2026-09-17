@@ -3,11 +3,13 @@
 This repository contains the complete Phase 1 implementation of the Employee Management System.
 
 ## Project Structure
+
 - `backend/`: Node.js + Express + MongoDB Atlas API
 - `admin-web/`: React + Vite web dashboard for administrators
 - `/`: Expo React Native mobile application for employees
 
 ## Prerequisites
+
 - Node.js (v18 or higher recommended)
 - MongoDB Atlas account and cluster
 - Expo Go app on your physical device OR Android Studio Emulator
@@ -32,7 +34,7 @@ This repository contains the complete Phase 1 implementation of the Employee Man
    ```bash
    npm run dev
    ```
-   *The backend will run at http://localhost:5001*
+   _The backend will run at http://localhost:5001_
 
 ---
 
@@ -49,7 +51,7 @@ This repository contains the complete Phase 1 implementation of the Employee Man
    ```bash
    npm run dev
    ```
-   *The admin panel will be accessible at http://localhost:5173*
+   _The admin panel will be accessible at http://localhost:5173_
 
 ---
 
@@ -68,6 +70,7 @@ This repository contains the complete Phase 1 implementation of the Employee Man
 ---
 
 ## Features Implemented in Phase 1
+
 - **Backend Architecture**: MongoDB models, JWT authentication, centralized error handling.
 - **Admin Roles**: Secure routes for administration, dynamic seeding script.
 - **Admin Dashboard**: Web portal to add, edit, view, and toggle statuses (Active/Inactive) of employees.

@@ -1,25 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import { Ionicons } from "@expo/vector-icons";
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
+  GoogleSignin,
+  statusCodes,
+} from "@react-native-google-signin/google-signin";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { useEffect, useState } from "react";
+import {
   ActivityIndicator,
+  Alert,
+  Image,
+  ImageBackground,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Image,
-  ImageBackground,
-  Alert,
-} from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useAuth } from '../../context/AuthContext';
-import { Ionicons } from '@expo/vector-icons';
-import { StatusBar } from 'expo-status-bar';
-import Svg, { Path } from 'react-native-svg';
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
-import { GOOGLE_WEB_CLIENT_ID } from '../../constants/config';
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import Svg, { Path } from "react-native-svg";
+import { GOOGLE_WEB_CLIENT_ID } from "../../constants/config";
+import { useAuth } from "../../context/AuthContext";
 
 function GoogleIcon({ size = 20 }: { size?: number }) {
   return (
@@ -49,12 +52,12 @@ export default function LoginScreen() {
   const { login, googleLogin } = useAuth();
   const params = useLocalSearchParams<{ registeredEmail?: string }>();
 
-  const [email, setEmail]             = useState(params?.registeredEmail || '');
-  const [password, setPassword]       = useState('');
-  const [loading, setLoading]         = useState(false);
+  const [email, setEmail] = useState(params?.registeredEmail || "");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [error, setError]             = useState('');
-  const [showPass, setShowPass]       = useState(false);
+  const [error, setError] = useState("");
+  const [showPass, setShowPass] = useState(false);
 
   useEffect(() => {
     try {
@@ -65,7 +68,7 @@ export default function LoginScreen() {
         });
       }
     } catch (e) {
-      console.warn('GoogleSignin.configure warning:', e);
+      console.warn("GoogleSignin.configure warning:", e);
     }
   }, []);
 
@@ -76,9 +79,9 @@ export default function LoginScreen() {
   }, [params?.registeredEmail]);
 
   const validate = (): string => {
-    if (!email.trim()) return 'Please enter your email or mobile number.';
-    if (!password) return 'Please enter your password.';
-    return '';
+    if (!email.trim()) return "Please enter your email or mobile number.";
+    if (!password) return "Please enter your password.";
+    return "";
   };
 
   const handleLogin = async () => {
@@ -89,12 +92,14 @@ export default function LoginScreen() {
     }
 
     setLoading(true);
-    setError('');
+    setError("");
     try {
       await login(email.trim(), password.trim());
-      router.replace('/(app)/tabs/dashboard');
+      router.replace("/(app)/tabs/dashboard");
     } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Login failed. Please check your credentials.';
+      const msg =
+        err?.response?.data?.message ||
+        "Login failed. Please check your credentials.";
       setError(msg);
     } finally {
       setLoading(false);
@@ -102,7 +107,7 @@ export default function LoginScreen() {
   };
 
   const handleGoogleLogin = async () => {
-    setError('');
+    setError("");
     setGoogleLoading(true);
 
     try {
@@ -113,47 +118,52 @@ export default function LoginScreen() {
         });
       }
 
-      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      await GoogleSignin.hasPlayServices({
+        showPlayServicesUpdateDialog: true,
+      });
       const response = await GoogleSignin.signIn();
 
-      if (response && (response as any).type === 'cancelled') {
+      if (response && (response as any).type === "cancelled") {
         return;
       }
 
       const idToken =
-        (response as any)?.data?.idToken ||
-        (response as any)?.idToken;
+        (response as any)?.data?.idToken || (response as any)?.idToken;
 
       if (!idToken) {
-        setError('Could not retrieve Google authentication token. Please try again.');
+        setError(
+          "Could not retrieve Google authentication token. Please try again.",
+        );
         return;
       }
 
       await googleLogin(idToken);
-      router.replace('/(app)/tabs/dashboard');
+      router.replace("/(app)/tabs/dashboard");
     } catch (err: any) {
       if (err?.code === statusCodes.SIGN_IN_CANCELLED) {
         return;
       } else if (err?.code === statusCodes.IN_PROGRESS) {
         return;
       } else if (err?.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        setError('Google Play Services is not available or outdated on this device.');
+        setError(
+          "Google Play Services is not available or outdated on this device.",
+        );
       } else {
         const isExpoGo =
-          err?.message?.includes('RNGoogleSignin') ||
-          err?.message?.includes('TurboModule') ||
-          err?.message?.includes('native module is not installed');
+          err?.message?.includes("RNGoogleSignin") ||
+          err?.message?.includes("TurboModule") ||
+          err?.message?.includes("native module is not installed");
 
         if (isExpoGo) {
           Alert.alert(
-            'Google Sign-In',
-            'Native Google Sign-In requires an Android APK or Custom Development Build. It is not supported in standard Expo Go.\n\nGenerate your APK using EAS Build to test native Google Sign-In.'
+            "Google Sign-In",
+            "Native Google Sign-In requires an Android APK or Custom Development Build. It is not supported in standard Expo Go.\n\nGenerate your APK using EAS Build to test native Google Sign-In.",
           );
         } else {
           const msg =
             err?.response?.data?.message ||
             err?.message ||
-            'Google authentication failed. Please try again.';
+            "Google authentication failed. Please try again.";
           setError(msg);
         }
       }
@@ -164,7 +174,7 @@ export default function LoginScreen() {
 
   return (
     <ImageBackground
-      source={require('../../../assets/images/login-bg.jpg')}
+      source={require("../../../assets/images/login-bg.jpg")}
       style={styles.bgImage}
       resizeMode="cover"
     >
@@ -172,7 +182,7 @@ export default function LoginScreen() {
       <StatusBar style="dark" />
       <KeyboardAvoidingView
         style={styles.root}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView
           contentContainerStyle={styles.scroll}
@@ -183,7 +193,7 @@ export default function LoginScreen() {
           {/* Logo Section */}
           <View style={styles.logoSection}>
             <Image
-              source={require('../../../assets/images/logo-transparent.png')}
+              source={require("../../../assets/images/logo-transparent.png")}
               style={styles.logo}
               resizeMode="contain"
             />
@@ -191,9 +201,9 @@ export default function LoginScreen() {
 
           {/* Heading Section */}
           <View style={styles.headingSection}>
-            <Text style={styles.welcomeText}>W E L C O M E   B A C K</Text>
+            <Text style={styles.welcomeText}>W E L C O M E B A C K</Text>
             <Text style={styles.subtitleText}>
-              Login to continue to your{'\n'}interior journey
+              Login to continue to your{"\n"}interior journey
             </Text>
           </View>
 
@@ -201,14 +211,24 @@ export default function LoginScreen() {
           <View style={styles.formContainer}>
             {error ? (
               <View style={styles.errorBox}>
-                <Ionicons name="alert-circle-outline" size={18} color="#D60000" style={{ marginRight: 6 }} />
+                <Ionicons
+                  name="alert-circle-outline"
+                  size={18}
+                  color="#D60000"
+                  style={{ marginRight: 6 }}
+                />
                 <Text style={styles.errorText}>{error}</Text>
               </View>
             ) : null}
 
             {/* Email / Mobile Input */}
             <View style={styles.inputWrapper}>
-              <Ionicons name="person-outline" size={20} color="#757575" style={styles.inputIcon} />
+              <Ionicons
+                name="person-outline"
+                size={20}
+                color="#757575"
+                style={styles.inputIcon}
+              />
               <TextInput
                 style={styles.input}
                 placeholder="Email or Mobile Number"
@@ -217,14 +237,19 @@ export default function LoginScreen() {
                 value={email}
                 onChangeText={(v) => {
                   setEmail(v);
-                  setError('');
+                  setError("");
                 }}
               />
             </View>
 
             {/* Password Input */}
             <View style={styles.inputWrapper}>
-              <Ionicons name="lock-closed-outline" size={20} color="#757575" style={styles.inputIcon} />
+              <Ionicons
+                name="lock-closed-outline"
+                size={20}
+                color="#757575"
+                style={styles.inputIcon}
+              />
               <TextInput
                 style={styles.input}
                 placeholder="Password"
@@ -235,7 +260,7 @@ export default function LoginScreen() {
                 value={password}
                 onChangeText={(v) => {
                   setPassword(v);
-                  setError('');
+                  setError("");
                 }}
               />
               <TouchableOpacity
@@ -244,7 +269,7 @@ export default function LoginScreen() {
                 activeOpacity={0.7}
               >
                 <Ionicons
-                  name={showPass ? 'eye-outline' : 'eye-off-outline'}
+                  name={showPass ? "eye-outline" : "eye-off-outline"}
                   size={20}
                   color="#757575"
                 />
@@ -263,7 +288,12 @@ export default function LoginScreen() {
               ) : (
                 <>
                   <Text style={styles.loginBtnText}>Login</Text>
-                  <Ionicons name="arrow-forward" size={18} color="#ffffff" style={styles.loginBtnArrow} />
+                  <Ionicons
+                    name="arrow-forward"
+                    size={18}
+                    color="#ffffff"
+                    style={styles.loginBtnArrow}
+                  />
                 </>
               )}
             </TouchableOpacity>
@@ -277,7 +307,10 @@ export default function LoginScreen() {
 
             {/* Continue with Google */}
             <TouchableOpacity
-              style={[styles.googleBtn, (loading || googleLoading) && { opacity: 0.8 }]}
+              style={[
+                styles.googleBtn,
+                (loading || googleLoading) && { opacity: 0.8 },
+              ]}
               onPress={handleGoogleLogin}
               disabled={loading || googleLoading}
               activeOpacity={0.75}
@@ -295,7 +328,10 @@ export default function LoginScreen() {
             {/* Footer */}
             <View style={styles.footer}>
               <Text style={styles.footerText}>Don’t have an account? </Text>
-              <TouchableOpacity onPress={() => router.push('/(auth)/register')} activeOpacity={0.7}>
+              <TouchableOpacity
+                onPress={() => router.push("/(auth)/register")}
+                activeOpacity={0.7}
+              >
                 <Text style={styles.footerLink}>Sign Up</Text>
               </TouchableOpacity>
             </View>
@@ -309,84 +345,84 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   bgImage: {
     flex: 1,
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   overlay: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(247, 245, 240, 0.08)',
+    backgroundColor: "rgba(247, 245, 240, 0.08)",
   },
   root: {
     flex: 1,
   },
   scroll: {
     flexGrow: 1,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
     paddingHorizontal: 28,
-    paddingTop: Platform.OS === 'ios' ? 64 : 50,
+    paddingTop: Platform.OS === "ios" ? 64 : 50,
     paddingBottom: 36,
   },
   logoSection: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 20,
   },
   logo: {
-    width: 250,
-    height: 75,
+    width: 130,
+    height: 130,
   },
   headingSection: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 26,
   },
   welcomeText: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#282828',
+    fontWeight: "700",
+    color: "#282828",
     letterSpacing: 3,
     marginBottom: 8,
-    textAlign: 'center',
+    textAlign: "center",
   },
   subtitleText: {
     fontSize: 14,
-    color: '#606060',
-    textAlign: 'center',
+    color: "#606060",
+    textAlign: "center",
     lineHeight: 20,
-    fontWeight: '400',
+    fontWeight: "400",
   },
   formContainer: {
-    width: '100%',
+    width: "100%",
   },
   errorBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#FCA5A5',
+    borderColor: "#FCA5A5",
     marginBottom: 14,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 2,
   },
   errorText: {
-    color: '#D60000',
+    color: "#D60000",
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: "500",
     flex: 1,
   },
   inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
     borderRadius: 25,
     height: 52,
     paddingHorizontal: 16,
     marginBottom: 14,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08,
     shadowRadius: 6,
@@ -398,51 +434,51 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 14.5,
-    color: '#111111',
-    height: '100%',
+    color: "#111111",
+    height: "100%",
   },
   eyeBtn: {
     padding: 6,
   },
   loginBtn: {
-    backgroundColor: '#7A131A',
+    backgroundColor: "#7A131A",
     height: 52,
     borderRadius: 26,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     marginTop: 8,
-    shadowColor: '#7A131A',
+    shadowColor: "#7A131A",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 8,
     elevation: 4,
   },
   loginBtnText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     letterSpacing: 0.5,
   },
   loginBtnArrow: {
     marginLeft: 8,
   },
   dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginVertical: 22,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.45)',
+    backgroundColor: "rgba(255, 255, 255, 0.45)",
   },
   dividerText: {
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: "rgba(255, 255, 255, 0.9)",
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
     paddingHorizontal: 12,
-    textShadowColor: 'rgba(0, 0, 0, 0.25)',
+    textShadowColor: "rgba(0, 0, 0, 0.25)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
@@ -450,41 +486,62 @@ const styles = StyleSheet.create({
     height: 50,
     borderRadius: 25,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.75)',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backdropFilter: 'blur(10px)',
+    borderColor: "rgba(255, 255, 255, 0.75)",
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backdropFilter: "blur(10px)",
   },
   googleBtnText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 14.5,
-    fontWeight: '500',
+    fontWeight: "500",
     marginLeft: 10,
-    textShadowColor: 'rgba(0, 0, 0, 0.25)',
+    textShadowColor: "rgba(0, 0, 0, 0.25)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     marginTop: 28,
   },
   footerText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 14,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
   footerLink: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 14,
-    fontWeight: '700',
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    fontWeight: "700",
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
+  },
+  adminQuickBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginTop: 14,
+    alignSelf: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  adminQuickText: {
+    color: "#7A131A",
+    fontSize: 13,
+    fontWeight: "700",
   },
 });

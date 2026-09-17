@@ -1,4 +1,4 @@
-package com.alterainterior.employeemanagement
+package com.alterainterior.alterainteriors
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

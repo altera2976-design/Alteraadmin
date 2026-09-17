@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Employee Management",
+    "name": "Altera Interior",
     "slug": "employee-management",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "employeemanagement",
+    "scheme": "alterainteriors",
     "userInterfaceStyle": "light",
     "android": {
       "adaptiveIcon": {
@@ -20,7 +20,7 @@
         "android.permission.RECORD_AUDIO",
         "android.permission.INTERNET"
       ],
-      "package": "com.alterainterior.employeemanagement"
+      "package": "com.alterainterior.alterainteriors"
     },
     "web": {
       "output": "single",

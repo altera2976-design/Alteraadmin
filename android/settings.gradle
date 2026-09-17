@@ -31,7 +31,7 @@ extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
 }
 expoAutolinking.useExpoModules()
 
-rootProject.name = 'Employee Management'
+rootProject.name = 'Altera Interior'
 
 expoAutolinking.useExpoVersionCatalog()
 
