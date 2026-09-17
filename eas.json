@@ -8,6 +8,7 @@
       "distribution": "internal"
     },
     "preview": {
+      "node": "20.18.0",
       "distribution": "internal",
       "android": {
         "buildType": "apk"
