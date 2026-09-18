@@ -118,6 +118,19 @@ export default function LoginPage() {
               'Sign In'
             )}
           </button>
+
+          <button
+            type="button"
+            className="btn btn-secondary btn-md w-full"
+            disabled={loading}
+            onClick={() => {
+              setForm({ email: 'admin@company.com', password: 'admin123' });
+              setError('');
+            }}
+            style={{ marginTop: 8, justifyContent: 'center', backgroundColor: '#f1f5f9', color: '#1e293b' }}
+          >
+            🛡️ Fill Admin Credentials
+          </button>
         </form>
 
         <p style={s.footer}>

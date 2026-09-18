@@ -1,5 +1,15 @@
 import axios from "axios";
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+
+const isLocal =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1");
+
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  (isLocal
+    ? "http://localhost:5001/api"
+    : "https://alterabackend.onrender.com/api");
 
 const api = axios.create({
   baseURL: API_URL,

@@ -3,7 +3,8 @@ import AdminLayout from '../layouts/AdminLayout';
 import api from '../services/api';
 import { io } from 'socket.io-client';
 
-const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api').replace('/api', '');
+const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+const API_BASE = (import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5001/api' : 'https://alterabackend.onrender.com/api')).replace('/api', '');
 
 export default function AttendancePage() {
   const [activeTab, setActiveTab] = useState('daily'); // 'daily' | 'monthly' | 'geofence'

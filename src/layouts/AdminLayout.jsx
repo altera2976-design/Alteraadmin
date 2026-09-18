@@ -4,13 +4,13 @@ import { useAuth } from "../context/AuthContext";
 
 const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard", icon: "📊" },
-  { to: "/crm", label: "CRM & Leads", icon: "🎯" },
-  { to: "/quotations", label: "Quotations & Sales", icon: "📝" },
-  { to: "/employees", label: "Team & Staff", icon: "👥" },
-  { to: "/attendance", label: "Attendance & GPS", icon: "✅" },
-  { to: "/payroll", label: "Payroll & Salary", icon: "💵" },
-  { to: "/reports", label: "13 Reports", icon: "📈" },
-  { to: "/administration", label: "Administration", icon: "⚙️" },
+  { to: "/crm", label: "CRM", icon: "👥" },
+  { to: "/projects", label: "Projects", icon: "📁" },
+  { to: "/payroll", label: "Salary", icon: "💵" },
+  { to: "/attendance", label: "Attendance", icon: "📅" },
+  { to: "/quotations", label: "Quotation", icon: "📑" },
+  { to: "/reports", label: "Reports", icon: "📈" },
+  { to: "/administration", label: "Settings", icon: "⚙️" },
 ];
 
 export default function AdminLayout({ children, title }) {
@@ -59,7 +59,7 @@ export default function AdminLayout({ children, title }) {
             />
           </div>
           <div style={styles.logoTextWrap}>
-            <div style={styles.logoTitle}>Altera Studio</div>
+            <div style={styles.logoTitle}>Altera Interior</div>
             <div style={styles.logoSub}>LUXURY INTERIORS • CRM</div>
           </div>
         </div>
@@ -86,6 +86,21 @@ export default function AdminLayout({ children, title }) {
               )}
             </NavLink>
           ))}
+          <button
+            onClick={handleLogout}
+            style={{
+              ...styles.navLink,
+              background: "transparent",
+              border: "none",
+              width: "100%",
+              textAlign: "left",
+              cursor: "pointer",
+              marginTop: 6,
+            }}
+          >
+            <span style={styles.navIcon}>🚪</span>
+            <span style={styles.navLabel}>Logout</span>
+          </button>
         </nav>
 
         {/* User info + logout */}

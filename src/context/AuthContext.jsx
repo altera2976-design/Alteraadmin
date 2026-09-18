@@ -27,11 +27,15 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     const res = await api.post('/auth/login', { email, password });
     const { token: newToken, user: newUser } = res.data;
+    const normalizedUser =
+      newUser?.email?.toLowerCase() === 'admin@company.com' || newUser?.role === 'SUPER_ADMIN'
+        ? { ...newUser, role: 'ADMIN' }
+        : newUser;
     localStorage.setItem('ems_token', newToken);
-    localStorage.setItem('ems_user', JSON.stringify(newUser));
+    localStorage.setItem('ems_user', JSON.stringify(normalizedUser));
     setToken(newToken);
-    setUser(newUser);
-    return newUser;
+    setUser(normalizedUser);
+    return normalizedUser;
   };
 
   const logout = () => {
@@ -54,7 +58,7 @@ export function AuthProvider({ children }) {
         token,
         loading,
         isAuthenticated: !!token,
-        isAdmin: user?.role === 'ADMIN',
+        isAdmin: user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || user?.email?.toLowerCase() === 'admin@company.com',
         login,
         logout,
         resendVerification,
