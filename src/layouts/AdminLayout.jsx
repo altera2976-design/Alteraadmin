@@ -1,23 +1,53 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const NAV_ITEMS = [
-  { to: "/dashboard", label: "Dashboard", icon: "📊" },
-  { to: "/crm", label: "CRM", icon: "👥" },
-  { to: "/projects", label: "Projects", icon: "📁" },
-  { to: "/payroll", label: "Salary", icon: "💵" },
-  { to: "/attendance", label: "Attendance", icon: "📅" },
-  { to: "/quotations", label: "Quotation", icon: "📑" },
-  { to: "/reports", label: "Reports", icon: "📈" },
-  { to: "/administration", label: "Settings", icon: "⚙️" },
+  { to: "/dashboard", label: "Dashboard", key: "dashboard", icon: "📊" },
+  { to: "/tasks", label: "Task Assign", key: "tasks", icon: "📋" },
+  { to: "/crm", label: "CRM", key: "crm", icon: "👥" },
+  { to: "/super-admin/admin-access", label: "Admin Access", superAdminOnly: true, icon: "🛡️" },
+  { to: "/projects", label: "Projects", key: "projects", icon: "📁" },
+  { to: "/payroll", label: "Salary", key: "salary", icon: "💰" },
+  { to: "/attendance", label: "Attendance", key: "attendance", icon: "📅" },
+  { to: "/quotations", label: "Quotation", key: "quotation", icon: "🧾" },
+  { to: "/reports", label: "Reports", key: "reports", icon: "📈" },
+  { to: "/administration", label: "Settings", key: "administration", icon: "⚙️" },
 ];
 
 export default function AdminLayout({ children, title }) {
-  const { user, logout } = useAuth();
+  const { user, logout, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const [windowWidth, setWindowWidth] = useState(
+    typeof window !== "undefined" ? window.innerWidth : 1200
+  );
+  const [tabletExpanded, setTabletExpanded] = useState(false);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const isDesktop = windowWidth >= 1200;
+  const isTablet = windowWidth >= 768 && windowWidth < 1200;
+  const isMobile = windowWidth < 768;
+
+  const filteredNavItems = NAV_ITEMS.filter((item) => {
+    if (item.superAdminOnly) {
+      return isSuperAdmin;
+    }
+    if (isSuperAdmin) {
+      return true;
+    }
+    if (user?.permissions && item.key) {
+      return user.permissions[item.key] !== false;
+    }
+    return true;
+  });
 
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to logout?")) {
@@ -32,22 +62,45 @@ export default function AdminLayout({ children, title }) {
     year: 'numeric'
   }).format(new Date());
 
+  const toggleHamburger = () => {
+    if (isMobile) {
+      setMobileDrawerOpen(!mobileDrawerOpen);
+    } else if (isTablet) {
+      setTabletExpanded(!tabletExpanded);
+    }
+  };
+
+  const closeMobileDrawer = () => {
+    if (isMobile) {
+      setMobileDrawerOpen(false);
+    }
+  };
+
+  // Determine tablet sidebar state
+  const isCompactTablet = isTablet && !tabletExpanded;
+
   return (
     <div style={styles.root}>
-      {/* ── Mobile overlay ───────────────────────────────────── */}
-      {sidebarOpen && (
-        <div style={styles.overlay} onClick={() => setSidebarOpen(false)} />
+      {/* ── Dimmed Overlay for Mobile Drawer ────────────────────────── */}
+      {isMobile && mobileDrawerOpen && (
+        <div style={styles.overlay} onClick={closeMobileDrawer} />
       )}
 
-      {/* ── Dark Elegant Sidebar ────────────────────────────── */}
+      {/* ── Sidebar (Desktop / Tablet / Mobile Drawer) ────────────────────────── */}
       <aside
         style={{
           ...styles.sidebar,
-          ...(sidebarOpen ? styles.sidebarOpen : {}),
+          ...(isCompactTablet ? styles.sidebarCompact : {}),
+          ...(isMobile
+            ? {
+                ...styles.sidebarMobile,
+                transform: mobileDrawerOpen ? "translateX(0)" : "translateX(-100%)",
+              }
+            : {}),
         }}
       >
         {/* Brand Header */}
-        <div style={styles.sidebarLogo}>
+        <div style={{ ...styles.sidebarLogo, ...(isCompactTablet ? styles.sidebarLogoCompact : {}) }}>
           <div style={styles.logoBadge}>
             <img
               src="/logo-circle.png"
@@ -58,92 +111,110 @@ export default function AdminLayout({ children, title }) {
               }}
             />
           </div>
-          <div style={styles.logoTextWrap}>
-            <div style={styles.logoTitle}>Altera Interior</div>
-            <div style={styles.logoSub}>LUXURY INTERIORS • CRM</div>
-          </div>
+          {!isCompactTablet && (
+            <div style={styles.logoTextWrap}>
+              <div style={styles.logoTitle}>Altera Interior</div>
+              <div style={styles.logoSub}>LUXURY INTERIORS • CRM</div>
+            </div>
+          )}
         </div>
 
         {/* Section Label */}
-        <div style={styles.navSectionLabel}>MANAGEMENT CONSOLE</div>
+        {!isCompactTablet && (
+          <div style={styles.navSectionLabel}>MANAGEMENT CONSOLE</div>
+        )}
 
-        {/* Navigation */}
-        <nav style={styles.nav}>
-          {NAV_ITEMS.map(({ to, label, icon }) => (
+        {/* Navigation List */}
+        <nav style={{ ...styles.nav, ...(isCompactTablet ? { padding: "12px 6px" } : {}) }}>
+          {filteredNavItems.map(({ to, label, icon }) => (
             <NavLink
               key={to}
               to={to}
-              onClick={() => setSidebarOpen(false)}
+              title={isCompactTablet ? label : undefined}
+              onClick={closeMobileDrawer}
               style={({ isActive }) => ({
                 ...styles.navLink,
                 ...(isActive ? styles.navLinkActive : {}),
+                ...(isCompactTablet ? styles.navLinkCompact : {}),
               })}
             >
               <span style={styles.navIcon}>{icon}</span>
-              <span style={styles.navLabel}>{label}</span>
-              {to === "/crm" && (
+              {!isCompactTablet && <span style={styles.navLabel}>{label}</span>}
+              {!isCompactTablet && to === "/crm" && (
                 <span style={styles.crmTag}>LIVE</span>
               )}
             </NavLink>
           ))}
           <button
-            onClick={handleLogout}
+            onClick={() => {
+              closeMobileDrawer();
+              handleLogout();
+            }}
+            title={isCompactTablet ? "Logout" : undefined}
             style={{
               ...styles.navLink,
+              ...(isCompactTablet ? styles.navLinkCompact : {}),
               background: "transparent",
               border: "none",
               width: "100%",
-              textAlign: "left",
+              textAlign: isCompactTablet ? "center" : "left",
               cursor: "pointer",
               marginTop: 6,
             }}
           >
             <span style={styles.navIcon}>🚪</span>
-            <span style={styles.navLabel}>Logout</span>
+            {!isCompactTablet && <span style={styles.navLabel}>Logout</span>}
           </button>
         </nav>
 
-        {/* User info + logout */}
-        <div style={styles.sidebarFooter}>
-          <div style={styles.userInfo}>
+        {/* User info + logout footer */}
+        <div style={{ ...styles.sidebarFooter, ...(isCompactTablet ? styles.sidebarFooterCompact : {}) }}>
+          <div style={{ ...styles.userInfo, ...(isCompactTablet ? { justifyContent: 'center' } : {}) }}>
             <div style={styles.avatar}>
               {user?.name?.charAt(0)?.toUpperCase() || "A"}
             </div>
-            <div style={styles.userDetails}>
-              <div style={styles.userName}>{user?.name || "Super Admin"}</div>
-              <div style={styles.userRole}>
-                <span style={styles.roleDot} />
-                {user?.role || "ADMINISTRATOR"}
+            {!isCompactTablet && (
+              <div style={styles.userDetails}>
+                <div style={styles.userName}>{user?.name || "Administrator"}</div>
+                <div style={styles.userRole}>
+                  <span style={styles.roleDot} />
+                  {user?.role || "ADMINISTRATOR"}
+                </div>
               </div>
-            </div>
+            )}
           </div>
-          <button style={styles.logoutBtn} onClick={handleLogout}>
-            <span>🚪</span>
-            <span>Sign Out</span>
-          </button>
+          {!isCompactTablet && (
+            <button style={styles.logoutBtn} onClick={handleLogout}>
+              <span>🚪</span>
+              <span>Sign Out</span>
+            </button>
+          )}
         </div>
       </aside>
 
-      {/* ── Main content area ─────────────────────────────────── */}
+      {/* ── Main Content Area ─────────────────────────────────── */}
       <div style={styles.main}>
-        {/* Top modern header */}
-        <header style={styles.header}>
+        {/* Top Header */}
+        <header style={styles.header} className="app-header">
           <div style={styles.headerLeft}>
             <button
               style={styles.hamburger}
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              aria-label="Toggle sidebar"
+              className="hamburger-btn"
+              onClick={toggleHamburger}
+              aria-label="Toggle navigation"
             >
               ☰
             </button>
             <div>
-              <div style={styles.headerBreadcrumb}>Altera Interior • Management Portal</div>
+              <div style={styles.headerBreadcrumb} className="app-breadcrumb">
+                Altera Interior • Management Portal
+              </div>
               <h1 style={styles.pageTitle}>{title}</h1>
             </div>
           </div>
 
           {/* Center Search Bar */}
-          <div style={styles.searchBox}>
+          <div style={styles.searchBox} className="app-search-box">
             <span style={styles.searchIcon}>🔍</span>
             <input
               type="text"
@@ -154,9 +225,9 @@ export default function AdminLayout({ children, title }) {
             />
           </div>
 
-          {/* Right actions & profile pill */}
+          {/* Right Actions & Profile Pill */}
           <div style={styles.headerRight}>
-            <div style={styles.dateBadge}>
+            <div style={styles.dateBadge} className="app-date-badge">
               <span style={{ fontSize: 13 }}>📅</span>
               <span>{todayFormatted}</span>
             </div>
@@ -165,7 +236,7 @@ export default function AdminLayout({ children, title }) {
               <div style={styles.userPillAvatar}>
                 {user?.name?.charAt(0)?.toUpperCase() || "A"}
               </div>
-              <div style={styles.userPillInfo}>
+              <div style={styles.userPillInfo} className="app-user-pill-info">
                 <span style={styles.userPillName}>{user?.name || "Admin"}</span>
                 <span style={styles.userPillStatus}>Online</span>
               </div>
@@ -173,8 +244,10 @@ export default function AdminLayout({ children, title }) {
           </div>
         </header>
 
-        {/* Page content */}
-        <main style={styles.content}>{children}</main>
+        {/* Page Content */}
+        <main style={styles.content} className="app-content">
+          {children}
+        </main>
       </div>
     </div>
   );
@@ -186,13 +259,14 @@ const styles = {
     minHeight: "100vh",
     background: "#F8F6F2",
     fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif",
+    overflowX: "hidden",
   },
   overlay: {
     position: "fixed",
     inset: 0,
     background: "rgba(18, 19, 22, 0.65)",
     backdropFilter: "blur(4px)",
-    zIndex: 99,
+    zIndex: 999,
   },
   sidebar: {
     width: 250,
@@ -208,11 +282,21 @@ const styles = {
     zIndex: 100,
     borderRight: "1px solid rgba(255, 255, 255, 0.06)",
     boxShadow: "4px 0 24px rgba(0, 0, 0, 0.25)",
-    transition: "transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+    transition: "all 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
   },
-  sidebarOpen: {
+  sidebarCompact: {
+    width: 72,
+  },
+  sidebarMobile: {
     position: "fixed",
-    transform: "translateX(0)",
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: 270,
+    maxWidth: "85vw",
+    zIndex: 1000,
+    boxShadow: "4px 0 28px rgba(0, 0, 0, 0.4)",
+    paddingBottom: "max(16px, env(safe-area-inset-bottom))",
   },
   sidebarLogo: {
     display: "flex",
@@ -220,6 +304,10 @@ const styles = {
     gap: 12,
     padding: "24px 20px 20px",
     borderBottom: "1px solid rgba(255, 255, 255, 0.07)",
+  },
+  sidebarLogoCompact: {
+    padding: "20px 10px",
+    justifyContent: "center",
   },
   logoBadge: {
     width: 40,
@@ -238,11 +326,6 @@ const styles = {
     width: 32,
     height: 32,
     objectFit: "contain",
-  },
-  logoEmoji: {
-    position: "absolute",
-    fontSize: 18,
-    opacity: 0.8,
   },
   logoTextWrap: {
     minWidth: 0,
@@ -289,6 +372,10 @@ const styles = {
     transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
     position: "relative",
   },
+  navLinkCompact: {
+    justifyContent: "center",
+    padding: "12px 10px",
+  },
   navLinkActive: {
     color: "#FFFFFF",
     background: "linear-gradient(135deg, #9F0B22 0%, #C8102E 100%)",
@@ -301,6 +388,7 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     width: 20,
+    flexShrink: 0,
   },
   navLabel: {
     flex: 1,
@@ -321,6 +409,10 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     gap: 12,
+  },
+  sidebarFooterCompact: {
+    padding: "14px 8px",
+    alignItems: "center",
   },
   userInfo: {
     display: "flex",
@@ -416,7 +508,8 @@ const styles = {
     color: "#4F4A42",
     padding: "4px 8px",
     borderRadius: 8,
-    display: "none",
+    background: "#FAF8F5",
+    border: "1px solid #E8E3DA",
   },
   headerBreadcrumb: {
     fontSize: 11,

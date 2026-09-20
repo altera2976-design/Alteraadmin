@@ -27,10 +27,17 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     const res = await api.post('/auth/login', { email, password });
     const { token: newToken, user: newUser } = res.data;
-    const normalizedUser =
-      newUser?.email?.toLowerCase() === 'admin@company.com' || newUser?.role === 'SUPER_ADMIN'
-        ? { ...newUser, role: 'ADMIN' }
-        : newUser;
+    const isSuperAdminEmail = newUser?.email?.toLowerCase() === 'admin@alterainterior.com' || newUser?.email?.toLowerCase() === 'admin@company.com';
+    const effectiveRole = isSuperAdminEmail ? 'SUPER_ADMIN' : (newUser?.role || 'EMPLOYEE');
+    const normalizedUser = { ...newUser, role: effectiveRole };
+
+    if (effectiveRole === 'EMPLOYEE') {
+      throw new Error('Employee accounts are not permitted to access the Admin Panel.');
+    }
+    if (effectiveRole !== 'SUPER_ADMIN' && newUser?.isAdminPanelEnabled === false) {
+      throw new Error('Admin Panel access has been disabled for your account. Please contact Super Admin.');
+    }
+
     localStorage.setItem('ems_token', newToken);
     localStorage.setItem('ems_user', JSON.stringify(normalizedUser));
     setToken(newToken);
@@ -51,6 +58,8 @@ export function AuthProvider({ children }) {
     return res.data;
   };
 
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN' || user?.email?.toLowerCase() === 'admin@alterainterior.com' || user?.email?.toLowerCase() === 'admin@company.com';
+
   return (
     <AuthContext.Provider
       value={{
@@ -58,7 +67,8 @@ export function AuthProvider({ children }) {
         token,
         loading,
         isAuthenticated: !!token,
-        isAdmin: user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || user?.email?.toLowerCase() === 'admin@company.com',
+        isAdmin: isSuperAdmin || user?.role === 'ADMIN' || user?.role === 'SALES' || user?.role === 'MANAGER',
+        isSuperAdmin,
         login,
         logout,
         resendVerification,

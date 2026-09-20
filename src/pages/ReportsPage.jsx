@@ -1,22 +1,22 @@
-import { useState, useEffect } from 'react';
-import AdminLayout from '../layouts/AdminLayout';
+import { useEffect, useState } from 'react';
 import LoadingSpinner from '../components/LoadingSpinner';
+import AdminLayout from '../layouts/AdminLayout';
 import api from '../services/api';
 
 const REPORT_TYPES = [
-  { id: 'business', label: '📊 Business Summary Report', icon: '📊' },
-  { id: 'lead', label: '🎯 Lead Inquiries Report', icon: '🎯' },
-  { id: 'client', label: '👤 Client Accounts Report', icon: '👤' },
-  { id: 'quotation', label: '📝 Quotations & Estimates', icon: '📝' },
-  { id: 'sales', label: '📈 Sales Pipeline Report', icon: '📈' },
-  { id: 'project', label: '🏗️ Project Status & Execution', icon: '🏗️' },
-  { id: 'employee', label: '👥 Employee & Team Report', icon: '👥' },
-  { id: 'attendance', label: '✅ Attendance & Site Timesheet', icon: '✅' },
-  { id: 'payroll', label: '💵 Payroll & Compensation', icon: '💵' },
-  { id: 'payment', label: '💳 Payment Collections', icon: '💳' },
-  { id: 'expense', label: '🧾 Material & Project Expenses', icon: '🧾' },
-  { id: 'revenue', label: '💰 Revenue & Invoicing', icon: '💰' },
-  { id: 'profit-loss', label: '⚖️ Profit & Loss (P&L)', icon: '⚖️' },
+  { id: 'business', label: ' Business Summary Report' },
+  { id: 'lead', label: ' Lead Inquiries Report' },
+  { id: 'client', label: ' Client Accounts Report' },
+  { id: 'quotation', label: ' Quotations & Estimates' },
+  { id: 'sales', label: ' Sales Pipeline Report' },
+  { id: 'project', label: ' Project Status & Execution' },
+  { id: 'employee', label: ' Employee & Team Report' },
+  { id: 'attendance', label: ' Attendance & Site Timesheet' },
+  { id: 'payroll', label: ' Payroll & Compensation' },
+  { id: 'payment', label: ' Payment Collections' },
+  { id: 'expense', label: ' Material & Project Expenses' },
+  { id: 'revenue', label: ' Revenue & Invoicing' },
+  { id: 'profit-loss', label: ' Profit & Loss (P&L)' },
 ];
 
 export default function ReportsPage() {
@@ -196,7 +196,7 @@ export default function ReportsPage() {
       {summaryData && Object.keys(summaryData).length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 20 }}>
           {Object.entries(summaryData).map(([key, val]) => (
-            <div key={key} className="card" style={{ padding: 14, borderTop: '3px solid #2563eb' }}>
+            <div key={key} className="card" style={{ padding: 14, border: '1px solid #cbd5e1', borderRadius: 10 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
                 {key.replace(/([A-Z])/g, ' $1')}
               </div>
@@ -236,7 +236,7 @@ export default function ReportsPage() {
                       const v = row[col];
                       const isNum = typeof v === 'number' && v > 500 && !col.toLowerCase().includes('year');
                       return (
-                        <td key={col} style={{ fontWeight: col.includes('profit') || col.includes('total') ? 700 : 500 }}>
+                        <td key={col} style={{ fontWeight: col.includes('profit') || col.includes('total') ? 700 : 500, color: '#0f172a' }}>
                           {isNum ? `₹${v.toLocaleString('en-IN')}` : String(v !== undefined ? v : '—')}
                         </td>
                       );
@@ -253,7 +253,7 @@ export default function ReportsPage() {
         <div style={styles.modalBackdrop}>
           <div style={styles.modalCard}>
             <div style={styles.modalHeader}>
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Dispatch Report via Email</h3>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#0f172a' }}>Dispatch Report via Email</h3>
               <button onClick={() => setShowSendModal(false)} style={styles.closeBtn}>✕</button>
             </div>
             <form onSubmit={handleSendEmail} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
@@ -278,7 +278,7 @@ export default function ReportsPage() {
                   placeholder={`[Altera Studio] ${selectedReport.toUpperCase()} Report - ${periodLabel}`}
                 />
               </div>
-              <div style={{ background: '#f8fafc', padding: 12, borderRadius: 6, fontSize: 12, color: '#64748b' }}>
+              <div style={{ background: '#f8fafc', padding: 12, borderRadius: 6, fontSize: 12, color: '#475569', border: '1px solid #e2e8f0' }}>
                 📎 Attached: <strong>{selectedReport}_Report.json / CSV</strong> ({reportData.length} records)
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 12 }}>
@@ -300,7 +300,7 @@ export default function ReportsPage() {
 const styles = {
   reportPill: {
     padding: '6px 14px',
-    background: '#f8fafc',
+    background: '#ffffff',
     border: '1px solid #cbd5e1',
     borderRadius: 20,
     fontSize: 12,
@@ -311,8 +311,8 @@ const styles = {
   },
   reportPillActive: {
     padding: '6px 14px',
-    background: '#2563eb',
-    border: '1px solid #2563eb',
+    background: '#0f172a',
+    border: '1px solid #0f172a',
     borderRadius: 20,
     fontSize: 12,
     fontWeight: 700,
@@ -325,6 +325,7 @@ const styles = {
     border: '1px solid #cbd5e1',
     borderRadius: 6,
     fontSize: 13,
+    color: '#0f172a',
   },
   table: {
     width: '100%',
@@ -332,10 +333,10 @@ const styles = {
     textAlign: 'left',
   },
   thRow: {
-    borderBottom: '2px solid #e2e8f0',
+    borderBottom: '2px solid #cbd5e1',
     background: '#f8fafc',
     fontSize: 11,
-    color: '#64748b',
+    color: '#475569',
     textTransform: 'uppercase',
   },
   trRow: {
@@ -345,7 +346,8 @@ const styles = {
   modalBackdrop: {
     position: 'fixed',
     inset: 0,
-    background: 'rgba(0, 0, 0, 0.5)',
+    background: 'rgba(15, 23, 42, 0.6)',
+    backdropFilter: 'blur(2px)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -359,12 +361,13 @@ const styles = {
     width: '100%',
     padding: 24,
     boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+    border: '1px solid #cbd5e1',
   },
   modalHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderBottom: '1px solid #e2e8f0',
+    borderBottom: '1px solid #cbd5e1',
     paddingBottom: 12,
   },
   closeBtn: {

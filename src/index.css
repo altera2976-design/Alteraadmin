@@ -512,9 +512,48 @@ tr:hover td {
   font-weight: 500;
 }
 
-/* ── Responsive ──────────────────────────────────────────────────────────── */
-@media (max-width: 768px) {
-  .page-header { flex-direction: column; align-items: flex-start; gap: 12px; }
-  .filter-bar { flex-direction: column; }
-  .search-input-wrapper { width: 100%; }
+/* ── Responsive Navigation & Layout ────────────────────────────────────────── */
+
+/* Desktop Default (>= 1200px): Desktop unchanged */
+@media (min-width: 1200px) {
+  .hamburger-btn {
+    display: none !important;
+  }
 }
+
+/* Tablet Layout (768px to 1199px) */
+@media (min-width: 768px) and (max-width: 1199px) {
+  .hamburger-btn {
+    display: flex !important;
+  }
+  .app-search-box {
+    width: 220px !important;
+  }
+}
+
+/* Mobile Layout (< 768px) */
+@media (max-width: 767px) {
+  .hamburger-btn {
+    display: flex !important;
+  }
+  .app-header {
+    padding: 0 16px !important;
+    gap: 10px !important;
+  }
+  .app-search-box {
+    display: none !important;
+  }
+  .app-date-badge {
+    display: none !important;
+  }
+  .app-content {
+    padding: 16px !important;
+  }
+  .app-breadcrumb {
+    display: none !important;
+  }
+  .app-user-pill-info {
+    display: none !important;
+  }
+}
+

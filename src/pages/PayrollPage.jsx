@@ -228,33 +228,33 @@ export default function PayrollPage() {
       {/* KPI Cards */}
       {summary && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '20px' }}>
-          <div className="card" style={{ padding: '16px', borderLeft: '4px solid #7A131A' }}>
-            <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Total Employees</div>
+          <div className="card" style={{ padding: '16px', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Total Employees</div>
             <div style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', marginTop: '4px' }}>{summary.totalEmployees}</div>
           </div>
-          <div className="card" style={{ padding: '16px', borderLeft: '4px solid #2563eb' }}>
-            <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Gross Payroll</div>
-            <div style={{ fontSize: '24px', fontWeight: 800, color: '#2563eb', marginTop: '4px' }}>{formatSalary(summary.totalGrossSalary)}</div>
+          <div className="card" style={{ padding: '16px', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Gross Payroll</div>
+            <div style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', marginTop: '4px' }}>{formatSalary(summary.totalGrossSalary)}</div>
           </div>
-          <div className="card" style={{ padding: '16px', borderLeft: '4px solid #dc2626' }}>
-            <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Total Deductions</div>
-            <div style={{ fontSize: '24px', fontWeight: 800, color: '#dc2626', marginTop: '4px' }}>{formatSalary(summary.totalDeductions)}</div>
+          <div className="card" style={{ padding: '16px', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Total Deductions</div>
+            <div style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', marginTop: '4px' }}>{formatSalary(summary.totalDeductions)}</div>
           </div>
-          <div className="card" style={{ padding: '16px', borderLeft: '4px solid #16a34a' }}>
-            <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Net Payable</div>
-            <div style={{ fontSize: '24px', fontWeight: 800, color: '#16a34a', marginTop: '4px' }}>{formatSalary(summary.totalNetSalary)}</div>
+          <div className="card" style={{ padding: '16px', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Net Payable</div>
+            <div style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', marginTop: '4px' }}>{formatSalary(summary.totalNetSalary)}</div>
           </div>
         </div>
       )}
 
       {/* Filter bar */}
-      <div className="filter-bar">
+      <div className="filter-bar" style={{ marginBottom: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <label style={{ fontWeight: 600, color: '#334155' }}>Select Month:</label>
+          <label style={{ fontWeight: 700, color: '#334155' }}>Select Month:</label>
           <input
             type="month"
             className="form-select"
-            style={{ width: 'auto', padding: '8px 12px' }}
+            style={{ width: 'auto', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '6px' }}
             value={month}
             onChange={(e) => setMonth(e.target.value)}
           />
@@ -262,7 +262,7 @@ export default function PayrollPage() {
       </div>
 
       {/* Table */}
-      <div className="card">
+      <div className="card" style={{ border: '1px solid #e2e8f0', borderRadius: '10px', padding: 0 }}>
         {loading ? (
           <LoadingSpinner />
         ) : payroll.length === 0 ? (
@@ -273,20 +273,20 @@ export default function PayrollPage() {
           />
         ) : (
           <div className="table-wrapper">
-            <table>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
-                <tr>
-                  <th>Emp ID</th>
-                  <th>Employee</th>
-                  <th>Present</th>
-                  <th>Half Day</th>
-                  <th>Unpaid</th>
-                  <th>Overtime</th>
-                  <th>Gross Salary</th>
-                  <th>Deductions</th>
-                  <th style={{ fontWeight: 'bold' }}>Net Salary</th>
-                  <th>Status</th>
-                  <th style={{ textAlign: 'right' }}>Actions</th>
+                <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                  <th style={{ padding: '12px 14px' }}>Emp ID</th>
+                  <th style={{ padding: '12px 14px' }}>Employee</th>
+                  <th style={{ padding: '12px 14px', textAlign: 'center' }}>Present</th>
+                  <th style={{ padding: '12px 14px', textAlign: 'center' }}>Half Day</th>
+                  <th style={{ padding: '12px 14px', textAlign: 'center' }}>Unpaid</th>
+                  <th style={{ padding: '12px 14px', textAlign: 'center' }}>Overtime</th>
+                  <th style={{ padding: '12px 14px' }}>Gross Salary</th>
+                  <th style={{ padding: '12px 14px' }}>Deductions</th>
+                  <th style={{ padding: '12px 14px', fontWeight: 'bold' }}>Net Salary</th>
+                  <th style={{ padding: '12px 14px' }}>Status</th>
+                  <th style={{ padding: '12px 14px', textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -297,35 +297,36 @@ export default function PayrollPage() {
                   const isApproved = item.status === 'APPROVED';
 
                   return (
-                    <tr key={item._id}>
-                      <td style={{ fontWeight: 600, color: '#2563eb', fontFamily: 'monospace' }}>
+                    <tr key={item._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '12px 14px', fontWeight: 700, color: '#0f172a', fontFamily: 'monospace' }}>
                         {emp.employeeId || '-'}
                       </td>
-                      <td>
-                        <div style={{ fontWeight: 600, color: '#1e293b' }}>{emp.name}</div>
+                      <td style={{ padding: '12px 14px' }}>
+                        <div style={{ fontWeight: 700, color: '#0f172a' }}>{emp.name}</div>
                         <div style={{ fontSize: 12, color: '#64748b' }}>{emp.department || 'General'}</div>
                         {item.attendanceChangedAfterApproval && (
-                          <span style={{ fontSize: 10, color: '#b45309', fontWeight: 'bold' }}>⚠️ Attendance modified post-approval</span>
+                          <span style={{ fontSize: 10, color: '#475569', fontWeight: 'bold' }}>⚠️ Attendance modified post-approval</span>
                         )}
                       </td>
-                      <td style={{ textAlign: 'center', color: '#16a34a', fontWeight: 'bold' }}>{att.presentDays ?? 0}</td>
-                      <td style={{ textAlign: 'center', color: '#ca8a04' }}>{att.halfDays ?? 0}</td>
-                      <td style={{ textAlign: 'center', color: '#dc2626' }}>{att.unpaidLeave ?? 0}</td>
-                      <td style={{ textAlign: 'center' }}>{att.overtimeHours ?? 0}h</td>
-                      <td>{formatSalary(item.earnings?.grossSalary)}</td>
-                      <td style={{ color: '#dc2626' }}>-{formatSalary(item.deductions?.totalDeductions)}</td>
-                      <td style={{ fontWeight: '800', color: '#16a34a', fontSize: '15px' }}>
+                      <td style={{ padding: '12px 14px', textAlign: 'center', color: '#0f172a', fontWeight: 'bold' }}>{att.presentDays ?? 0}</td>
+                      <td style={{ padding: '12px 14px', textAlign: 'center', color: '#475569' }}>{att.halfDays ?? 0}</td>
+                      <td style={{ padding: '12px 14px', textAlign: 'center', color: '#475569' }}>{att.unpaidLeave ?? 0}</td>
+                      <td style={{ padding: '12px 14px', textAlign: 'center', color: '#334155' }}>{att.overtimeHours ?? 0}h</td>
+                      <td style={{ padding: '12px 14px', color: '#334155' }}>{formatSalary(item.earnings?.grossSalary)}</td>
+                      <td style={{ padding: '12px 14px', color: '#475569' }}>-{formatSalary(item.deductions?.totalDeductions)}</td>
+                      <td style={{ padding: '12px 14px', fontWeight: '800', color: '#0f172a', fontSize: '15px' }}>
                         {formatSalary(item.netSalary)}
                       </td>
-                      <td>
+                      <td style={{ padding: '12px 14px' }}>
                         <span
                           style={{
                             padding: '3px 8px',
-                            borderRadius: '12px',
+                            borderRadius: '6px',
                             fontSize: '11px',
-                            fontWeight: 'bold',
-                            backgroundColor: isPaid ? '#DEF7EC' : isApproved ? '#DBEAFE' : '#FEF3C7',
-                            color: isPaid ? '#03543F' : isApproved ? '#1E40AF' : '#92400E',
+                            fontWeight: '700',
+                            backgroundColor: '#f1f5f9',
+                            color: '#0f172a',
+                            border: '1px solid #cbd5e1',
                           }}
                         >
                           {item.status}

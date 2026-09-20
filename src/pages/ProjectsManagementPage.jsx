@@ -264,11 +264,11 @@ export default function ProjectsManagementPage() {
             </div>
             <div>
               <div style={{ fontSize: 11, color: '#64748b' }}>Approved Value:</div>
-              <div style={{ fontWeight: 700, color: '#16a34a' }}>{formatCurrency(selectedProject.value || selectedProject.budget?.approvedBudget)}</div>
+              <div style={{ fontWeight: 800, color: '#0f172a' }}>{formatCurrency(selectedProject.value || selectedProject.budget?.approvedBudget)}</div>
             </div>
             <div>
               <div style={{ fontSize: 11, color: '#64748b' }}>Status:</div>
-              <span style={{ ...styles.badgeStatus, background: '#e0f2fe', color: '#0369a1' }}>
+              <span style={styles.badgeStatus}>
                 {selectedProject.status}
               </span>
             </div>
@@ -1022,10 +1022,10 @@ const styles = {
   },
   tabBtnActive: {
     padding: '8px 16px',
-    background: '#2563eb',
-    border: '1px solid #2563eb',
+    background: '#0f172a',
+    border: '1px solid #0f172a',
     borderRadius: 8,
-    fontWeight: 600,
+    fontWeight: 700,
     fontSize: 13,
     color: '#ffffff',
     cursor: 'pointer',
@@ -1048,7 +1048,7 @@ const styles = {
     borderBottom: '2px solid #e2e8f0',
     background: '#f8fafc',
     fontSize: 12,
-    color: '#64748b',
+    color: '#475569',
     textTransform: 'uppercase',
   },
   trRow: {
@@ -1056,18 +1056,22 @@ const styles = {
     fontSize: 13,
   },
   badgeRequirement: {
-    background: '#ede9fe',
-    color: '#6d28d9',
+    background: '#f1f5f9',
+    color: '#334155',
+    border: '1px solid #cbd5e1',
     padding: '2px 8px',
-    borderRadius: 12,
+    borderRadius: 6,
     fontSize: 11,
-    fontWeight: 600,
+    fontWeight: 700,
   },
   badgeStatus: {
     padding: '3px 8px',
-    borderRadius: 12,
+    borderRadius: 6,
     fontSize: 11,
     fontWeight: 700,
+    background: '#f1f5f9',
+    color: '#0f172a',
+    border: '1px solid #cbd5e1',
   },
   modalBackdrop: {
     position: 'fixed',

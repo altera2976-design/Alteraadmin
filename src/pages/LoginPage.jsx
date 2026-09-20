@@ -25,10 +25,10 @@ export default function LoginPage() {
     setError('');
     try {
       await login(form.email, form.password);
-      navigate('/dashboard', { replace: true });
+      navigate('/admin-panel', { replace: true });
     } catch (err) {
       setError(
-        err.response?.data?.message || 'Login failed. Please check your credentials.'
+        err.message || err.response?.data?.message || 'Login failed. Please check your credentials.'
       );
     } finally {
       setLoading(false);
