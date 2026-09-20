@@ -25,7 +25,7 @@ export const StatCard = ({ title, value, icon, color = APP_COLORS.primary, style
     <View style={[styles.iconBox, { backgroundColor: color + '15' }]}>
       <Ionicons name={icon as any} size={22} color={color} />
     </View>
-    <View>
+    <View style={styles.statTextContainer}>
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statTitle}>{title}</Text>
     </View>
@@ -68,6 +68,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
+  },
+  statTextContainer: {
+    flex: 1,
   },
   statValue: {
     fontSize: 22,

@@ -49,18 +49,123 @@ function formatDate(dateStr: string | undefined): string {
 }
 
 const DEFAULT_ROOMS = [
-  'Living Room',
   'Modular Kitchen',
-  'Master Bedroom',
-  'Bedroom 01',
-  'Bedroom 02',
-  'Dining Room',
-  'Bathroom',
-  'Balcony',
-  'Entrance / Foyer',
-  'Study Room',
-  'Pooja / Mandir',
-  'Other',
+  'Modular Wardrobes',
+  'Furniture',
+  'Vanity',
+  'Study Table',
+  'Modular Doors',
+  'Crockery Unit',
+  'TV Unit',
+  'Others',
+  'Custom',
+  '+ Add More',
+];
+
+const DEFAULT_CATEGORY_SUB_ITEMS: Record<string, string[]> = {
+  'Modular Kitchen': [
+    'Acrylic Finish Kitchen',
+    'PU Finish Kitchen',
+    'Laminate Finish Kitchen',
+    'Veneer Finish Kitchen',
+    'Glass Shutter Kitchen',
+    'Handleless Profile Kitchen',
+    '+ Add More',
+  ],
+  'Modular Wardrobes': [
+    'Laminated Wardrobes',
+    'Lacquered Glass Wardrobes',
+    'Italian Wardrobes',
+    'PU Wardrobes',
+    'PU European Wardrobes',
+    'Veneer Wardrobes',
+    '+ Add More',
+  ],
+  'Furniture': [
+    'Modular Bed',
+    'Modular Bed with Back Panel',
+    'Modular Dresser',
+    'Modern Dining Table with Chair',
+    '+ Add More',
+  ],
+  'Vanity': [
+    'Double Vanity',
+    'Floating Vanity',
+    'Modern Vanity',
+    'Traditional Vanity',
+    '+ Add More',
+  ],
+  'Study Table': [
+    'Classic Modern Study Table',
+    'Classic Veneer Study Table',
+    'Contemporary Study Table',
+    'Modern Study Table',
+    '+ Add More',
+  ],
+  'Modular Doors': [
+    'Classic Modern Door',
+    'Classic Veneer Door',
+    'Modular Contemporary Door',
+    'Modular Metallic Door',
+    'Modern Door',
+    '+ Add More',
+  ],
+  'Crockery Unit': [
+    'Classic Modern Bar and Unit',
+    'Classic Modern Crockery Unit',
+    'Classic Veneer Bar Unit',
+    'Classic Veneer Crockery Unit',
+    'Modern Bar Unit',
+    'Modern Crockery Unit',
+    '+ Add More',
+  ],
+  'TV Unit': [
+    'Classic TV Unit',
+    'Contemporary TV Unit',
+    'European TV Unit',
+    'Modern TV Unit',
+    '+ Add More',
+  ],
+  'Others': [
+    'Pooja Unit',
+    'Shoe Rack',
+    'Foyer Console',
+    'Partition Screen',
+    '+ Add More',
+  ],
+};
+
+const DEFAULT_MATERIAL_OPTIONS = [
+  'HDHMR Board – Action Tesa',
+  'BWP Plywood – Century / Greenply',
+  'MDF Board',
+  'Particle Board',
+  'Blockboard',
+  'Veneer',
+  'Laminate – Merino / Royale Touche',
+  'Acrylic Sheet',
+  'PVC / WPC Board',
+  '+ Add More',
+];
+
+const DEFAULT_HARDWARE_OPTIONS = [
+  'Hettich Soft Close',
+  'Hafele Soft Close',
+  'Ebco Soft Close',
+  'Blum Soft Close',
+  'Standard Hardware',
+  '+ Add More',
+];
+
+const DEFAULT_ACCESSORY_OPTIONS = [
+  'Wicker Basket',
+  'BPO (Bottle Pull Out)',
+  'Innotech Drawers',
+  'Tandem Box',
+  'Corner Carousel',
+  'Cutlery Tray',
+  'Pantry Unit',
+  '+ Add More',
 ];
 
 const DEFAULT_MILESTONES_INPUT: QuotationMilestone[] = [
@@ -118,20 +223,40 @@ export default function QuotationScreen() {
   const [validityDays, setValidityDays] = useState('30');
 
   // Step 2: Rooms & Items
-  const [selectedRoom, setSelectedRoom] = useState('Living Room');
+  const [roomCategories, setRoomCategories] = useState<string[]>(DEFAULT_ROOMS);
+  const [subItemMap, setSubItemMap] = useState<Record<string, string[]>>(DEFAULT_CATEGORY_SUB_ITEMS);
+  const [selectedRoom, setSelectedRoom] = useState('Modular Kitchen');
+  const [showCustomRoomInput, setShowCustomRoomInput] = useState(false);
+  const [customRoomName, setCustomRoomName] = useState('');
+  const [showCustomSubItemInput, setShowCustomSubItemInput] = useState(false);
+  const [customSubItemName, setCustomSubItemName] = useState('');
   const [items, setItems] = useState<QuotationItemDoc[]>([]);
 
   // Item Sub-form
+  const DEFAULT_UNITS = ['Sq Ft', 'Lumpsum', 'Pieces', '+ Add More'];
+  const [unitOptions, setUnitOptions] = useState<string[]>(DEFAULT_UNITS);
+  const [showCustomUnitInput, setShowCustomUnitInput] = useState(false);
+  const [customUnitName, setCustomUnitName] = useState('');
+
+  const [materialOptions, setMaterialOptions] = useState<string[]>(DEFAULT_MATERIAL_OPTIONS);
+  const [showCustomMaterialInput, setShowCustomMaterialInput] = useState(false);
+  const [customMaterialName, setCustomMaterialName] = useState('');
+
+  const [hardwareOptions, setHardwareOptions] = useState<string[]>(DEFAULT_HARDWARE_OPTIONS);
+  const [showCustomHardwareInput, setShowCustomHardwareInput] = useState(false);
+  const [customHardwareName, setCustomHardwareName] = useState('');
+
+  const [accessoryOptions, setAccessoryOptions] = useState<string[]>(DEFAULT_ACCESSORY_OPTIONS);
+  const [showCustomAccessoryInput, setShowCustomAccessoryInput] = useState(false);
+  const [customAccessoryName, setCustomAccessoryName] = useState('');
+
   const [itemName, setItemName] = useState('');
   const [itemDesc, setItemDesc] = useState('');
-  const [itemUnit, setItemUnit] = useState<'Sq Ft' | 'Sq M' | 'Nos' | 'Running Ft' | 'Lump Sum' | 'Hours' | 'Days' | 'Custom'>('Sq Ft');
-  const [itemLength, setItemLength] = useState('');
-  const [itemWidth, setItemWidth] = useState('');
-  const [itemHeight, setItemHeight] = useState('');
-  const [itemQty, setItemQty] = useState('1');
+  const [itemUnit, setItemUnit] = useState<string>('Sq Ft');
+  const [itemSize, setItemSize] = useState('1');
   const [itemRate, setItemRate] = useState('');
   // Specs
-  const [specCarcass, setSpecCarcass] = useState('HDHMR');
+  const [specCarcass, setSpecCarcass] = useState('HDHMR Board – Action Tesa');
   const [specShutter, setSpecShutter] = useState('Acrylic Finish');
   const [specFinish, setSpecFinish] = useState('High Gloss Acrylic');
   const [specBrand, setSpecBrand] = useState('Action TESA / Merino');
@@ -223,35 +348,238 @@ export default function QuotationScreen() {
   }, [items, handlingPercent, designPercent, discountType, discountValue, gstPercent, milestones]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
+  const autoAddSubItemOption = (room: string, name: string) => {
+    const trimmed = name?.trim();
+    if (!trimmed || trimmed === '+ Add More') return;
+    const currentSubItems = subItemMap[room] || DEFAULT_CATEGORY_SUB_ITEMS[room] || ['+ Add More'];
+    if (!currentSubItems.includes(trimmed)) {
+      const updated = [...currentSubItems];
+      const addMoreIdx = updated.indexOf('+ Add More');
+      if (addMoreIdx !== -1) {
+        updated.splice(addMoreIdx, 0, trimmed);
+      } else {
+        updated.push(trimmed);
+      }
+      setSubItemMap(prev => ({
+        ...prev,
+        [room]: updated,
+      }));
+    }
+  };
+
+  const handleSelectRoom = (r: string) => {
+    if (r === 'Custom' || r === '+ Add More') {
+      setShowCustomRoomInput(true);
+      return;
+    }
+    setSelectedRoom(r);
+    setShowCustomRoomInput(false);
+    setShowCustomSubItemInput(false);
+
+    const availableSubItems = subItemMap[r] || DEFAULT_CATEGORY_SUB_ITEMS[r] || [];
+    const firstSubItem = availableSubItems.find(item => item !== '+ Add More');
+    if (firstSubItem) {
+      setItemName(firstSubItem);
+    }
+  };
+
+  const handleConfirmCustomRoom = () => {
+    const trimmed = customRoomName.trim();
+    if (!trimmed) return;
+
+    if (!roomCategories.includes(trimmed)) {
+      const updatedCategories = [...roomCategories];
+      const addMoreIdx = updatedCategories.findIndex(c => c === '+ Add More' || c === 'Custom');
+      if (addMoreIdx !== -1) {
+        updatedCategories.splice(addMoreIdx, 0, trimmed);
+      } else {
+        updatedCategories.push(trimmed);
+      }
+      setRoomCategories(updatedCategories);
+    }
+
+    if (!subItemMap[trimmed]) {
+      setSubItemMap(prev => ({
+        ...prev,
+        [trimmed]: ['Standard Item', '+ Add More'],
+      }));
+    }
+
+    setSelectedRoom(trimmed);
+    setItemName('Standard Item');
+    setCustomRoomName('');
+    setShowCustomRoomInput(false);
+  };
+
+  const handleSelectSubItem = (subItem: string) => {
+    if (subItem === '+ Add More') {
+      setShowCustomSubItemInput(true);
+      return;
+    }
+    setItemName(subItem);
+    setShowCustomSubItemInput(false);
+  };
+
+  const handleConfirmCustomSubItem = (overrideName?: string) => {
+    const trimmed = (overrideName || customSubItemName).trim();
+    if (!trimmed) return;
+
+    autoAddSubItemOption(selectedRoom, trimmed);
+    setItemName(trimmed);
+    setCustomSubItemName('');
+    setShowCustomSubItemInput(false);
+  };
+
+  const handleSelectUnit = (u: string) => {
+    if (u === '+ Add More') {
+      setShowCustomUnitInput(true);
+      return;
+    }
+    setItemUnit(u);
+    setShowCustomUnitInput(false);
+  };
+
+  const handleConfirmCustomUnit = (overrideName?: string) => {
+    const trimmed = (overrideName || customUnitName).trim();
+    if (!trimmed) return;
+
+    if (!unitOptions.includes(trimmed)) {
+      const updated = [...unitOptions];
+      const addMoreIdx = updated.indexOf('+ Add More');
+      if (addMoreIdx !== -1) {
+        updated.splice(addMoreIdx, 0, trimmed);
+      } else {
+        updated.push(trimmed);
+      }
+      setUnitOptions(updated);
+    }
+
+    setItemUnit(trimmed);
+    setCustomUnitName('');
+    setShowCustomUnitInput(false);
+  };
+
+  const handleSelectMaterial = (m: string) => {
+    if (m === '+ Add More') {
+      setShowCustomMaterialInput(true);
+      return;
+    }
+    setSpecCarcass(m);
+    setShowCustomMaterialInput(false);
+  };
+
+  const handleConfirmCustomMaterial = (overrideName?: string) => {
+    const trimmed = (overrideName || customMaterialName).trim();
+    if (!trimmed) return;
+
+    if (!materialOptions.includes(trimmed)) {
+      const updated = [...materialOptions];
+      const addMoreIdx = updated.indexOf('+ Add More');
+      if (addMoreIdx !== -1) {
+        updated.splice(addMoreIdx, 0, trimmed);
+      } else {
+        updated.push(trimmed);
+      }
+      setMaterialOptions(updated);
+    }
+
+    setSpecCarcass(trimmed);
+    setCustomMaterialName('');
+    setShowCustomMaterialInput(false);
+  };
+
+  const handleSelectHardware = (h: string) => {
+    if (h === '+ Add More') {
+      setShowCustomHardwareInput(true);
+      return;
+    }
+    setSpecHardware(h);
+    setShowCustomHardwareInput(false);
+  };
+
+  const handleConfirmCustomHardware = (overrideName?: string) => {
+    const trimmed = (overrideName || customHardwareName).trim();
+    if (!trimmed) return;
+
+    if (!hardwareOptions.includes(trimmed)) {
+      const updated = [...hardwareOptions];
+      const addMoreIdx = updated.indexOf('+ Add More');
+      if (addMoreIdx !== -1) {
+        updated.splice(addMoreIdx, 0, trimmed);
+      } else {
+        updated.push(trimmed);
+      }
+      setHardwareOptions(updated);
+    }
+
+    setSpecHardware(trimmed);
+    setCustomHardwareName('');
+    setShowCustomHardwareInput(false);
+  };
+
+  const handleSelectAccessory = (acc: string) => {
+    if (acc === '+ Add More') {
+      setShowCustomAccessoryInput(true);
+      return;
+    }
+    setAccName(acc);
+    setShowCustomAccessoryInput(false);
+  };
+
+  const handleConfirmCustomAccessory = (overrideName?: string) => {
+    const trimmed = (overrideName || customAccessoryName).trim();
+    if (!trimmed) return;
+
+    if (!accessoryOptions.includes(trimmed)) {
+      const updated = [...accessoryOptions];
+      const addMoreIdx = updated.indexOf('+ Add More');
+      if (addMoreIdx !== -1) {
+        updated.splice(addMoreIdx, 0, trimmed);
+      } else {
+        updated.push(trimmed);
+      }
+      setAccessoryOptions(updated);
+    }
+
+    setAccName(trimmed);
+    setCustomAccessoryName('');
+    setShowCustomAccessoryInput(false);
+  };
+
+  const handleAddAccessory = () => {
+    const trimmed = accName.trim();
+    if (!trimmed) return;
+    const qty = parseInt(accQty, 10) || 1;
+    setItemAccessories(prev => [...prev, { name: trimmed, qty, inclusionType: 'INCLUDED', cost: 0 }]);
+    setAccName('');
+    setAccQty('1');
+  };
+
   const handleAddItemToRoom = () => {
-    if (!itemName.trim()) {
+    const trimmedName = itemName.trim();
+    if (!trimmedName) {
       Alert.alert('Validation Error', 'Please enter an item name.');
       return;
     }
+
+    autoAddSubItemOption(selectedRoom, trimmedName);
+
     const rateNum = parseFloat(itemRate) || 0;
-    const l = parseFloat(itemLength) || 0;
-    const w = parseFloat(itemWidth) || 0;
-    const h = parseFloat(itemHeight) || 0;
-
-    let calcArea = 0;
-    if (l > 0 && (h > 0 || w > 0)) {
-      calcArea = Math.round(l * (h || w) * 100) / 100;
-    }
-
-    const qtyNum = parseFloat(itemQty) > 0 ? parseFloat(itemQty) : calcArea > 0 ? calcArea : 1;
+    const sizeNum = parseFloat(itemSize) || 0;
+    const qtyNum = sizeNum > 0 ? sizeNum : 1;
     const itemAmt = Math.round(qtyNum * rateNum);
 
     const newItem: QuotationItemDoc = {
       itemNumber: items.length + 1,
       room: selectedRoom,
-      name: itemName.trim(),
+      name: trimmedName,
       description: itemDesc.trim(),
-      unit: itemUnit,
+      unit: itemUnit || 'Sq Ft',
       measurements: {
-        length: l,
-        width: w,
-        height: h,
-        calculatedArea: calcArea,
+        length: 0,
+        width: 0,
+        height: 0,
+        calculatedArea: sizeNum,
       },
       quantity: qtyNum,
       rate: rateNum,
@@ -275,29 +603,11 @@ export default function QuotationScreen() {
     // Reset item fields
     setItemName('');
     setItemDesc('');
-    setItemLength('');
-    setItemWidth('');
-    setItemHeight('');
-    setItemQty('1');
+    setItemSize('1');
     setItemRate('');
     setItemAccessories([]);
     setItemRemarks('');
     Alert.alert('Item Added', `"${newItem.name}" added to ${selectedRoom}`);
-  };
-
-  const handleAddAccessory = () => {
-    if (!accName.trim()) return;
-    setItemAccessories(prev => [
-      ...prev,
-      {
-        name: accName.trim(),
-        qty: parseInt(accQty, 10) || 1,
-        inclusionType: accInclusion,
-        cost: 0,
-      },
-    ]);
-    setAccName('');
-    setAccQty('1');
   };
 
   const handleOpenCreateModal = (existing?: QuotationDoc) => {
@@ -313,6 +623,19 @@ export default function QuotationScreen() {
       setProjectType(existing.projectType || 'Residential Interior');
       setSiteLocation(existing.siteLocation || '');
       setItems(existing.items || []);
+      if (existing.items && existing.items.length > 0) {
+        const existingRooms = Array.from(new Set(existing.items.map(i => i.room).filter(Boolean)));
+        const base = DEFAULT_ROOMS.filter(r => r !== 'Custom' && r !== '+ Add More');
+        const specials = DEFAULT_ROOMS.filter(r => r === 'Custom' || r === '+ Add More');
+        const merged = Array.from(new Set([...base, ...existingRooms, ...specials]));
+        setRoomCategories(merged);
+        setSelectedRoom(existing.items[0]?.room || 'Modular Kitchen');
+      } else {
+        setRoomCategories(DEFAULT_ROOMS);
+        setSelectedRoom('Modular Kitchen');
+      }
+      setShowCustomRoomInput(false);
+      setCustomRoomName('');
       setHandlingPercent(String(existing.pricing?.handlingFeePercent || 2));
       setDesignPercent(String(existing.pricing?.designFeePercent || 2));
       setDiscountType(existing.pricing?.discountType || 'PERCENT');
@@ -333,6 +656,10 @@ export default function QuotationScreen() {
       setProjectType('Residential Interior');
       setSiteLocation('');
       setItems([]);
+      setRoomCategories(DEFAULT_ROOMS);
+      setSelectedRoom('Modular Kitchen');
+      setShowCustomRoomInput(false);
+      setCustomRoomName('');
       setHandlingPercent('2');
       setDesignPercent('2');
       setDiscountType('PERCENT');
@@ -968,24 +1295,121 @@ export default function QuotationScreen() {
             {/* STEP 2: ROOMS & WORK ITEMS */}
             {formStep === 2 && (
               <View>
-                <Text style={styles.formSectionTitle}>1. Select Room / Area</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-                  {DEFAULT_ROOMS.map(r => (
-                    <TouchableOpacity
-                      key={r}
-                      style={[styles.roomPill, selectedRoom === r && styles.roomPillActive]}
-                      onPress={() => setSelectedRoom(r)}
-                    >
-                      <Text style={[styles.roomPillText, selectedRoom === r && styles.roomPillTextActive]}>{r}</Text>
-                    </TouchableOpacity>
-                  ))}
+                <Text style={styles.formSectionTitle}>1. Select Room / Category</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                  {roomCategories.map(r => {
+                    const isSpecial = r === 'Custom' || r === '+ Add More';
+                    const isActive = selectedRoom === r;
+                    return (
+                      <TouchableOpacity
+                        key={r}
+                        style={[
+                          styles.roomPill,
+                          isActive && styles.roomPillActive,
+                          isSpecial && !isActive && { borderColor: '#7A131A', backgroundColor: '#FFF5F5' },
+                        ]}
+                        onPress={() => handleSelectRoom(r)}
+                      >
+                        <Text
+                          style={[
+                            styles.roomPillText,
+                            isActive && styles.roomPillTextActive,
+                            isSpecial && !isActive && { color: '#7A131A', fontWeight: '700' },
+                          ]}
+                        >
+                          {r}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </ScrollView>
 
+                {(showCustomRoomInput || selectedRoom === 'Custom' || selectedRoom === '+ Add More') && (
+                  <View style={styles.customRoomInputCard}>
+                    <Text style={styles.inputLabel}>Enter Custom Category Name *</Text>
+                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+                      <TextInput
+                        style={[styles.textInput, { flex: 1 }]}
+                        placeholder="Enter Custom Category Name"
+                        placeholderTextColor="#94A3B8"
+                        value={customRoomName}
+                        onChangeText={setCustomRoomName}
+                        autoFocus
+                      />
+                      <TouchableOpacity style={styles.addCustomBtn} onPress={handleConfirmCustomRoom}>
+                        <Ionicons name="add" size={16} color="#ffffff" />
+                        <Text style={styles.addCustomBtnText}>Add</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+
+                {/* Sub-Item Pills Selection */}
+                <View style={{ marginBottom: 14, backgroundColor: '#ffffff', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                  <Text style={[styles.inputLabel, { color: '#0F172A', fontWeight: '800' }]}>
+                    2. Select Item Name for <Text style={{ color: '#7A131A' }}>{selectedRoom}</Text>:
+                  </Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
+                    {(subItemMap[selectedRoom] || DEFAULT_CATEGORY_SUB_ITEMS[selectedRoom] || ['+ Add More']).map(sub => {
+                      const isActive = itemName === sub;
+                      const isAddMore = sub === '+ Add More';
+                      return (
+                        <TouchableOpacity
+                          key={sub}
+                          style={[
+                            styles.roomPill,
+                            isActive && styles.roomPillActive,
+                            isAddMore && !isActive && { borderColor: '#2563EB', backgroundColor: '#EFF6FF' },
+                          ]}
+                          onPress={() => handleSelectSubItem(sub)}
+                        >
+                          <Text
+                            style={[
+                              styles.roomPillText,
+                              isActive && styles.roomPillTextActive,
+                              isAddMore && !isActive && { color: '#1D4ED8', fontWeight: '700' },
+                            ]}
+                          >
+                            {sub}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+
+                  {showCustomSubItemInput && (
+                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+                      <TextInput
+                        style={[styles.textInput, { flex: 1 }]}
+                        placeholder={`Type custom item name for ${selectedRoom}...`}
+                        value={customSubItemName}
+                        onChangeText={val => {
+                          setCustomSubItemName(val);
+                          if (val.trim()) setItemName(val);
+                        }}
+                        autoFocus
+                      />
+                      <TouchableOpacity style={styles.addCustomBtn} onPress={() => handleConfirmCustomSubItem()}>
+                        <Text style={styles.addCustomBtnText}>+ Add Option</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+
+                {/* Item Composer Card */}
                 <View style={styles.itemComposerCard}>
-                  <Text style={styles.composerHeader}>Add Item to {selectedRoom}</Text>
+                  <Text style={styles.composerHeader}>Configure Details for {itemName || selectedRoom}</Text>
 
                   <Text style={styles.inputLabel}>Item Name *</Text>
-                  <TextInput style={styles.textInput} placeholder="e.g. Modular Kitchen Base Units" value={itemName} onChangeText={setItemName} />
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="Type custom item name or select an option above..."
+                    value={itemName}
+                    onChangeText={setItemName}
+                    onBlur={() => {
+                      if (itemName.trim()) autoAddSubItemOption(selectedRoom, itemName.trim());
+                    }}
+                  />
 
                   <Text style={styles.inputLabel}>Detailed Description</Text>
                   <TextInput
@@ -996,64 +1420,191 @@ export default function QuotationScreen() {
                     onChangeText={setItemDesc}
                   />
 
-                  {/* Dimensions calculation */}
-                  <Text style={styles.inputLabel}>Measurements (Length × Width/Height = Area)</Text>
-                  <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
-                    <TextInput
-                      style={[styles.textInput, { flex: 1 }]}
-                      placeholder="Length"
-                      keyboardType="numeric"
-                      value={itemLength}
-                      onChangeText={setItemLength}
-                    />
-                    <TextInput
-                      style={[styles.textInput, { flex: 1 }]}
-                      placeholder="Height/Width"
-                      keyboardType="numeric"
-                      value={itemHeight || itemWidth}
-                      onChangeText={val => {
-                        setItemHeight(val);
-                        setItemWidth(val);
-                      }}
-                    />
-                    <TextInput
-                      style={[styles.textInput, { flex: 1 }]}
-                      placeholder="Unit"
-                      value={itemUnit}
-                      onChangeText={u => setItemUnit(u as any)}
-                    />
-                  </View>
+                  {/* Unit Selection Pills */}
+                  <Text style={[styles.inputLabel, { marginTop: 10 }]}>Select Unit Type:</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
+                    {unitOptions.map(u => {
+                      const isActive = itemUnit === u;
+                      const isAddMore = u === '+ Add More';
+                      return (
+                        <TouchableOpacity
+                          key={u}
+                          style={[
+                            styles.roomPill,
+                            isActive && styles.roomPillActive,
+                            isAddMore && !isActive && { borderColor: '#2563EB', backgroundColor: '#EFF6FF' },
+                          ]}
+                          onPress={() => handleSelectUnit(u)}
+                        >
+                          <Text style={[styles.roomPillText, isActive && styles.roomPillTextActive, isAddMore && !isActive && { color: '#1D4ED8', fontWeight: '700' }]}>
+                            {u}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
 
-                  <View style={{ flexDirection: 'row', gap: 12 }}>
+                  {showCustomUnitInput && (
+                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
+                      <TextInput
+                        style={[styles.textInput, { flex: 1 }]}
+                        placeholder="Enter custom unit (e.g. Rft, Sets)..."
+                        value={customUnitName}
+                        onChangeText={val => {
+                          setCustomUnitName(val);
+                          if (val.trim()) setItemUnit(val);
+                        }}
+                        autoFocus
+                      />
+                      <TouchableOpacity style={styles.addCustomBtn} onPress={() => handleConfirmCustomUnit()}>
+                        <Text style={styles.addCustomBtnText}>+ Unit</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  {/* Merged Size & Rate Inputs */}
+                  <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.inputLabel}>Quantity</Text>
-                      <TextInput style={styles.textInput} placeholder="1" keyboardType="numeric" value={itemQty} onChangeText={setItemQty} />
+                      <Text style={styles.inputLabel}>Size ({itemUnit}) *</Text>
+                      <TextInput style={styles.textInput} placeholder="e.g. 120" keyboardType="numeric" value={itemSize} onChangeText={setItemSize} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.inputLabel}>Rate (₹)</Text>
+                      <Text style={styles.inputLabel}>Rate (₹) *</Text>
                       <TextInput style={styles.textInput} placeholder="e.g. 1550" keyboardType="numeric" value={itemRate} onChangeText={setItemRate} />
                     </View>
                   </View>
+                  <Text style={{ textAlign: 'right', fontWeight: '800', color: '#0F172A', fontSize: 13, marginBottom: 12 }}>
+                    Total Amt: {formatINR((parseFloat(itemSize) || 0) * (parseFloat(itemRate) || 0))}
+                  </Text>
 
-                  {/* Material Specs */}
-                  <Text style={[styles.inputLabel, { marginTop: 10 }]}>Material &amp; Hardware Specifications</Text>
-                  <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
-                    <TextInput style={[styles.textInput, { flex: 1, fontSize: 11 }]} placeholder="Carcass" value={specCarcass} onChangeText={setSpecCarcass} />
-                    <TextInput style={[styles.textInput, { flex: 1, fontSize: 11 }]} placeholder="Shutter" value={specShutter} onChangeText={setSpecShutter} />
-                  </View>
-                  <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
-                    <TextInput style={[styles.textInput, { flex: 1, fontSize: 11 }]} placeholder="Finish" value={specFinish} onChangeText={setSpecFinish} />
-                    <TextInput style={[styles.textInput, { flex: 1, fontSize: 11 }]} placeholder="Brand" value={specBrand} onChangeText={setSpecBrand} />
-                  </View>
-                  <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-                    <TextInput style={[styles.textInput, { flex: 1, fontSize: 11 }]} placeholder="Hardware" value={specHardware} onChangeText={setSpecHardware} />
-                    <TextInput style={[styles.textInput, { flex: 1, fontSize: 11 }]} placeholder="Thickness" value={specThickness} onChangeText={setSpecThickness} />
-                  </View>
+                  {/* Material Option Pills */}
+                  <Text style={[styles.inputLabel, { fontWeight: '700' }]}>Select Core Material:</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
+                    {materialOptions.map(m => {
+                      const isActive = specCarcass === m;
+                      const isAddMore = m === '+ Add More';
+                      return (
+                        <TouchableOpacity
+                          key={m}
+                          style={[
+                            styles.roomPill,
+                            isActive && styles.roomPillActive,
+                            isAddMore && !isActive && { borderColor: '#2563EB', backgroundColor: '#EFF6FF' },
+                          ]}
+                          onPress={() => handleSelectMaterial(m)}
+                        >
+                          <Text style={[styles.roomPillText, isActive && styles.roomPillTextActive, isAddMore && !isActive && { color: '#1D4ED8', fontWeight: '700' }]}>
+                            {m}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
 
-                  {/* Accessories Sub-section */}
-                  <Text style={styles.inputLabel}>Add Accessories (Wicker basket, BPO, Innotech, etc.)</Text>
-                  <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
-                    <TextInput style={[styles.textInput, { flex: 2 }]} placeholder="Accessory name" value={accName} onChangeText={setAccName} />
+                  {showCustomMaterialInput && (
+                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
+                      <TextInput
+                        style={[styles.textInput, { flex: 1 }]}
+                        placeholder="Type custom material..."
+                        value={customMaterialName}
+                        onChangeText={val => {
+                          setCustomMaterialName(val);
+                          if (val.trim()) setSpecCarcass(val);
+                        }}
+                        autoFocus
+                      />
+                      <TouchableOpacity style={styles.addCustomBtn} onPress={() => handleConfirmCustomMaterial()}>
+                        <Text style={styles.addCustomBtnText}>+ Material</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  {/* Hardware Option Pills */}
+                  <Text style={[styles.inputLabel, { fontWeight: '700', marginTop: 6 }]}>Select Hardware Option:</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
+                    {hardwareOptions.map(h => {
+                      const isActive = specHardware === h;
+                      const isAddMore = h === '+ Add More';
+                      return (
+                        <TouchableOpacity
+                          key={h}
+                          style={[
+                            styles.roomPill,
+                            isActive && styles.roomPillActive,
+                            isAddMore && !isActive && { borderColor: '#2563EB', backgroundColor: '#EFF6FF' },
+                          ]}
+                          onPress={() => handleSelectHardware(h)}
+                        >
+                          <Text style={[styles.roomPillText, isActive && styles.roomPillTextActive, isAddMore && !isActive && { color: '#1D4ED8', fontWeight: '700' }]}>
+                            {h}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+
+                  {showCustomHardwareInput && (
+                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
+                      <TextInput
+                        style={[styles.textInput, { flex: 1 }]}
+                        placeholder="Type custom hardware..."
+                        value={customHardwareName}
+                        onChangeText={val => {
+                          setCustomHardwareName(val);
+                          if (val.trim()) setSpecHardware(val);
+                        }}
+                        autoFocus
+                      />
+                      <TouchableOpacity style={styles.addCustomBtn} onPress={() => handleConfirmCustomHardware()}>
+                        <Text style={styles.addCustomBtnText}>+ Hardware</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  {/* Accessories Specifications */}
+                  <Text style={[styles.inputLabel, { fontWeight: '700', marginTop: 6 }]}>Add Accessories (Wicker basket, BPO, Innotech, etc.):</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
+                    {accessoryOptions.map(acc => {
+                      const isActive = accName === acc;
+                      const isAddMore = acc === '+ Add More';
+                      return (
+                        <TouchableOpacity
+                          key={acc}
+                          style={[
+                            styles.roomPill,
+                            isActive && styles.roomPillActive,
+                            isAddMore && !isActive && { borderColor: '#2563EB', backgroundColor: '#EFF6FF' },
+                          ]}
+                          onPress={() => handleSelectAccessory(acc)}
+                        >
+                          <Text style={[styles.roomPillText, isActive && styles.roomPillTextActive, isAddMore && !isActive && { color: '#1D4ED8', fontWeight: '700' }]}>
+                            {acc}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+
+                  {showCustomAccessoryInput && (
+                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
+                      <TextInput
+                        style={[styles.textInput, { flex: 1 }]}
+                        placeholder="Type custom accessory..."
+                        value={customAccessoryName}
+                        onChangeText={val => {
+                          setCustomAccessoryName(val);
+                          if (val.trim()) setAccName(val);
+                        }}
+                        autoFocus
+                      />
+                      <TouchableOpacity style={styles.addCustomBtn} onPress={() => handleConfirmCustomAccessory()}>
+                        <Text style={styles.addCustomBtnText}>+ Option</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                    <TextInput style={[styles.textInput, { flex: 2 }]} placeholder="Accessory name (e.g. Wicker basket)" value={accName} onChangeText={setAccName} />
                     <TextInput style={[styles.textInput, { flex: 1 }]} placeholder="Qty" keyboardType="numeric" value={accQty} onChangeText={setAccQty} />
                     <TouchableOpacity style={styles.addAccBtn} onPress={handleAddAccessory}>
                       <Ionicons name="add" size={18} color="#ffffff" />
@@ -1061,18 +1612,32 @@ export default function QuotationScreen() {
                   </View>
 
                   {itemAccessories.length > 0 && (
-                    <View style={{ marginBottom: 12 }}>
+                    <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
                       {itemAccessories.map((a, i) => (
-                        <Text key={i} style={{ fontSize: 11, color: '#475569' }}>
-                          • {a.name} ({a.qty} nos - {a.inclusionType})
-                        </Text>
+                        <TouchableOpacity
+                          key={i}
+                          style={{
+                            backgroundColor: '#EFF6FF',
+                            borderColor: '#BFDBFE',
+                            borderWidth: 1,
+                            borderRadius: 14,
+                            paddingVertical: 3,
+                            paddingHorizontal: 8,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 4,
+                          }}
+                          onPress={() => setItemAccessories(prev => prev.filter((_, idx) => idx !== i))}
+                        >
+                          <Text style={{ fontSize: 11, color: '#1E40AF', fontWeight: '700' }}>{a.name} (x{a.qty}) ✕</Text>
+                        </TouchableOpacity>
                       ))}
                     </View>
                   )}
 
                   <TouchableOpacity style={styles.addItemSubmitBtn} onPress={handleAddItemToRoom}>
                     <Ionicons name="add-circle-outline" size={18} color="#ffffff" />
-                    <Text style={styles.addItemSubmitText}>Add Item to Quotation</Text>
+                    <Text style={styles.addItemSubmitText}>Add Item to Scope</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -1145,30 +1710,64 @@ export default function QuotationScreen() {
                   </View>
                 </View>
 
-                <Text style={[styles.formSectionTitle, { marginTop: 24 }]}>GST Configuration</Text>
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.inputLabel}>GST Rate</Text>
-                    <TextInput style={styles.textInput} placeholder="18" keyboardType="numeric" value={gstPercent} onChangeText={setGstPercent} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.inputLabel}>GST Type</Text>
-                    <View style={{ flexDirection: 'row', gap: 6, marginTop: 4 }}>
-                      <TouchableOpacity
-                        style={[styles.smallPill, gstType === 'CGST_SGST' && styles.smallPillActive]}
-                        onPress={() => setGstType('CGST_SGST')}
-                      >
-                        <Text style={[styles.smallPillText, gstType === 'CGST_SGST' && styles.smallPillTextActive]}>CGST+SGST</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.smallPill, gstType === 'IGST' && styles.smallPillActive]}
-                        onPress={() => setGstType('IGST')}
-                      >
-                        <Text style={[styles.smallPillText, gstType === 'IGST' && styles.smallPillTextActive]}>IGST</Text>
-                      </TouchableOpacity>
+                {/* GST Configuration Toggle Pills */}
+                <Text style={[styles.formSectionTitle, { marginTop: 24 }]}>GST Configuration &amp; Options</Text>
+                <Text style={styles.inputLabel}>Apply GST Tax on Proposal?</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginVertical: 8 }}>
+                  <TouchableOpacity
+                    style={[styles.roomPill, parseFloat(gstPercent) > 0 && styles.roomPillActive]}
+                    onPress={() => setGstPercent('18')}
+                  >
+                    <Text style={[styles.roomPillText, parseFloat(gstPercent) > 0 && styles.roomPillTextActive]}>✓ Apply GST (18%)</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.roomPill, parseFloat(gstPercent) === 0 && styles.roomPillActive]}
+                    onPress={() => setGstPercent('0')}
+                  >
+                    <Text style={[styles.roomPillText, parseFloat(gstPercent) === 0 && styles.roomPillTextActive]}>✕ No GST / Exempt (0%)</Text>
+                  </TouchableOpacity>
+
+                  {[5, 12, 28].map(rate => (
+                    <TouchableOpacity
+                      key={rate}
+                      style={[styles.roomPill, parseFloat(gstPercent) === rate && styles.roomPillActive]}
+                      onPress={() => setGstPercent(String(rate))}
+                    >
+                      <Text style={[styles.roomPillText, parseFloat(gstPercent) === rate && styles.roomPillTextActive]}>GST {rate}%</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+
+                {parseFloat(gstPercent) > 0 ? (
+                  <View style={{ flexDirection: 'row', gap: 12, marginTop: 4 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.inputLabel}>GST Rate (%)</Text>
+                      <TextInput style={styles.textInput} placeholder="18" keyboardType="numeric" value={gstPercent} onChangeText={setGstPercent} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.inputLabel}>GST Type</Text>
+                      <View style={{ flexDirection: 'row', gap: 6, marginTop: 4 }}>
+                        <TouchableOpacity
+                          style={[styles.smallPill, gstType === 'CGST_SGST' && styles.smallPillActive]}
+                          onPress={() => setGstType('CGST_SGST')}
+                        >
+                          <Text style={[styles.smallPillText, gstType === 'CGST_SGST' && styles.smallPillTextActive]}>CGST+SGST</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.smallPill, gstType === 'IGST' && styles.smallPillActive]}
+                          onPress={() => setGstType('IGST')}
+                        >
+                          <Text style={[styles.smallPillText, gstType === 'IGST' && styles.smallPillTextActive]}>IGST</Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   </View>
-                </View>
+                ) : (
+                  <View style={{ backgroundColor: '#ECFDF5', padding: 10, borderRadius: 8, borderColor: '#A7F3D0', borderWidth: 1, marginTop: 4 }}>
+                    <Text style={{ fontSize: 11, color: '#059669', fontWeight: '700' }}>✓ GST set to 0% (Tax-Exempt Proposal). Payable total equals taxable subtotal.</Text>
+                  </View>
+                )}
 
                 {/* Live Computed Summary Box */}
                 <View style={[styles.sectionBox, { marginTop: 24, backgroundColor: '#FFF5F5', borderColor: '#FECDD3' }]}>
@@ -1345,49 +1944,49 @@ const styles = StyleSheet.create({
   // Header
   header: {
     backgroundColor: '#7A131A',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 16,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    paddingHorizontal: 14,
+    paddingTop: 6,
+    paddingBottom: 10,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
   },
   headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 14,
-    gap: 12,
+    marginBottom: 8,
+    gap: 8,
   },
   backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '800',
     color: '#ffffff',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
   headerSub: {
-    fontSize: 10,
+    fontSize: 9.5,
     color: '#FECDD3',
     fontWeight: '600',
-    marginTop: 1,
+    marginTop: 0,
   },
   newQuoteBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#ffffff',
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    gap: 4,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    gap: 3,
   },
   newQuoteText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
     color: '#7A131A',
   },
@@ -1397,65 +1996,66 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#ffffff',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    height: 42,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    height: 36,
   },
   searchInput: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 12,
     color: '#1E293B',
+    paddingVertical: 0,
   },
 
   // KPIs
   kpiScroll: {
-    maxHeight: 100,
-    marginTop: 12,
+    maxHeight: 78,
+    marginTop: 6,
   },
   kpiContainer: {
-    paddingHorizontal: 16,
-    gap: 10,
+    paddingHorizontal: 14,
+    gap: 8,
   },
   kpiCard: {
     backgroundColor: '#ffffff',
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderLeftWidth: 4,
+    borderRadius: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderLeftWidth: 3,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    minWidth: 140,
+    minWidth: 130,
   },
   kpiLabel: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '700',
     color: '#64748B',
     textTransform: 'uppercase',
   },
   kpiVal: {
-    fontSize: 15,
+    fontSize: 13.5,
     fontWeight: '800',
     color: '#0F172A',
-    marginTop: 2,
+    marginTop: 1,
   },
   kpiCount: {
-    fontSize: 10,
+    fontSize: 9.5,
     color: '#94A3B8',
-    marginTop: 2,
+    marginTop: 1,
   },
 
   // Status Filter Pills
   pillsRow: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    gap: 6,
     flexWrap: 'wrap',
   },
   pill: {
-    paddingVertical: 5,
-    paddingHorizontal: 12,
-    borderRadius: 16,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 14,
     backgroundColor: '#ffffff',
     borderWidth: 1,
     borderColor: '#E2E8F0',
@@ -1465,7 +2065,7 @@ const styles = StyleSheet.create({
     borderColor: '#7A131A',
   },
   pillText: {
-    fontSize: 11,
+    fontSize: 10.5,
     color: '#64748B',
     fontWeight: '600',
   },
@@ -2078,5 +2678,26 @@ const styles = StyleSheet.create({
   boldText: {
     fontWeight: '700',
     color: '#0F172A',
+  },
+  customRoomInputCard: {
+    backgroundColor: '#FFF5F5',
+    borderWidth: 1,
+    borderColor: '#FECDD3',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+  },
+  addCustomBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#7A131A',
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    gap: 4,
+  },
+  addCustomBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '800',
   },
 });

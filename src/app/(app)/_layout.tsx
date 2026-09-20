@@ -1,133 +1,211 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { usePathname, useRouter } from "expo-router";
 import { Drawer } from "expo-router/drawer";
 import {
+  Image,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { THEME } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 
 function CustomDrawerContent(props: any) {
   const { user, logout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  const insets = useSafeAreaInsets();
+
+  const userRole = (user as any)?.role;
   const isAdmin =
-    user?.role === "ADMIN" ||
-    user?.role === "SUPER_ADMIN" ||
-    user?.role?.toUpperCase() === "ADMIN" ||
-    user?.role?.toUpperCase() === "SUPER_ADMIN" ||
+    userRole === "ADMIN" ||
+    userRole === "SUPER_ADMIN" ||
+    userRole?.toUpperCase() === "ADMIN" ||
+    userRole?.toUpperCase() === "SUPER_ADMIN" ||
     user?.email?.toLowerCase() === "admin@company.com" ||
     user?.email?.toLowerCase()?.includes("admin");
+
   const displayRole =
     isAdmin || user?.email?.toLowerCase() === "admin@company.com"
       ? "ADMIN"
-      : user?.designation || user?.role || "Employee";
+      : user?.designation || userRole || "EMPLOYEE";
 
   const handleLogout = async () => {
+    props.navigation?.closeDrawer?.();
     await logout();
     router.replace("/(auth)/login");
   };
 
+  const navigateTo = (path: string) => {
+    props.navigation?.closeDrawer?.();
+    router.push(path as any);
+  };
+
+  const isItemActive = (routePath: string) => {
+    if (!pathname) {
+      return routePath.includes("dashboard");
+    }
+    if (routePath.includes("dashboard")) {
+      return (
+        pathname.includes("dashboard") ||
+        pathname === "/" ||
+        pathname.endsWith("/tabs") ||
+        pathname.endsWith("(app)")
+      );
+    }
+    const key = routePath.split("/").pop();
+    return key ? pathname.includes(key) : false;
+  };
+
+  const avatarUri = (user as any)?.profileImage || (user as any)?.avatar;
+  const dynamicTopPadding = Math.max(insets.top + 12, Platform.OS === "ios" ? 52 : 44);
+
   return (
     <View style={styles.drawerRoot}>
-      <View style={styles.drawerTopCurve} />
-
-      <ScrollView
-        contentContainerStyle={{ paddingTop: 60, paddingHorizontal: 20 }}
+      {/* 1. RED HEADER SECTION */}
+      <TouchableOpacity
+        style={[styles.headerSection, { paddingTop: dynamicTopPadding }]}
+        onPress={() => navigateTo("/(app)/tabs/profile")}
+        activeOpacity={0.85}
       >
-        <TouchableOpacity
-          style={styles.userInfo}
-          onPress={() => router.push("/(app)/tabs/profile")}
-          activeOpacity={0.8}
-        >
+        <View style={styles.userInfo}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {user?.name?.charAt(0) || "A"}
-            </Text>
+            {avatarUri ? (
+              <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarText}>
+                {user?.name?.charAt(0)?.toUpperCase() || "S"}
+              </Text>
+            )}
           </View>
-          <View style={{ flex: 1 }}>
+          <View style={styles.userDetails}>
             <Text style={styles.userName} numberOfLines={1}>
-              {user?.name || "Super Admin"}
+              {user?.name || "Sahendra kumar"}
             </Text>
             <Text style={styles.userRole} numberOfLines={1}>
-              {displayRole}
+              {displayRole.toUpperCase()}
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color="#999" />
-        </TouchableOpacity>
+          <Ionicons
+            name="chevron-forward"
+            size={20}
+            color="#FFFFFF"
+            style={{ opacity: 0.9 }}
+          />
+        </View>
+      </TouchableOpacity>
 
+      {/* 2. WHITE NAVIGATION AREA */}
+      <ScrollView
+        style={styles.whiteNavArea}
+        contentContainerStyle={styles.navContainerStyle}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.navLinks}>
           <DrawerItem
-            emoji="📊"
+            icon="grid"
             label="Dashboard"
-            onPress={() => router.push("/(app)/tabs/dashboard")}
+            isActive={isItemActive("/(app)/tabs/dashboard")}
+            onPress={() => navigateTo("/(app)/tabs/dashboard")}
           />
+
           {isAdmin ? (
             <>
               <DrawerItem
-                emoji="👥"
+                icon="people"
                 label="CRM"
-                onPress={() => router.push("/(app)/tabs/crm")}
+                isActive={isItemActive("/(app)/tabs/crm")}
+                onPress={() => navigateTo("/(app)/tabs/crm")}
               />
               <DrawerItem
-                emoji="📁"
+                icon="briefcase"
                 label="Projects"
-                onPress={() => router.push("/(app)/tabs/projects")}
+                isActive={isItemActive("/(app)/tabs/projects")}
+                onPress={() => navigateTo("/(app)/tabs/projects")}
               />
               <DrawerItem
-                emoji="💵"
+                icon="cash"
                 label="Salary"
-                onPress={() => router.push("/(app)/salary")}
+                isActive={isItemActive("/(app)/salary")}
+                onPress={() => navigateTo("/(app)/salary")}
               />
               <DrawerItem
-                emoji="📅"
+                icon="calendar"
                 label="Attendance"
-                onPress={() => router.push("/(app)/attendance")}
+                isActive={isItemActive("/(app)/attendance")}
+                onPress={() => navigateTo("/(app)/attendance")}
               />
               <DrawerItem
-                emoji="📑"
+                icon="bicycle"
+                label="Bike Tracking"
+                isActive={isItemActive("/(app)/tabs/bike")}
+                onPress={() => navigateTo("/(app)/tabs/bike")}
+              />
+              <DrawerItem
+                icon="document-text"
                 label="Quotation"
-                onPress={() => router.push("/(app)/quotation")}
+                isActive={isItemActive("/(app)/quotation")}
+                onPress={() => navigateTo("/(app)/quotation")}
               />
               <DrawerItem
-                emoji="📈"
+                icon="stats-chart"
                 label="Reports"
-                onPress={() => router.push("/(app)/tabs/reports")}
+                isActive={isItemActive("/(app)/tabs/reports")}
+                onPress={() => navigateTo("/(app)/tabs/reports")}
               />
               <DrawerItem
-                emoji="⚙️"
+                icon="settings"
                 label="Settings"
-                onPress={() => router.push("/(app)/tabs/profile")}
+                isActive={isItemActive("/(app)/tabs/profile")}
+                onPress={() => navigateTo("/(app)/tabs/profile")}
               />
             </>
           ) : (
             <>
               <DrawerItem
-                emoji="📁"
+                icon="briefcase"
                 label="My Projects"
-                onPress={() => router.push("/(app)/tabs/projects")}
+                isActive={isItemActive("/(app)/tabs/projects")}
+                onPress={() => navigateTo("/(app)/tabs/projects")}
               />
               <DrawerItem
-                emoji="💵"
+                icon="cash"
                 label="My Salary"
-                onPress={() => router.push("/(app)/salary")}
+                isActive={isItemActive("/(app)/salary")}
+                onPress={() => navigateTo("/(app)/salary")}
               />
               <DrawerItem
-                emoji="📅"
+                icon="calendar"
                 label="Selfie Attendance"
-                onPress={() => router.push("/(app)/attendance")}
+                isActive={isItemActive("/(app)/attendance")}
+                onPress={() => navigateTo("/(app)/attendance")}
               />
               <DrawerItem
-                emoji="⚙️"
+                icon="bicycle"
+                label="Bike Tracking"
+                isActive={isItemActive("/(app)/tabs/bike")}
+                onPress={() => navigateTo("/(app)/tabs/bike")}
+              />
+              <DrawerItem
+                icon="settings"
                 label="Settings"
-                onPress={() => router.push("/(app)/tabs/profile")}
+                isActive={isItemActive("/(app)/tabs/profile")}
+                onPress={() => navigateTo("/(app)/tabs/profile")}
               />
             </>
           )}
-          <DrawerItem emoji="🚪" label="Logout" onPress={handleLogout} />
+
+          <DrawerItem
+            icon="log-out"
+            label="Logout"
+            isActive={false}
+            onPress={handleLogout}
+          />
         </View>
       </ScrollView>
     </View>
@@ -135,21 +213,31 @@ function CustomDrawerContent(props: any) {
 }
 
 function DrawerItem({ icon, emoji, label, isActive, onPress }: any) {
+  const getIconName = (name: string) => {
+    if (!name) return null;
+    if (name === "bar-chart") return "stats-chart-outline";
+    if (name.endsWith("-outline")) return name;
+    return `${name}-outline`;
+  };
+
+  const iconName = getIconName(icon);
+
   return (
     <TouchableOpacity
       style={[styles.drawerItem, isActive && styles.drawerItemActive]}
       onPress={onPress}
+      activeOpacity={0.7}
     >
       {emoji ? (
         <Text style={{ fontSize: 18, marginRight: 14 }}>{emoji}</Text>
-      ) : (
+      ) : iconName ? (
         <Ionicons
-          name={(icon + "-outline") as any}
+          name={iconName as any}
           size={20}
-          color={isActive ? THEME.colors.primary : "#333"}
+          color={isActive ? THEME.colors.primary : "#333333"}
           style={styles.drawerIcon}
         />
-      )}
+      ) : null}
       <Text style={[styles.drawerLabel, isActive && styles.drawerLabelActive]}>
         {label}
       </Text>
@@ -158,13 +246,16 @@ function DrawerItem({ icon, emoji, label, isActive, onPress }: any) {
 }
 
 export default function AppLayout() {
+  const { width } = useWindowDimensions();
+  const drawerWidth = Math.min(Math.round(width * 0.78), 340);
+
   return (
     <Drawer
       drawerContent={(props) => <CustomDrawerContent {...props} />}
       screenOptions={{
         headerShown: false,
         drawerStyle: {
-          width: "75%",
+          width: drawerWidth,
           backgroundColor: "#fff",
         },
       }}
@@ -178,70 +269,94 @@ export default function AppLayout() {
 const styles = StyleSheet.create({
   drawerRoot: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#FFFFFF",
   },
-  drawerTopCurve: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 180,
+  headerSection: {
     backgroundColor: THEME.colors.primary,
-    borderBottomRightRadius: 80,
+    paddingTop: Platform.OS === "ios" ? 56 : 48,
+    paddingBottom: 22,
+    paddingHorizontal: 20,
+    borderBottomRightRadius: 36,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
   },
   userInfo: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 40,
     gap: 12,
   },
   avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#fff",
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#FFFFFF",
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
-    borderColor: "#fff",
+    borderColor: "rgba(255, 255, 255, 0.8)",
+  },
+  avatarImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
   },
   avatarText: {
     color: THEME.colors.primary,
     fontSize: 20,
     fontWeight: "bold",
   },
+  userDetails: {
+    flex: 1,
+  },
   userName: {
-    color: "#fff",
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   userRole: {
-    color: "rgba(255,255,255,0.8)",
-    fontSize: 13,
+    color: "rgba(255, 255, 255, 0.85)",
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 2,
+    letterSpacing: 0.5,
+  },
+  whiteNavArea: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+  },
+  navContainerStyle: {
+    paddingVertical: 18,
+    paddingHorizontal: 16,
   },
   navLinks: {
-    gap: 8,
+    gap: 10,
   },
   drawerItem: {
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    borderRadius: 10,
+    backgroundColor: "transparent",
   },
   drawerItemActive: {
-    backgroundColor: "rgba(200,16,46,0.05)",
+    backgroundColor: "#FCE8EB",
+    borderLeftWidth: 4,
+    borderLeftColor: THEME.colors.primary,
   },
   drawerIcon: {
-    marginRight: 16,
+    marginRight: 14,
   },
   drawerLabel: {
     fontSize: 15,
-    color: "#333",
+    color: "#333333",
     fontWeight: "500",
   },
   drawerLabelActive: {
     color: THEME.colors.primary,
-    fontWeight: "600",
+    fontWeight: "700",
   },
 });

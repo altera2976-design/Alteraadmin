@@ -80,6 +80,8 @@ const styles = StyleSheet.create({
     borderBottomColor: APP_COLORS.border,
   },
   headerTitle: {
+    flex: 1,
+    textAlign: 'center',
     fontSize: 18,
     fontWeight: '600',
     color: APP_COLORS.text,

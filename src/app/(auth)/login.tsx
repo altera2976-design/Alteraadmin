@@ -1,8 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import {
-  GoogleSignin,
-  statusCodes,
-} from "@react-native-google-signin/google-signin";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
@@ -23,6 +19,17 @@ import {
 import Svg, { Path } from "react-native-svg";
 import { GOOGLE_WEB_CLIENT_ID } from "../../constants/config";
 import { useAuth } from "../../context/AuthContext";
+
+let GoogleSignin: any = null;
+let statusCodes: any = {};
+
+try {
+  const googleModule = require("@react-native-google-signin/google-signin");
+  GoogleSignin = googleModule?.GoogleSignin;
+  statusCodes = googleModule?.statusCodes || {};
+} catch (e) {
+  // Safe fallback for Expo Go where RNGoogleSignin native module is not linked
+}
 
 function GoogleIcon({ size = 20 }: { size?: number }) {
   return (
@@ -61,7 +68,7 @@ export default function LoginScreen() {
 
   useEffect(() => {
     try {
-      if (GOOGLE_WEB_CLIENT_ID) {
+      if (GoogleSignin && GOOGLE_WEB_CLIENT_ID) {
         GoogleSignin.configure({
           webClientId: GOOGLE_WEB_CLIENT_ID,
           offlineAccess: true,
@@ -111,6 +118,14 @@ export default function LoginScreen() {
     setGoogleLoading(true);
 
     try {
+      if (!GoogleSignin) {
+        Alert.alert(
+          "Google Sign-In",
+          "Native Google Sign-In requires an Android APK or Custom Development Build. It is not supported in standard Expo Go.\n\nGenerate your APK using EAS Build to test native Google Sign-In.",
+        );
+        return;
+      }
+
       if (GOOGLE_WEB_CLIENT_ID) {
         GoogleSignin.configure({
           webClientId: GOOGLE_WEB_CLIENT_ID,
@@ -140,11 +155,11 @@ export default function LoginScreen() {
       await googleLogin(idToken);
       router.replace("/(app)/tabs/dashboard");
     } catch (err: any) {
-      if (err?.code === statusCodes.SIGN_IN_CANCELLED) {
+      if (err?.code === statusCodes?.SIGN_IN_CANCELLED) {
         return;
-      } else if (err?.code === statusCodes.IN_PROGRESS) {
+      } else if (err?.code === statusCodes?.IN_PROGRESS) {
         return;
-      } else if (err?.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+      } else if (err?.code === statusCodes?.PLAY_SERVICES_NOT_AVAILABLE) {
         setError(
           "Google Play Services is not available or outdated on this device.",
         );
@@ -275,6 +290,13 @@ export default function LoginScreen() {
                 />
               </TouchableOpacity>
             </View>
+
+            <TouchableOpacity
+              style={styles.forgotPassBtn}
+              onPress={() => router.push("/(auth)/forgot-password")}
+            >
+              <Text style={styles.forgotPassText}>Forgot Password?</Text>
+            </TouchableOpacity>
 
             {/* Login Button */}
             <TouchableOpacity
@@ -453,6 +475,19 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.35,
     shadowRadius: 8,
     elevation: 4,
+  },
+  forgotPassBtn: {
+    alignSelf: "flex-end",
+    marginBottom: 16,
+    marginRight: 6,
+  },
+  forgotPassText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "500",
+    textShadowColor: "rgba(0, 0, 0, 0.4)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   loginBtnText: {
     color: "#FFFFFF",

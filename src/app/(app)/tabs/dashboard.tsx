@@ -146,13 +146,18 @@ export default function DashboardScreen() {
             </View>
 
             {/* Quick Action Shortcuts */}
-            <View style={styles.actionRow}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.actionScroll}
+              contentContainerStyle={styles.actionRowContainer}
+            >
               <TouchableOpacity
                 style={styles.actionBtn}
                 onPress={() => router.push('/(app)/tabs/projects')}
                 activeOpacity={0.8}
               >
-                <Ionicons name="add-circle" size={20} color="#fff" />
+                <Ionicons name="add-circle" size={18} color="#fff" />
                 <Text style={styles.actionBtnText}>Projects</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -160,7 +165,7 @@ export default function DashboardScreen() {
                 onPress={() => router.push('/(app)/quotation')}
                 activeOpacity={0.8}
               >
-                <Ionicons name="document-text" size={20} color={THEME.colors.primary} />
+                <Ionicons name="document-text" size={18} color={THEME.colors.primary} />
                 <Text style={styles.actionBtnSecondaryText}>Quotations</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -168,7 +173,7 @@ export default function DashboardScreen() {
                 onPress={() => router.push('/(app)/attendance')}
                 activeOpacity={0.8}
               >
-                <Ionicons name="calendar" size={20} color={THEME.colors.primary} />
+                <Ionicons name="calendar" size={18} color={THEME.colors.primary} />
                 <Text style={styles.actionBtnSecondaryText}>Attendance</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -176,10 +181,10 @@ export default function DashboardScreen() {
                 onPress={() => router.push('/(app)/tabs/reports')}
                 activeOpacity={0.8}
               >
-                <Ionicons name="pie-chart" size={20} color={THEME.colors.primary} />
+                <Ionicons name="pie-chart" size={18} color={THEME.colors.primary} />
                 <Text style={styles.actionBtnSecondaryText}>Reports</Text>
               </TouchableOpacity>
-            </View>
+            </ScrollView>
 
             {/* 2x2 Operational Grid */}
             <View style={styles.grid}>
@@ -709,35 +714,50 @@ const styles = StyleSheet.create({
   },
 
   // Action Buttons
-  actionRow: {
-    flexDirection: 'row',
-    gap: 8,
+  actionScroll: {
     marginBottom: 16,
+    marginHorizontal: -16,
+  },
+  actionRowContainer: {
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
   },
   actionBtn: {
-    flex: 1,
     backgroundColor: THEME.colors.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
     paddingVertical: 10,
-    borderRadius: 10,
+    paddingHorizontal: 16,
+    borderRadius: 24,
+    shadowColor: THEME.colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
   },
   actionBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   actionBtnSecondary: {
-    flex: 1,
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#eee',
+    borderColor: '#E2E8F0',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    gap: 6,
     paddingVertical: 10,
-    borderRadius: 10,
+    paddingHorizontal: 16,
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
-  actionBtnSecondaryText: { color: '#333', fontSize: 12, fontWeight: '600' },
+  actionBtnSecondaryText: { color: '#1E293B', fontSize: 13, fontWeight: '700' },
 
   // Grid
   grid: {

@@ -1015,17 +1015,18 @@ export default function AttendanceScreen() {
             {capturedPhoto ? (
               <Image source={{ uri: capturedPhoto.uri }} style={styles.cameraPreview} resizeMode="cover" />
             ) : (
-              <CameraView
-                ref={cameraRef}
-                style={styles.cameraPreview}
-                facing="front"
-              >
-                {/* Oval Face Alignment Frame */}
+              <>
+                <CameraView
+                  ref={cameraRef}
+                  style={styles.cameraPreview}
+                  facing="front"
+                />
+                {/* Oval Face Alignment Frame Overlay */}
                 <View style={styles.faceOverlay}>
                   <View style={styles.faceOval} />
                   <Text style={styles.faceGuideText}>Align your face inside the frame</Text>
                 </View>
-              </CameraView>
+              </>
             )}
           </View>
 

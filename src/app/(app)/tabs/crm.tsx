@@ -1,7 +1,7 @@
-import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, Image } from 'react-native';
-import { THEME } from '../../../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { THEME } from '../../../constants/theme';
 
 const CLIENTS = [
   { id: 1, name: 'Rahul Sharma', sub: 'Modular Kitchen', date: '21 May 2024' },
@@ -19,7 +19,7 @@ export default function CRMScreen() {
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <Ionicons name="search-outline" size={20} color={THEME.colors.textSecondary} style={styles.searchIcon} />
-        <TextInput 
+        <TextInput
           style={styles.searchInput}
           placeholder="Search clients, projects..."
           placeholderTextColor={THEME.colors.textSecondary}
@@ -30,8 +30,8 @@ export default function CRMScreen() {
       {/* Segmented Control / Tabs */}
       <View style={styles.tabsContainer}>
         {['All Clients', 'Leads', 'Projects'].map((tab) => (
-          <TouchableOpacity 
-            key={tab} 
+          <TouchableOpacity
+            key={tab}
             style={[styles.tab, activeTab === tab && styles.tabActive]}
             onPress={() => setActiveTab(tab)}
           >
@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
   },
   searchIcon: { marginRight: 10 },
   searchInput: { flex: 1, fontSize: 14, color: THEME.colors.text },
-  
+
   tabsContainer: {
     flexDirection: 'row',
     paddingHorizontal: 20,

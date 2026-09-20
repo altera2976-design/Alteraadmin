@@ -5,8 +5,12 @@ import { Platform } from 'react-native';
 import { useNavigation } from 'expo-router';
 import { TouchableOpacity, View, Text, Image } from 'react-native';
 
+import { useAuth } from '../../../context/AuthContext';
+
 export default function TabsLayout() {
   const navigation = useNavigation();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
 
   return (
     <Tabs
@@ -76,6 +80,7 @@ export default function TabsLayout() {
         options={{
           title: 'CRM',
           headerTitle: 'CRM',
+          href: isAdmin ? '/(app)/tabs/crm' : null,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="people-outline" size={size || 24} color={color} />
           ),
@@ -92,10 +97,21 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="bike"
+        options={{
+          title: 'Bike',
+          headerTitle: 'Bike Tracking',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="bicycle-outline" size={size || 24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="reports"
         options={{
           title: 'Reports',
           headerTitle: 'Reports',
+          href: isAdmin ? '/(app)/tabs/reports' : null,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="pie-chart-outline" size={size || 24} color={color} />
           ),

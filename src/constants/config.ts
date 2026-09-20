@@ -9,21 +9,21 @@ import Constants from "expo-constants";
  * Do NOT use localhost or 192.168.x.x for production builds.
  */
 const extraApiUrl = Constants.expoConfig?.extra?.apiUrl;
-let apiUrl = process.env.EXPO_PUBLIC_API_URL || extraApiUrl || 'http://192.168.1.52:5001/api';
 
-// For local development only
+let apiUrl = 'http://192.168.1.52:5001/api';
+
 if (__DEV__) {
   if (Platform.OS === 'web') {
     const host = typeof window !== 'undefined' && window.location?.hostname ? window.location.hostname : 'localhost';
-    apiUrl = process.env.EXPO_PUBLIC_API_URL || `http://${host}:5001/api`;
+    apiUrl = `http://${host}:5001/api`;
   } else {
-    // If Expo Go provides a specific hostUri, use that instead
+    // Determine local network IP from Expo debugger host if running via Expo Go / Metro
     const hostUri = Constants.expoConfig?.hostUri || Constants.manifest?.hostUri || (Constants.manifest2 as any)?.extra?.expoGo?.debuggerHost;
-    if (process.env.EXPO_PUBLIC_API_URL) {
-      apiUrl = process.env.EXPO_PUBLIC_API_URL;
-    } else if (hostUri) {
+    if (hostUri) {
       const ip = hostUri.split(':')[0];
       apiUrl = `http://${ip}:5001/api`;
+    } else if (process.env.EXPO_PUBLIC_API_URL) {
+      apiUrl = process.env.EXPO_PUBLIC_API_URL;
     } else if (extraApiUrl) {
       apiUrl = extraApiUrl;
     } else {
@@ -36,6 +36,8 @@ if (__DEV__) {
     apiUrl = process.env.EXPO_PUBLIC_API_URL;
   } else if (extraApiUrl && !extraApiUrl.includes('localhost') && !extraApiUrl.includes('127.0.0.1')) {
     apiUrl = extraApiUrl;
+  } else {
+    apiUrl = 'https://alterabackend.onrender.com/api';
   }
 }
 

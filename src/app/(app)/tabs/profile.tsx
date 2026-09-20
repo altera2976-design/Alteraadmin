@@ -14,8 +14,11 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { Image } from 'react-native';
 import { useAuth } from '../../../context/AuthContext';
-import { APP_COLORS } from '../../../constants/config';
+import { APP_COLORS, API_URL } from '../../../constants/config';
+import api from '../../../services/api';
 
 function formatDate(dateStr: string | undefined): string {
   if (!dateStr) return '—';
@@ -112,6 +115,42 @@ export default function ProfileScreen() {
     setIsEditing(false);
   };
 
+  const pickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets[0].base64) {
+        setLoading(true);
+        setError('');
+        setSuccessMsg('');
+        try {
+          const res = await api.post('/auth/profile-image', {
+            imageBase64: result.assets[0].base64,
+          });
+          if (res.data.success) {
+            setSuccessMsg('Profile image updated successfully.');
+            // Update local user object to show new avatar immediately
+            if (updateProfile) {
+              await updateProfile({ name: user.name, phone: user.phone, department: user.department, designation: user.designation } as any);
+            }
+          }
+        } catch (err: any) {
+          setError(err?.response?.data?.message || 'Failed to upload image.');
+        } finally {
+          setLoading(false);
+        }
+      }
+    } catch (error) {
+      setError('An error occurred while picking the image.');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <StatusBar style="light" />
@@ -176,9 +215,16 @@ export default function ProfileScreen() {
 
           {/* ── Avatar Card ── */}
           <View style={styles.avatarCard}>
-            <View style={styles.avatarCircle}>
-              <Text style={styles.avatarText}>{initials}</Text>
-            </View>
+            <TouchableOpacity onPress={pickImage} style={styles.avatarCircle} activeOpacity={0.8}>
+              {(user as any).avatar ? (
+                <Image source={{ uri: `${API_URL.replace('/api', '')}/${(user as any).avatar}` }} style={styles.avatarImage} />
+              ) : (
+                <Text style={styles.avatarText}>{initials}</Text>
+              )}
+              <View style={styles.editAvatarBadge}>
+                <Ionicons name="camera" size={14} color="#fff" />
+              </View>
+            </TouchableOpacity>
             <Text style={styles.profileName}>{user.name}</Text>
             <Text style={styles.profileDes}>{user.designation || user.role || 'Employee'}</Text>
 
@@ -473,6 +519,25 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 6,
     elevation: 4,
+    position: 'relative',
+  },
+  avatarImage: {
+    width: 78,
+    height: 78,
+    borderRadius: 39,
+  },
+  editAvatarBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: APP_COLORS.primary,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
   },
   avatarText: { color: '#fff', fontSize: 26, fontWeight: '800' },
   profileName: { fontSize: 20, fontWeight: '700', color: APP_COLORS.text, marginBottom: 4 },

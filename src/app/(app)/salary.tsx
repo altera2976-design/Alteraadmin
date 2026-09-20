@@ -38,7 +38,7 @@ const MONTH_NAMES = [
 
 export default function SalaryScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
 
   // ── Mode Switch: 'my' | 'admin' ────────────────────────────────────────────
@@ -50,22 +50,28 @@ export default function SalaryScreen() {
   const [selectedMonth, setSelectedMonth] = useState<string>(defaultMonth);
   const [isMonthModalOpen, setIsMonthModalOpen] = useState(false);
 
-  // ── Payroll State ──────────────────────────────────────────────────────────
+  // ── State for Employee Payroll View ─────────────────────────────────────────
+  const [myRecord, setMyRecord] = useState<PayrollRecord | null>(null);
+
+  // ── State for Admin Payroll View ────────────────────────────────────────────
   const [payrollList, setPayrollList] = useState<PayrollRecord[]>([]);
   const [summary, setSummary] = useState<PayrollSummary | null>(null);
-  const [myRecord, setMyRecord] = useState<PayrollRecord | null>(null);
+
+  // ── UI States ───────────────────────────────────────────────────────────────
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-
-  // ── Filters & Search ───────────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
 
-  // ── Modals State ───────────────────────────────────────────────────────────
+  // ── Detail Modal State ─────────────────────────────────────────────────────
   const [selectedDetail, setSelectedDetail] = useState<PayrollRecord | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+
+  // ── Pay Salary Modal State ─────────────────────────────────────────────────
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'BANK_TRANSFER' | 'CASH' | 'UPI' | 'CHEQUE'>('BANK_TRANSFER');
   const [transactionId, setTransactionId] = useState('');
+  const [payNotes, setPayNotes] = useState('');
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
 
   // ── Email Modal State ──────────────────────────────────────────────────────
@@ -80,6 +86,27 @@ export default function SalaryScreen() {
   const [config, setConfig] = useState<PayrollConfig | null>(null);
   const [editConfig, setEditConfig] = useState<any>({});
   const [isSavingConfig, setIsSavingConfig] = useState(false);
+
+  const handleAuthError = useCallback((error: any) => {
+    const status = error?.status || error?.response?.status;
+    if (status === 401) {
+      Alert.alert(
+        'Session Expired',
+        'Your session has expired. Please login again.',
+        [
+          {
+            text: 'OK',
+            onPress: async () => {
+              if (logout) await logout();
+              router.replace('/(auth)/login');
+            },
+          },
+        ]
+      );
+      return true;
+    }
+    return false;
+  }, [logout, router]);
 
   // ── Load Payroll Data ──────────────────────────────────────────────────────
   const loadPayroll = useCallback(async (forceRecalculate = false) => {
@@ -98,9 +125,11 @@ export default function SalaryScreen() {
         }
       }
     } catch (error: any) {
-      console.error('Error loading payroll:', error);
+      if (!handleAuthError(error)) {
+        console.warn('Payroll notice:', error?.response?.data?.message || error?.message || 'Unable to load payroll.');
+      }
     }
-  }, [selectedMonth, user?._id]);
+  }, [selectedMonth, user?._id, handleAuthError]);
 
   // Load config on mount
   useEffect(() => {

@@ -52,7 +52,8 @@
       ],
       "expo-image",
       "expo-sharing",
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -64,9 +65,9 @@
       "googleWebClientId": "205668201564-tllj3s854jgk8qrn515hr2reo88qpj6g.apps.googleusercontent.com",
       "router": {},
       "eas": {
-        "projectId": "215e164e-be00-442a-83ea-5067a9a61193"
+        "projectId": "879ce1f8-8387-4f28-ac97-8cfb6c5aca39"
       }
     },
-    "owner": "altera12345"
+    "owner": "altera12345s-team"
   }
 }

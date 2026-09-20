@@ -30,7 +30,7 @@ export interface QuotationItemDoc {
   room: string;
   name: string;
   description?: string;
-  unit: 'Sq Ft' | 'Sq M' | 'Nos' | 'Running Ft' | 'Lump Sum' | 'Hours' | 'Days' | 'Custom';
+  unit: string;
   measurements?: QuotationMeasurement;
   quantity: number;
   rate: number;

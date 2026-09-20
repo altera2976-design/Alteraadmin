@@ -1294,7 +1294,7 @@ const styles = StyleSheet.create({
   adminBadge: { backgroundColor: THEME.colors.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   adminBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
   finGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 12 },
-  finItem: { width: '47%', backgroundColor: '#2C2C2E', padding: 12, borderRadius: 10 },
+  finItem: { flex: 1, minWidth: 135, backgroundColor: '#2C2C2E', padding: 12, borderRadius: 10 },
   finLabel: { fontSize: 11, color: '#aaa', fontWeight: '500' },
   finVal: { fontSize: 16, fontWeight: '800', color: '#fff', marginTop: 4 },
 
@@ -1362,7 +1362,7 @@ const styles = StyleSheet.create({
 
   // Photos
   photosGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  photoItemCard: { width: '48%', backgroundColor: '#fff', borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#eee' },
+  photoItemCard: { flex: 1, minWidth: 140, backgroundColor: '#fff', borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#eee' },
   photoImg: { width: '100%', height: 110 },
   photoMeta: { padding: 8 },
   photoDesc: { fontSize: 11, fontWeight: '600', color: '#222' },

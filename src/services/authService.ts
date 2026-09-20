@@ -67,5 +67,15 @@ export const authService = {
     const res = await api.post<LoginResponse>('/auth/google', { idToken });
     return res.data;
   },
+
+  forgotPassword: async (email: string): Promise<{ success: boolean; message: string }> => {
+    const res = await api.post('/auth/forgot-password', { email });
+    return res.data;
+  },
+
+  resetPassword: async (email: string, otp: string, newPassword: string): Promise<{ success: boolean; message: string }> => {
+    const res = await api.post('/auth/reset-password', { email, otp, newPassword });
+    return res.data;
+  },
 };
 

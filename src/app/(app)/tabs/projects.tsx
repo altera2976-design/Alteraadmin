@@ -599,6 +599,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
     borderTopWidth: 1,
     borderTopColor: '#f2f2f2',
     paddingTop: 10,

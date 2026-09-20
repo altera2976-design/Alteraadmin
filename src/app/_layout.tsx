@@ -1,6 +1,8 @@
-import { useEffect } from 'react';
-import { Stack, SplashScreen, useRouter, useSegments } from 'expo-router';
-import { AuthProvider, useAuth } from '../context/AuthContext';
+import { Ionicons } from "@expo/vector-icons";
+import { useFonts } from "expo-font";
+import { SplashScreen, Stack, useRouter, useSegments } from "expo-router";
+import { useEffect } from "react";
+import { AuthProvider, useAuth } from "../context/AuthContext";
 
 // Prevent the splash screen from auto-hiding before auth loads
 SplashScreen.preventAutoHideAsync();
@@ -10,22 +12,26 @@ function RootLayoutNav() {
   const segments = useSegments();
   const router = useRouter();
 
+  const [fontsLoaded] = useFonts({
+    ...Ionicons.font,
+  });
+
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || !fontsLoaded) return;
 
     // Hide splash once auth state is known
     SplashScreen.hideAsync();
 
-    const inAuthGroup = segments[0] === '(auth)';
+    const inAuthGroup = segments[0] === "(auth)";
 
     if (!isAuthenticated && !inAuthGroup) {
       // Not logged in — redirect to login
-      router.replace('/(auth)/login');
+      router.replace("/(auth)/login");
     } else if (isAuthenticated && inAuthGroup) {
       // Already logged in — redirect to dashboard
-      router.replace('/(app)/tabs/dashboard');
+      router.replace("/(app)/tabs/dashboard");
     }
-  }, [isAuthenticated, isLoading, segments]);
+  }, [isAuthenticated, isLoading, fontsLoaded, segments]);
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
