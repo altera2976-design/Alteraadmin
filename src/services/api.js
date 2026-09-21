@@ -3,13 +3,13 @@ import axios from "axios";
 const isLocal =
   typeof window !== "undefined" &&
   (window.location.hostname === "localhost" ||
-    window.location.hostname === "127.0.0.1");
+    window.location.hostname === "127.0.0.1" ||
+    window.location.hostname.startsWith("192.168.") ||
+    window.location.hostname.endsWith(".local"));
 
-const API_URL =
-  import.meta.env.VITE_API_URL ||
-  (isLocal
-    ? "http://localhost:5001/api"
-    : "https://alterabackend.onrender.com/api");
+const API_URL = isLocal
+  ? "http://localhost:5001/api"
+  : (import.meta.env.VITE_API_URL || "http://localhost:5001/api");
 
 const api = axios.create({
   baseURL: API_URL,
@@ -36,8 +36,10 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem("ems_token");
       localStorage.removeItem("ems_user");
-      if (window.location.pathname !== "/login") {
-        window.location.href = "/login";
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = window.location.pathname.startsWith('/admin')
+          ? '/admin/login'
+          : '/login';
       }
     }
     return Promise.reject(error);
@@ -45,3 +47,4 @@ api.interceptors.response.use(
 );
 
 export default api;
+
