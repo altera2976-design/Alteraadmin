@@ -9,6 +9,7 @@ const ADMIN_NAV_ITEMS = [
   { to: "/admin/payroll", label: "Payroll", key: "payroll", altKey: "salary" },
   { to: "/admin/bike-tracking", label: "Bike Tracking", key: "tracking" },
   { to: "/admin/crm", label: "CRM", key: "crm" },
+  { to: "/admin/transactions", label: "Transactions", key: "transactions" },
   { to: "/admin/quotations", label: "Quotations", key: "quotations", altKey: "quotation" },
   { to: "/admin/offer-letters", label: "Offer Letters", key: "offer_letters", altKey: "offerLetters" },
   { to: "/admin/reports", label: "Reports", key: "reports" },

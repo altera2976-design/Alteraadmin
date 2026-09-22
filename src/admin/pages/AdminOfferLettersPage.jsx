@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminAppLayout from '../layouts/AdminAppLayout';
 import api from '../../services/api';
+import { printOfferLetterPdf } from '../../services/offerLetterPdfGenerator';
 
 const EXACT_15_RULES = [
   {
@@ -335,7 +336,7 @@ export default function AdminOfferLettersPage({ subRoute = 'list', offerLetterId
               <button onClick={() => handleSendEmail(selectedOffer._id)} disabled={emailSending} style={{ ...styles.primaryBtn, background: '#059669' }}>
                 ✉️ {emailSending ? 'Sending...' : 'Email to Candidate'}
               </button>
-              <button onClick={() => window.print()} style={styles.primaryBtn}>🖨️ Download PDF</button>
+              <button onClick={() => printOfferLetterPdf(selectedOffer)} style={styles.primaryBtn}>🖨️ Download PDF</button>
               <button onClick={() => navigate('/admin/offer-letters')} style={styles.secondaryBtn}>Back to List</button>
             </div>
           </div>

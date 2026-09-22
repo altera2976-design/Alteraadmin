@@ -21,6 +21,7 @@ import QuotationsPage from './pages/QuotationsPage';
 import ReportsPage from './pages/ReportsPage';
 import StaffPortalPage from './pages/StaffPortalPage';
 import TaskManagementPage from './pages/TaskManagementPage';
+import TransactionHistoryPage from './pages/TransactionHistoryPage';
 import ViewEmployeePage from './pages/ViewEmployeePage';
 
 // Admin Portal Components & Pages
@@ -34,6 +35,7 @@ import AdminAttendancePage from './admin/pages/AdminAttendancePage';
 import AdminPayrollPage from './admin/pages/AdminPayrollPage';
 import AdminBikeTrackingPage from './admin/pages/AdminBikeTrackingPage';
 import AdminCRMPage from './admin/pages/AdminCRMPage';
+import AdminTransactionsPage from './admin/pages/AdminTransactionsPage';
 import AdminQuotationsPage from './admin/pages/AdminQuotationsPage';
 import AdminOfferLettersPage from './admin/pages/AdminOfferLettersPage';
 import AdminReportsPage from './admin/pages/AdminReportsPage';
@@ -93,6 +95,7 @@ export default function App() {
           <Route path="/locations" element={<ProtectedRoute permissionKey="attendance"><LocationsPage /></ProtectedRoute>} />
           <Route path="/payroll" element={<ProtectedRoute permissionKey="salary"><PayrollPage /></ProtectedRoute>} />
           <Route path="/crm" element={<ProtectedRoute permissionKey="crm"><CRMPage /></ProtectedRoute>} />
+          <Route path="/transactions" element={<ProtectedRoute permissionKey="transactions"><TransactionHistoryPage /></ProtectedRoute>} />
           <Route path="/quotations" element={<ProtectedRoute permissionKey="quotation"><QuotationsPage /></ProtectedRoute>} />
           <Route path="/projects" element={<ProtectedRoute permissionKey="projects"><ProjectsManagementPage /></ProtectedRoute>} />
           <Route path="/finance" element={<ProtectedRoute permissionKey="reports"><FinancePage /></ProtectedRoute>} />
@@ -134,6 +137,9 @@ export default function App() {
           <Route path="/admin/bike-tracking" element={<AdminProtectedRoute permissionKey="tracking"><AdminBikeTrackingPage activeTab="live" /></AdminProtectedRoute>} />
           <Route path="/admin/bike-tracking/live" element={<AdminProtectedRoute permissionKey="tracking"><AdminBikeTrackingPage activeTab="live" /></AdminProtectedRoute>} />
           <Route path="/admin/bike-tracking/history" element={<AdminProtectedRoute permissionKey="tracking"><AdminBikeTrackingPage activeTab="history" /></AdminProtectedRoute>} />
+
+          {/* Admin Transactions */}
+          <Route path="/admin/transactions" element={<AdminProtectedRoute permissionKey="transactions"><AdminTransactionsPage /></AdminProtectedRoute>} />
 
           {/* Admin CRM */}
           <Route path="/admin/crm" element={<AdminProtectedRoute permissionKey="crm"><AdminCRMPage activeTab="leads" /></AdminProtectedRoute>} />

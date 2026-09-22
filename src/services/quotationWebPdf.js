@@ -6,33 +6,37 @@
  */
 
 export function formatINR(v) {
-  if (v === undefined || v === null || isNaN(v)) return '₹0';
-  return '₹' + Math.round(Number(v)).toLocaleString('en-IN');
+  if (v === undefined || v === null || isNaN(v)) return "₹0";
+  return "₹" + Math.round(Number(v)).toLocaleString("en-IN");
 }
 
 export function formatDate(d) {
-  if (!d) return '—';
+  if (!d) return "—";
   try {
     const date = new Date(d);
-    return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    return date.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
   } catch {
     return String(d);
   }
 }
 
 export function escapeHtml(str) {
-  if (!str) return '';
+  if (!str) return "";
   return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 export function utf8ToBase64(str) {
-  if (!str) return '';
+  if (!str) return "";
   const bytes = new TextEncoder().encode(str);
-  let binary = '';
+  let binary = "";
   for (let i = 0; i < bytes.byteLength; i++) {
     binary += String.fromCharCode(bytes[i]);
   }
@@ -41,38 +45,40 @@ export function utf8ToBase64(str) {
 
 export function buildQuotationHtml(q) {
   const company = q.companyDetails || {
-    name: 'ALTERA INTERIOR',
-    tagline: 'The Modern Home Maker • Interior | Architect | Construction',
-    address: 'Plot 42, Sector 18, Commercial Hub, New Delhi - 110001',
-    phone: '+91 98765 43210',
-    email: 'contact@alterainterior.com',
-    gstin: '07AAAAA0000A1Z5',
+    name: "ALTERA INTERIOR",
+    tagline: "The Modern Home Maker • Interior | Architect | Construction",
+    address: "Plot 42, Sector 18, Commercial Hub, New Delhi - 110001",
+    phone: "+91 98765 43210",
+    email: "alterakitcheninterior@gmail.com",
+    gstin: "06CFEPS8731P1Z0",
   };
 
   const client = q.client || {
-    name: q.customerName || 'Valued Client',
-    company: '',
-    phone: q.customerPhone || '',
-    email: q.customerEmail || '',
-    address: q.customerAddress || q.siteLocation || '',
-    gstin: '',
+    name: q.customerName || "Valued Client",
+    company: "",
+    phone: q.customerPhone || "",
+    email: q.customerEmail || "",
+    address: q.customerAddress || q.siteLocation || "",
+    gstin: "",
   };
 
-  const quotationNumber = q.quotationNumber || q.quotationNo || 'QT-2026-0001';
+  const quotationNumber = q.quotationNumber || q.quotationNo || "QT-2026-0001";
   const qDate = formatDate(q.quotationDate || q.createdAt || new Date());
-  const vUntil = formatDate(q.validUntil || new Date(Date.now() + 30 * 86400000));
-  const status = (q.status || 'Draft').toUpperCase();
+  const vUntil = formatDate(
+    q.validUntil || new Date(Date.now() + 30 * 86400000),
+  );
+  const status = (q.status || "Draft").toUpperCase();
 
   // Group Items by Room / Area
   const roomGroups = {};
   if (Array.isArray(q.items) && q.items.length > 0) {
     q.items.forEach((item) => {
-      const room = item.room || 'General Works';
+      const room = item.room || "General Works";
       if (!roomGroups[room]) roomGroups[room] = [];
       roomGroups[room].push(item);
     });
   } else {
-    roomGroups['General Scope'] = [];
+    roomGroups["General Scope"] = [];
   }
 
   let globalItemIndex = 0;
@@ -81,60 +87,74 @@ export function buildQuotationHtml(q) {
   const roomSectionsHtml = Object.keys(roomGroups)
     .map((roomName) => {
       const items = roomGroups[roomName];
-      const roomTotal = items.reduce((acc, it) => acc + (it.amount || (it.quantity || 1) * (it.rate || 0)), 0);
+      const roomTotal = items.reduce(
+        (acc, it) => acc + (it.amount || (it.quantity || 1) * (it.rate || 0)),
+        0,
+      );
       computedSubtotal += roomTotal;
 
       const itemRows = items
         .map((it) => {
           globalItemIndex++;
-          const amt = it.amount !== undefined ? it.amount : (it.quantity || 1) * (it.rate || 0);
+          const amt =
+            it.amount !== undefined
+              ? it.amount
+              : (it.quantity || 1) * (it.rate || 0);
 
           const specs = it.specifications || {};
-          const specEntries = Object.entries(specs).filter(([_, v]) => Boolean(v));
+          const specEntries = Object.entries(specs).filter(([_, v]) =>
+            Boolean(v),
+          );
           const specsHtml =
             specEntries.length > 0
               ? `<div class="specs-grid">
                   ${specEntries
-                    .map(([k, v]) => `<span class="spec-chip"><strong>${escapeHtml(k)}:</strong> ${escapeHtml(v)}</span>`)
-                    .join('')}
+                    .map(
+                      ([k, v]) =>
+                        `<span class="spec-chip"><strong>${escapeHtml(k)}:</strong> ${escapeHtml(v)}</span>`,
+                    )
+                    .join("")}
                 </div>`
-              : '';
+              : "";
 
           const accs = it.accessories || [];
           const accsHtml =
             accs.length > 0
               ? `<div class="acc-box">
                   <strong>Accessories:</strong> ${accs
-                    .map((a) => `${escapeHtml(a.name)} (${a.qty} nos - ${escapeHtml(a.inclusionType)})`)
-                    .join('; ')}
+                    .map(
+                      (a) =>
+                        `${escapeHtml(a.name)} (${a.qty} nos - ${escapeHtml(a.inclusionType)})`,
+                    )
+                    .join("; ")}
                 </div>`
-              : '';
+              : "";
 
           const m = it.measurements;
           const dimInfo =
             m && m.length > 0 && (m.height > 0 || m.width > 0)
               ? `<div class="dim-tag">📏 ${m.length} × ${m.height || m.width} = ${m.calculatedArea} ${it.unit}</div>`
-              : '';
+              : "";
 
           return `
             <tr class="item-tr">
               <td class="center col-num">${globalItemIndex}</td>
               <td class="col-desc">
                 <div class="item-title">${escapeHtml(it.name)}</div>
-                ${it.description ? `<div class="item-subdesc">${escapeHtml(it.description)}</div>` : ''}
+                ${it.description ? `<div class="item-subdesc">${escapeHtml(it.description)}</div>` : ""}
                 ${dimInfo}
                 ${specsHtml}
                 ${accsHtml}
-                ${it.remarks ? `<div class="item-remark">Note: ${escapeHtml(it.remarks)}</div>` : ''}
+                ${it.remarks ? `<div class="item-remark">Note: ${escapeHtml(it.remarks)}</div>` : ""}
               </td>
-              <td class="center col-unit">${escapeHtml(it.unit || 'Nos')}</td>
+              <td class="center col-unit">${escapeHtml(it.unit || "Nos")}</td>
               <td class="center col-qty">${it.quantity || 1}</td>
               <td class="right col-rate">${formatINR(it.rate || 0)}</td>
               <td class="right col-amt">${formatINR(amt)}</td>
             </tr>
           `;
         })
-        .join('');
+        .join("");
 
       return `
         <div class="room-group">
@@ -160,7 +180,7 @@ export function buildQuotationHtml(q) {
         </div>
       `;
     })
-    .join('');
+    .join("");
 
   // Financial calculations
   const p = q.pricing || {};
@@ -168,7 +188,8 @@ export function buildQuotationHtml(q) {
   const handlingAmt = p.handlingFeeAmount || 0;
   const designAmt = p.designFeeAmount || 0;
   const discountAmt = p.discountAmount || 0;
-  const taxable = p.taxableAmount || subtotal + handlingAmt + designAmt - discountAmt;
+  const taxable =
+    p.taxableAmount || subtotal + handlingAmt + designAmt - discountAmt;
   const gstAmt = p.totalGstAmount || 0;
   const grandTotal = p.grandTotal || taxable + gstAmt;
 
@@ -183,13 +204,13 @@ export function buildQuotationHtml(q) {
               <tr>
                 <td class="center">${idx + 1}</td>
                 <td><strong>${escapeHtml(m.milestoneName)}</strong></td>
-                <td>${escapeHtml(m.stage || 'Stage Milestone')}</td>
+                <td>${escapeHtml(m.stage || "Stage Milestone")}</td>
                 <td class="center font-bold">${m.percentage}%</td>
                 <td class="right font-bold">${formatINR(mAmt)}</td>
               </tr>
             `;
           })
-          .join('')
+          .join("")
       : '<tr><td colspan="5" class="center">Standard payment terms apply (10% token, 50% mobilization, 40% handover).</td></tr>';
 
   return `
@@ -265,18 +286,18 @@ export function buildQuotationHtml(q) {
           <div class="info-box">
             <div class="box-head">Client Information</div>
             <div style="font-weight: 700; font-size: 14px; color: #0f172a;">${escapeHtml(client.name)}</div>
-            ${client.company ? `<div style="font-size: 12px; color: #475569;">${escapeHtml(client.company)}</div>` : ''}
+            ${client.company ? `<div style="font-size: 12px; color: #475569;">${escapeHtml(client.company)}</div>` : ""}
             <div style="font-size: 11px; color: #64748b; margin-top: 4px;">
-              📞 ${escapeHtml(client.phone || '—')} | ✉️ ${escapeHtml(client.email || '—')}<br/>
-              ${client.gstin ? `GSTIN: ${escapeHtml(client.gstin)}` : ''}
+              📞 ${escapeHtml(client.phone || "—")} | ✉️ ${escapeHtml(client.email || "—")}<br/>
+              ${client.gstin ? `GSTIN: ${escapeHtml(client.gstin)}` : ""}
             </div>
           </div>
           <div class="info-box">
             <div class="box-head">Project &amp; Site Details</div>
-            <div style="font-weight: 700; font-size: 13px; color: #0f172a;">${escapeHtml(q.projectTitle || 'Interior Execution')}</div>
+            <div style="font-weight: 700; font-size: 13px; color: #0f172a;">${escapeHtml(q.projectTitle || "Interior Execution")}</div>
             <div style="font-size: 11px; color: #64748b; margin-top: 4px;">
-              <strong>Type:</strong> ${escapeHtml(q.projectType || 'Residential Interior')}<br/>
-              <strong>Site Location:</strong> ${escapeHtml(q.siteLocation || client.address || '—')}
+              <strong>Type:</strong> ${escapeHtml(q.projectType || "Residential Interior")}<br/>
+              <strong>Site Location:</strong> ${escapeHtml(q.siteLocation || client.address || "—")}
             </div>
           </div>
         </div>
@@ -304,16 +325,16 @@ export function buildQuotationHtml(q) {
               <td>Items Subtotal:</td>
               <td class="right font-bold">${formatINR(subtotal)}</td>
             </tr>
-            ${handlingAmt > 0 ? `<tr><td>Handling Charges (${p.handlingFeePercent || 2}%):</td><td class="right">${formatINR(handlingAmt)}</td></tr>` : ''}
-            ${designAmt > 0 ? `<tr><td>Designing Fees (${p.designFeePercent || 2}%):</td><td class="right">${formatINR(designAmt)}</td></tr>` : ''}
-            ${discountAmt > 0 ? `<tr><td style="color: #059669;">Special Discount:</td><td class="right" style="color: #059669;">-${formatINR(discountAmt)}</td></tr>` : ''}
+            ${handlingAmt > 0 ? `<tr><td>Handling Charges (${p.handlingFeePercent || 2}%):</td><td class="right">${formatINR(handlingAmt)}</td></tr>` : ""}
+            ${designAmt > 0 ? `<tr><td>Designing Fees (${p.designFeePercent || 2}%):</td><td class="right">${formatINR(designAmt)}</td></tr>` : ""}
+            ${discountAmt > 0 ? `<tr><td style="color: #059669;">Special Discount:</td><td class="right" style="color: #059669;">-${formatINR(discountAmt)}</td></tr>` : ""}
             <tr style="border-top: 1px solid #cbd5e1;">
               <td>Taxable Total:</td>
               <td class="right font-bold">${formatINR(taxable)}</td>
             </tr>
             <tr>
-              <td>GST (${p.gstPercent || 18}%):</td>
-              <td class="right">${formatINR(gstAmt)}</td>
+              <td>GST (${p.gstPercent || 18}% ${p.gstType === "AS_PER_ACTUAL" ? "– As per Actuals" : ""}):</td>
+              <td class="right" style="${p.gstType === "AS_PER_ACTUAL" ? "color: #2563eb; font-weight: 600;" : ""}">${p.gstType === "AS_PER_ACTUAL" ? "18% – As per Actuals" : formatINR(gstAmt)}</td>
             </tr>
             <tr class="grand-row">
               <td>Grand Total:</td>
@@ -322,7 +343,9 @@ export function buildQuotationHtml(q) {
           </table>
         </div>
 
-        ${q.notes ? `<div style="margin-top: 20px; padding: 10px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 11px;"><strong>Notes / Terms:</strong> ${escapeHtml(q.notes)}</div>` : ''}
+        ${p.gstType === "AS_PER_ACTUAL" ? `<div style="margin-top: 12px; padding: 8px 12px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; font-size: 11px; color: #1d4ed8; font-weight: 600;">ℹ️ GST @ 18% will be charged separately as applicable on the actual/final invoice and is not included in this estimated total.</div>` : ""}
+
+        ${q.notes ? `<div style="margin-top: 20px; padding: 10px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 11px;"><strong>Notes / Terms:</strong> ${escapeHtml(q.notes)}</div>` : ""}
 
         <div class="signatures">
           <div class="sig-box">
@@ -341,7 +364,7 @@ export function buildQuotationHtml(q) {
 
 export function printQuotation(q) {
   const html = buildQuotationHtml(q);
-  const printWindow = window.open('', '_blank');
+  const printWindow = window.open("", "_blank");
   if (printWindow) {
     printWindow.document.write(html);
     printWindow.document.close();
@@ -350,6 +373,6 @@ export function printQuotation(q) {
       printWindow.print();
     }, 500);
   } else {
-    alert('Please allow popups to view and print the PDF.');
+    alert("Please allow popups to view and print the PDF.");
   }
 }

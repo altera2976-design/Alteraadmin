@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../services/api';
-import { formatINR, buildOfferLetterHtml } from '../services/offerLetterPdfGenerator';
+import { formatINR, buildOfferLetterHtml, printOfferLetterPdf } from '../services/offerLetterPdfGenerator';
 
 export default function CandidateOfferAcceptancePage() {
   const { token } = useParams();
@@ -325,6 +325,26 @@ export default function CandidateOfferAcceptancePage() {
         {/* Tab 3: PDF Document */}
         {activeTab === 'pdf' && (
           <div style={styles.tabContent}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+              <button
+                onClick={() => printOfferLetterPdf(offer)}
+                style={{
+                  background: '#9F0B22',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  padding: '9px 18px',
+                  borderRadius: 6,
+                  fontWeight: 700,
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                📥 Download Official PDF
+              </button>
+            </div>
             <iframe
               title="Offer Letter Document"
               srcDoc={buildOfferLetterHtml(offer)}

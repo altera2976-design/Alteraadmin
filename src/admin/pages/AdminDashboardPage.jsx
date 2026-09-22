@@ -1,72 +1,131 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
+import { io } from 'socket.io-client';
 import AdminAppLayout from '../layouts/AdminAppLayout';
 import api from '../../services/api';
 
+const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+const SOCKET_URL = (import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5001' : 'https://alterabackend.onrender.com')).replace('/api', '');
+
+const Card = memo(function Card({ title, value, color, badge, onClick }) {
+  return (
+    <div
+      style={{ ...styles.card, cursor: onClick ? 'pointer' : 'default' }}
+      onClick={onClick}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <span style={styles.cardTitle}>{title}</span>
+      </div>
+      <div style={styles.cardValue}>{value}</div>
+      <div style={{ fontSize: 11, fontWeight: 600, color, marginTop: 4 }}>
+        {badge}
+      </div>
+    </div>
+  );
+});
+
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState(null);
+  const [txnSummary, setTxnSummary] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [todayAttendance, setTodayAttendance] = useState([]);
   const [recentActivities, setRecentActivities] = useState([]);
   const [notifications, setNotifications] = useState([]);
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
+  const fetchDashboardData = useCallback(async (isInitial = false) => {
+    if (isInitial) setLoading(true);
+    else setRefreshing(true);
 
-  const fetchDashboardData = async () => {
-    setLoading(true);
-    try {
-      // 1. Fetch main dashboard stats
-      const statsRes = await api.get('/dashboard/stats');
-      const d = statsRes.data?.data || statsRes.data || {};
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    // Parallel execution for zero waterfall delay
+    const [statsResult, attResult, notifResult, txnResult] = await Promise.allSettled([
+      api.get('/dashboard/stats'),
+      api.get(`/attendance?date=${todayStr}`),
+      api.get('/notifications'),
+      api.get('/transactions/summary'),
+    ]);
+
+    // 1. Process Main Dashboard Stats
+    if (statsResult.status === 'fulfilled') {
+      const d = statsResult.value.data?.data || statsResult.value.data || {};
       setStats(d);
-
-      // 2. Fetch today's attendance records
-      const todayStr = new Date().toISOString().split('T')[0];
-      try {
-        const attRes = await api.get(`/attendance?date=${todayStr}`);
-        const attList = attRes.data?.records || attRes.data?.data || attRes.data || [];
-        setTodayAttendance(Array.isArray(attList) ? attList.slice(0, 8) : []);
-      } catch {
-        setTodayAttendance([]);
-      }
-
-      // 3. Fetch notifications
-      try {
-        const notifRes = await api.get('/notifications');
-        const notifList = notifRes.data?.notifications || notifRes.data?.data || notifRes.data || [];
-        setNotifications(Array.isArray(notifList) ? notifList.slice(0, 5) : []);
-      } catch {
-        setNotifications([]);
-      }
-
-      // 4. Populate recent activity feed from stats or fallback
       if (d.recentActivities) {
         setRecentActivities(d.recentActivities);
       } else {
         setRecentActivities([
-          { id: '1', title: 'System initialized and real database synced.', date: new Date(), user: 'System' }
+          { id: '1', title: 'System initialized and real database synced.', date: new Date(), user: 'System' },
         ]);
       }
-    } catch (err) {
-      console.error('Error loading admin dashboard stats:', err);
-    } finally {
-      setLoading(false);
     }
-  };
+
+    // 2. Process Attendance Records
+    if (attResult.status === 'fulfilled') {
+      const attList = attResult.value.data?.records || attResult.value.data?.data || attResult.value.data || [];
+      setTodayAttendance(Array.isArray(attList) ? attList.slice(0, 8) : []);
+    } else {
+      setTodayAttendance([]);
+    }
+
+    // 3. Process Notifications
+    if (notifResult.status === 'fulfilled') {
+      const notifList = notifResult.value.data?.notifications || notifResult.value.data?.data || notifResult.value.data || [];
+      setNotifications(Array.isArray(notifList) ? notifList.slice(0, 5) : []);
+    } else {
+      setNotifications([]);
+    }
+
+    // 4. Process Transaction Summary
+    if (txnResult.status === 'fulfilled') {
+      setTxnSummary(txnResult.value.data?.data || null);
+    }
+
+    setLoading(false);
+    setRefreshing(false);
+  }, []);
+
+  useEffect(() => {
+    fetchDashboardData(true);
+
+    // Realtime WebSockets Listener
+    let socket;
+    try {
+      socket = io(SOCKET_URL, { autoConnect: true, reconnectionAttempts: 5 });
+
+      const handleUpdate = () => fetchDashboardData(false);
+
+      socket.on('dashboard_updated', handleUpdate);
+      socket.on('attendance_updated', handleUpdate);
+      socket.on('transaction_created', handleUpdate);
+      socket.on('crm_updated', handleUpdate);
+      socket.on('quotation_updated', handleUpdate);
+    } catch (err) {
+      console.warn('Socket connection fallback:', err);
+    }
+
+    // Auto Refresh Interval (15 seconds fallback)
+    const interval = setInterval(() => {
+      fetchDashboardData(false);
+    }, 15000);
+
+    return () => {
+      if (socket) socket.disconnect();
+      clearInterval(interval);
+    };
+  }, [fetchDashboardData]);
 
   if (loading) {
     return (
       <AdminAppLayout title="Admin Dashboard">
-        <div style={{ padding: 40, textAlign: 'center' }}>
-          <div style={{ width: 40, height: 40, border: '4px solid #E2E8F0', borderTopColor: '#2563EB', borderRadius: '50%', margin: '0 auto 16px auto', animation: 'spin 1s linear infinite' }} />
-          <p style={{ color: '#64748B', fontWeight: 600 }}>Loading live dashboard statistics...</p>
+        <div style={{ padding: 60, textAlign: 'center' }}>
+          <div style={{ width: 44, height: 44, border: '4px solid #E2E8F0', borderTopColor: '#2563EB', borderRadius: '50%', margin: '0 auto 16px auto', animation: 'spin 0.8s linear infinite' }} />
+          <p style={{ color: '#64748B', fontWeight: 600, fontSize: 14 }}>Loading live admin dashboard statistics...</p>
         </div>
       </AdminAppLayout>
     );
   }
 
-  // Dashboard calculations
+  // Calculated Metrics
   const totalEmp = stats?.employees || stats?.totalEmployees || 0;
   const presentToday = stats?.todayPresent || stats?.todayAttendance || 0;
   const lateToday = stats?.todayLate || 0;
@@ -77,10 +136,27 @@ export default function AdminDashboardPage() {
   const pendingQuotations = stats?.pendingQuotations || 0;
   const activeBikeTracking = stats?.activeBikeCount || 0;
   const pendingOfferLetters = stats?.pendingOfferLetters || 0;
+  const totalTransactionsCount = txnSummary?.totalCompletedCount || 0;
+  const totalReceivedAmount = txnSummary?.completedTotalAmount || 0;
 
   return (
     <AdminAppLayout title="Dashboard Overview">
-      {/* 10 Required KPI Cards */}
+      {/* Action Bar / Controls */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+        <div>
+          <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', margin: 0 }}>Executive Overview</h2>
+          <p style={{ fontSize: 12, color: '#64748B', margin: '2px 0 0 0' }}>Real-time company metrics, attendance, sales &amp; financial operations</p>
+        </div>
+        <button
+          onClick={() => fetchDashboardData(false)}
+          disabled={refreshing}
+          style={styles.refreshBtn}
+        >
+          {refreshing ? '🔄 Syncing...' : '🔄 Refresh Data'}
+        </button>
+      </div>
+
+      {/* 12 Metric KPI Cards */}
       <div style={styles.grid10}>
         <Card title="Total Employees" value={totalEmp} color="#2563EB" badge="Active Staff" />
         <Card title="Present Today" value={presentToday} color="#10B981" badge="Checked In" />
@@ -88,6 +164,7 @@ export default function AdminDashboardPage() {
         <Card title="Late Today" value={lateToday} color="#F59E0B" badge="Late Check-in" />
         <Card title="Attendance %" value={`${attendancePct}%`} color="#8B5CF6" badge="Today Ratio" />
         <Card title="Total Payroll" value={`₹${totalPayroll.toLocaleString('en-IN')}`} color="#059669" badge="Salary Paid/Due" />
+        <Card title="Total Transactions" value={`₹${totalReceivedAmount.toLocaleString('en-IN')}`} color="#0288D1" badge={`${totalTransactionsCount} Completed`} />
         <Card title="Total Leads" value={totalLeads} color="#3B82F6" badge="CRM Pipeline" />
         <Card title="Pending Quotations" value={pendingQuotations} color="#D97706" badge="Awaiting Approval" />
         <Card title="Active Bike Tracking" value={activeBikeTracking} color="#EC4899" badge="Live Trips" />
@@ -95,14 +172,14 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Analytics & Charts Summary Section */}
-      <div style={styles.sectionTitle}>Analytics & Statistics</div>
+      <div style={styles.sectionTitle}>Analytics &amp; Statistics</div>
       <div style={styles.chartsGrid}>
-        {/* Weekly & Monthly Attendance */}
+        {/* Weekly & Monthly Attendance Chart */}
         <div style={styles.chartCard}>
           <div style={styles.chartHeader}>
             <div>
               <div style={styles.chartTitle}>Attendance Overview</div>
-              <div style={styles.chartSub}>Weekly & Monthly Trend Analysis</div>
+              <div style={styles.chartSub}>Weekly &amp; Monthly Trend Analysis</div>
             </div>
             <span style={styles.chartBadge}>Realtime</span>
           </div>
@@ -168,7 +245,7 @@ export default function AdminDashboardPage() {
         {/* Today's Attendance Table */}
         <div style={styles.tableCard}>
           <div style={styles.tableHeader}>
-            <h3 style={styles.tableTitle}>Today's Attendance</h3>
+            <h3 style={styles.tableTitle}>Today's Check-ins</h3>
             <span style={{ fontSize: 12, fontWeight: 600, color: '#64748B' }}>Live Employee Pings</span>
           </div>
 
@@ -197,14 +274,16 @@ export default function AdminDashboardPage() {
                       <td style={styles.td}>{rec.checkInTime || rec.inTime || '—'}</td>
                       <td style={styles.td}>{rec.checkOutTime || rec.outTime || '—'}</td>
                       <td style={styles.td}>
-                        <span style={{
-                          padding: '3px 8px',
-                          borderRadius: 6,
-                          fontSize: 11,
-                          fontWeight: 700,
-                          background: rec.status === 'PRESENT' ? '#DCFCE7' : rec.status === 'LATE' ? '#FEF3C7' : '#FEE2E2',
-                          color: rec.status === 'PRESENT' ? '#15803D' : rec.status === 'LATE' ? '#B45309' : '#B91C1C'
-                        }}>
+                        <span
+                          style={{
+                            padding: '3px 8px',
+                            borderRadius: 6,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            background: rec.status === 'PRESENT' ? '#DCFCE7' : rec.status === 'LATE' ? '#FEF3C7' : '#FEE2E2',
+                            color: rec.status === 'PRESENT' ? '#15803D' : rec.status === 'LATE' ? '#B45309' : '#B91C1C',
+                          }}
+                        >
                           {rec.status || 'PRESENT'}
                         </span>
                       </td>
@@ -271,21 +350,18 @@ export default function AdminDashboardPage() {
   );
 }
 
-function Card({ title, value, color, badge }) {
-  return (
-    <div style={styles.card}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <span style={styles.cardTitle}>{title}</span>
-      </div>
-      <div style={styles.cardValue}>{value}</div>
-      <div style={{ fontSize: 11, fontWeight: 600, color, marginTop: 4 }}>
-        {badge}
-      </div>
-    </div>
-  );
-}
-
 const styles = {
+  refreshBtn: {
+    background: '#FFFFFF',
+    color: '#334155',
+    border: '1px solid #CBD5E1',
+    padding: '8px 14px',
+    borderRadius: 8,
+    fontWeight: 600,
+    fontSize: 12.5,
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+  },
   grid10: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',

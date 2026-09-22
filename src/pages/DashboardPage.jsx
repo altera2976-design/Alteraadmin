@@ -14,6 +14,7 @@ export default function DashboardPage() {
   const navigate = useNavigate();
 
   const [stats, setStats] = useState(null);
+  const [txnSummary, setTxnSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -21,8 +22,20 @@ export default function DashboardPage() {
     if (showSpinner) setLoading(true);
     setError('');
     try {
-      const res = await api.get('/dashboard/stats');
-      setStats(res.data.data);
+      const [statsRes, txnRes] = await Promise.allSettled([
+        api.get('/dashboard/stats'),
+        api.get('/transactions/summary'),
+      ]);
+
+      if (statsRes.status === 'fulfilled') {
+        setStats(statsRes.value.data?.data || statsRes.value.data);
+      } else {
+        setError('Failed to load dashboard data.');
+      }
+
+      if (txnRes.status === 'fulfilled') {
+        setTxnSummary(txnRes.value.data?.data || null);
+      }
     } catch (err) {
       setError('Failed to load dashboard data.');
     } finally {
@@ -36,6 +49,10 @@ export default function DashboardPage() {
     const socket = io(SOCKET_URL);
 
     socket.on('dashboard_updated', () => {
+      fetchDashboardData(false);
+    });
+
+    socket.on('transaction_created', () => {
       fetchDashboardData(false);
     });
 

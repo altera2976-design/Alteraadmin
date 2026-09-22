@@ -120,7 +120,15 @@ const DEFAULT_ACCESSORY_OPTIONS = [
   'Tandem Box',
   'Corner Carousel',
   'Cutlery Tray',
-  'Pantry Unit',
+  '+ Add More',
+];
+
+const DEFAULT_DESCRIPTION_OPTIONS = [
+  'HDHMR Carcass with High Gloss Acrylic',
+  'BWP Ply Carcass with PU Finish',
+  'Laminate Finish with Soft-Close Fittings',
+  'Modular Factory Finish with Hardware',
+  'Standard Factory Specifications',
   '+ Add More',
 ];
 
@@ -190,6 +198,9 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
   const [customUnitName, setCustomUnitName] = useState('');
   const [itemName, setItemName] = useState('');
   const [itemDesc, setItemDesc] = useState('');
+  const [descriptionOptions, setDescriptionOptions] = useState(DEFAULT_DESCRIPTION_OPTIONS);
+  const [showCustomDescriptionInput, setShowCustomDescriptionInput] = useState(false);
+  const [customDescriptionText, setCustomDescriptionText] = useState('');
   const [itemUnit, setItemUnit] = useState('Sq Ft');
   const [itemSize, setItemSize] = useState('1');
   const [itemRate, setItemRate] = useState('');
@@ -222,7 +233,7 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
   const [discountType, setDiscountType] = useState('PERCENT');
   const [discountValue, setDiscountValue] = useState('0');
   const [gstPercent, setGstPercent] = useState('18');
-  const [gstType, setGstType] = useState('CGST_SGST');
+  const [gstType, setGstType] = useState('AS_PER_ACTUAL');
 
   // Step 4 Form
   const [milestones, setMilestones] = useState(DEFAULT_MILESTONES);
@@ -331,14 +342,14 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
     const discountAmt = discountType === 'PERCENT' ? Math.round(sub * (discVal / 100)) : Math.min(sub, discVal);
     const taxable = Math.max(0, sub + handlingFee + designFee - discountAmt);
     const gstPct = parseFloat(gstPercent) || 0;
-    const gstAmt = Math.round(taxable * (gstPct / 100));
+    const gstAmt = gstType === 'AS_PER_ACTUAL' ? 0 : Math.round(taxable * (gstPct / 100));
     const grandTotal = taxable + gstAmt;
 
     const totalMilestonePct = milestones.reduce((acc, m) => acc + (Number(m.percentage) || 0), 0);
     const isMilestoneValid = Math.abs(totalMilestonePct - 100) < 0.5;
 
     return { sub, handlingFee, designFee, discountAmt, taxable, gstAmt, grandTotal, totalMilestonePct, isMilestoneValid };
-  }, [items, handlingPercent, designPercent, discountType, discountValue, gstPercent, milestones]);
+  }, [items, handlingPercent, designPercent, discountType, discountValue, gstPercent, gstType, milestones]);
 
   // ── HANDLERS ───────────────────────────────────────────────────────────────
 
@@ -431,6 +442,35 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
     }
     setItemUnit(u);
     setShowCustomUnitInput(false);
+  };
+
+  const handleSelectDescription = (desc) => {
+    if (desc === '+ Add More') {
+      setShowCustomDescriptionInput(true);
+      return;
+    }
+    setItemDesc(desc);
+    setShowCustomDescriptionInput(false);
+  };
+
+  const handleConfirmCustomDescription = (overrideVal) => {
+    const trimmed = (overrideVal || customDescriptionText).trim();
+    if (!trimmed) return;
+
+    if (!descriptionOptions.includes(trimmed)) {
+      const updated = [...descriptionOptions];
+      const addMoreIdx = updated.indexOf('+ Add More');
+      if (addMoreIdx !== -1) {
+        updated.splice(addMoreIdx, 0, trimmed);
+      } else {
+        updated.push(trimmed);
+      }
+      setDescriptionOptions(updated);
+    }
+
+    setItemDesc(trimmed);
+    setCustomDescriptionText('');
+    setShowCustomDescriptionInput(false);
   };
 
   const handleConfirmCustomUnit = (overrideName) => {
@@ -642,7 +682,7 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
       setDiscountType(existing.pricing?.discountType || 'PERCENT');
       setDiscountValue(String(existing.pricing?.discountValue || 0));
       setGstPercent(String(existing.pricing?.gstPercent || 18));
-      setGstType(existing.pricing?.gstType || 'CGST_SGST');
+      setGstType(existing.pricing?.gstType || 'AS_PER_ACTUAL');
       setMilestones(existing.paymentMilestones && existing.paymentMilestones.length > 0 ? existing.paymentMilestones : DEFAULT_MILESTONES);
       setQuotationNotes(existing.notes || '');
     } else {
@@ -664,7 +704,7 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
       setDiscountType('PERCENT');
       setDiscountValue('0');
       setGstPercent('18');
-      setGstType('CGST_SGST');
+      setGstType('AS_PER_ACTUAL');
       setMilestones(DEFAULT_MILESTONES);
       setQuotationNotes('');
     }
@@ -1401,6 +1441,55 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                       </div>
                     </div>
 
+                    {/* Description Option Chips */}
+                    <div style={{ marginBottom: 10 }}>
+                      <label style={{ ...styles.label, fontSize: 11, color: '#64748b' }}>Select Description Preset / Add Custom Option:</label>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
+                        {descriptionOptions.map((desc) => (
+                          <button
+                            key={desc}
+                            type="button"
+                            onClick={() => handleSelectDescription(desc)}
+                            style={itemDesc === desc ? styles.subItemBtnActive : desc === '+ Add More' ? styles.subItemAddMoreBtn : styles.subItemBtn}
+                          >
+                            {desc}
+                          </button>
+                        ))}
+                      </div>
+
+                      {showCustomDescriptionInput && (
+                        <div style={{ display: 'flex', gap: 8, marginTop: 8, maxWidth: 450 }}>
+                          <input
+                            type="text"
+                            placeholder="Type custom description option..."
+                            value={customDescriptionText}
+                            onChange={(e) => {
+                              setCustomDescriptionText(e.target.value);
+                              if (e.target.value.trim()) {
+                                setItemDesc(e.target.value);
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleConfirmCustomDescription();
+                              }
+                            }}
+                            style={styles.formInput}
+                            autoFocus
+                          />
+                          <button
+                            type="button"
+                            className="btn btn-primary"
+                            onClick={() => handleConfirmCustomDescription()}
+                            style={{ padding: '4px 12px', fontSize: 12, whiteSpace: 'nowrap' }}
+                          >
+                            + Add Option
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
                     {/* Unit Pills Selection */}
                     <div style={{ marginBottom: 10 }}>
                       <label style={styles.label}>Select Unit / Measurement Type:</label>
@@ -1582,7 +1671,7 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                     {/* Accessories Specifications */}
                     <div style={{ marginBottom: 12, background: '#ffffff', padding: 10, borderRadius: 6, border: '1px solid #cbd5e1' }}>
                       <label style={{ ...styles.label, fontWeight: 700, color: '#0f172a' }}>
-                        Add Accessories (Wicker basket, BPO, Innotech, etc.):
+                        Add Accessories:
                       </label>
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
                         {accessoryOptions.map((acc) => (
@@ -1796,57 +1885,67 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                         type="button"
                         onClick={() => {
                           setGstPercent('18');
+                          setGstType('AS_PER_ACTUAL');
                         }}
-                        style={parseFloat(gstPercent) > 0 ? styles.subItemBtnActive : styles.subItemBtn}
+                        style={gstType === 'AS_PER_ACTUAL' ? styles.subItemBtnActive : styles.subItemBtn}
                       >
-                        ✓ Apply GST (18%)
+                        18% (As per actuals)
                       </button>
 
                       <button
                         type="button"
                         onClick={() => {
-                          setGstPercent('0');
+                          setGstPercent('18');
+                          setGstType('CGST_SGST');
                         }}
-                        style={parseFloat(gstPercent) === 0 ? styles.subItemBtnActive : styles.subItemBtn}
+                        style={gstType !== 'AS_PER_ACTUAL' && parseFloat(gstPercent) === 18 ? styles.subItemBtnActive : styles.subItemBtn}
                       >
-                        ✕ No GST / Exempt (0%)
+                        GST 18% (Calculated in total)
                       </button>
 
                       {[5, 12, 28].map((rate) => (
                         <button
                           key={rate}
                           type="button"
-                          onClick={() => setGstPercent(String(rate))}
-                          style={parseFloat(gstPercent) === rate ? styles.subItemBtnActive : styles.subItemBtn}
+                          onClick={() => {
+                            setGstPercent(String(rate));
+                            if (gstType === 'AS_PER_ACTUAL') setGstType('CGST_SGST');
+                          }}
+                          style={gstType !== 'AS_PER_ACTUAL' && parseFloat(gstPercent) === rate ? styles.subItemBtnActive : styles.subItemBtn}
                         >
                           GST {rate}%
                         </button>
                       ))}
                     </div>
 
-                    {parseFloat(gstPercent) > 0 ? (
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 10 }}>
-                        <div>
-                          <label style={styles.label}>GST Rate (%)</label>
-                          <input
-                            type="number"
-                            value={gstPercent}
-                            onChange={(e) => setGstPercent(e.target.value)}
-                            style={styles.formInput}
-                            placeholder="18"
-                          />
-                        </div>
-                        <div>
-                          <label style={styles.label}>Tax Type Structure</label>
-                          <select value={gstType} onChange={(e) => setGstType(e.target.value)} style={styles.formInput}>
-                            <option value="CGST_SGST">CGST + SGST (Intrastate)</option>
-                            <option value="IGST">IGST (Interstate)</option>
-                          </select>
-                        </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 10 }}>
+                      <div>
+                        <label style={styles.label}>GST Rate (%)</label>
+                        <input
+                          type="number"
+                          value={gstPercent}
+                          onChange={(e) => setGstPercent(e.target.value)}
+                          style={styles.formInput}
+                          placeholder="18"
+                        />
+                      </div>
+                      <div>
+                        <label style={styles.label}>Tax Type Structure</label>
+                        <select value={gstType} onChange={(e) => setGstType(e.target.value)} style={styles.formInput}>
+                          <option value="AS_PER_ACTUAL">As per actuals (18% Extra / Not calculated in total)</option>
+                          <option value="CGST_SGST">CGST + SGST (Intrastate - Calculated)</option>
+                          <option value="IGST">IGST (Interstate - Calculated)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {gstType === 'AS_PER_ACTUAL' ? (
+                      <div style={{ marginTop: 10, fontSize: 12, color: '#1d4ed8', fontWeight: 600, background: '#eff6ff', padding: '8px 12px', borderRadius: 6, border: '1px solid #bfdbfe' }}>
+                        ℹ️ GST 18% will be charged as per actuals and is not included in the estimated total.
                       </div>
                     ) : (
-                      <div style={{ fontSize: 12, color: '#059669', fontWeight: 600, background: '#ecfdf5', padding: '8px 12px', borderRadius: 6, border: '1px solid #a7f3d0' }}>
-                        ✓ GST is set to 0% (Tax-Exempt / Non-GST Proposal). Total payable equals taxable total.
+                      <div style={{ marginTop: 10, fontSize: 12, color: '#059669', fontWeight: 600, background: '#ecfdf5', padding: '8px 12px', borderRadius: 6, border: '1px solid #a7f3d0' }}>
+                        ✓ GST {gstPercent}% is calculated and included in the estimated total.
                       </div>
                     )}
                   </div>
@@ -1860,7 +1959,7 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                       <div>Design ({designPercent}%): <strong>{formatINR(liveCalc.designFee)}</strong></div>
                       <div>Discount: <strong style={{ color: '#059669' }}>-{formatINR(liveCalc.discountAmt)}</strong></div>
                       <div>Taxable Total: <strong>{formatINR(liveCalc.taxable)}</strong></div>
-                      <div>GST ({gstPercent}%): <strong>{formatINR(liveCalc.gstAmt)}</strong></div>
+                      <div>GST ({gstPercent}% {gstType === 'AS_PER_ACTUAL' ? '– As per Actuals' : ''}): <strong>{gstType === 'AS_PER_ACTUAL' ? '18% – As per Actuals (Not included)' : formatINR(liveCalc.gstAmt)}</strong></div>
                     </div>
                     <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', marginTop: 10, borderTop: '1px solid #cbd5e1', paddingTop: 8 }}>
                       Estimated Grand Total: {formatINR(liveCalc.grandTotal)}
