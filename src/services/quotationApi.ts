@@ -53,7 +53,7 @@ export interface QuotationPricing {
   discountAmount: number;
   taxableAmount: number;
   gstPercent: number;
-  gstType: 'CGST_SGST' | 'IGST';
+  gstType: 'CGST_SGST' | 'IGST' | 'AS_PER_ACTUAL';
   cgstAmount: number;
   sgstAmount: number;
   igstAmount: number;

@@ -167,7 +167,15 @@ const DEFAULT_ACCESSORY_OPTIONS = [
   "Tandem Box",
   "Corner Carousel",
   "Cutlery Tray",
-  "Pantry Unit",
+  "+ Add More",
+];
+
+const DEFAULT_DESCRIPTION_OPTIONS = [
+  "HDHMR Carcass with High Gloss Acrylic",
+  "BWP Ply Carcass with PU Finish",
+  "Laminate Finish with Soft-Close Fittings",
+  "Modular Factory Finish with Hardware",
+  "Standard Factory Specifications",
   "+ Add More",
 ];
 
@@ -297,6 +305,12 @@ export default function QuotationScreen() {
 
   const [itemName, setItemName] = useState("");
   const [itemDesc, setItemDesc] = useState("");
+  const [descriptionOptions, setDescriptionOptions] = useState<string[]>(
+    DEFAULT_DESCRIPTION_OPTIONS,
+  );
+  const [showCustomDescriptionInput, setShowCustomDescriptionInput] =
+    useState(false);
+  const [customDescriptionText, setCustomDescriptionText] = useState("");
   const [itemUnit, setItemUnit] = useState<string>("Sq Ft");
   const [itemSize, setItemSize] = useState("1");
   const [itemRate, setItemRate] = useState("");
@@ -326,7 +340,7 @@ export default function QuotationScreen() {
   );
   const [discountValue, setDiscountValue] = useState("0");
   const [gstPercent, setGstPercent] = useState("18");
-  const [gstType, setGstType] = useState<"CGST_SGST" | "IGST">("CGST_SGST");
+  const [gstType, setGstType] = useState<"AS_PER_ACTUAL" | "CGST_SGST" | "IGST">("AS_PER_ACTUAL");
 
   // Step 4: Milestones & Notes
   const [milestones, setMilestones] = useState<QuotationMilestone[]>(
@@ -391,7 +405,7 @@ export default function QuotationScreen() {
       rawSubtotal + handlingFee + designFee - discountAmt,
     );
     const gstPct = parseFloat(gstPercent) || 0;
-    const gstAmt = Math.round(taxable * (gstPct / 100));
+    const gstAmt = gstType === "AS_PER_ACTUAL" ? 0 : Math.round(taxable * (gstPct / 100));
     const grandTotal = taxable + gstAmt;
 
     const totalMilestonePct = milestones.reduce(
@@ -418,6 +432,7 @@ export default function QuotationScreen() {
     discountType,
     discountValue,
     gstPercent,
+    gstType,
     milestones,
   ]);
 
@@ -517,6 +532,35 @@ export default function QuotationScreen() {
     }
     setItemUnit(u);
     setShowCustomUnitInput(false);
+  };
+
+  const handleSelectDescription = (desc: string) => {
+    if (desc === "+ Add More") {
+      setShowCustomDescriptionInput(true);
+      return;
+    }
+    setItemDesc(desc);
+    setShowCustomDescriptionInput(false);
+  };
+
+  const handleConfirmCustomDescription = (overrideVal?: string) => {
+    const trimmed = (overrideVal || customDescriptionText).trim();
+    if (!trimmed) return;
+
+    if (!descriptionOptions.includes(trimmed)) {
+      const updated = [...descriptionOptions];
+      const addMoreIdx = updated.indexOf("+ Add More");
+      if (addMoreIdx !== -1) {
+        updated.splice(addMoreIdx, 0, trimmed);
+      } else {
+        updated.push(trimmed);
+      }
+      setDescriptionOptions(updated);
+    }
+
+    setItemDesc(trimmed);
+    setCustomDescriptionText("");
+    setShowCustomDescriptionInput(false);
   };
 
   const handleConfirmCustomUnit = (overrideName?: string) => {
@@ -732,7 +776,7 @@ export default function QuotationScreen() {
       setDiscountType(existing.pricing?.discountType || "PERCENT");
       setDiscountValue(String(existing.pricing?.discountValue || 0));
       setGstPercent(String(existing.pricing?.gstPercent || 18));
-      setGstType(existing.pricing?.gstType || "CGST_SGST");
+      setGstType(existing.pricing?.gstType || "AS_PER_ACTUAL");
       setMilestones(
         existing.paymentMilestones && existing.paymentMilestones.length > 0
           ? existing.paymentMilestones
@@ -760,7 +804,7 @@ export default function QuotationScreen() {
       setDiscountType("PERCENT");
       setDiscountValue("0");
       setGstPercent("18");
-      setGstType("CGST_SGST");
+      setGstType("AS_PER_ACTUAL");
       setMilestones(DEFAULT_MILESTONES_INPUT);
       setQuotationNotes("");
     }
@@ -1881,12 +1925,84 @@ export default function QuotationScreen() {
 
                   <Text style={styles.inputLabel}>Detailed Description</Text>
                   <TextInput
-                    style={[styles.textInput, { height: 60 }]}
-                    placeholder="e.g. Waterproof marine ply carcass with acrylic shutter..."
+                    style={[styles.textInput, { height: 50 }]}
+                    placeholder="Type description or select a preset below..."
                     multiline
                     value={itemDesc}
                     onChangeText={setItemDesc}
                   />
+
+                  {/* Description Option Chips */}
+                  <Text
+                    style={[
+                      styles.inputLabel,
+                      { marginTop: 6, fontSize: 11, color: "#64748B" },
+                    ]}
+                  >
+                    Select Description Preset / Add Custom Option:
+                  </Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={{ marginBottom: 8 }}
+                  >
+                    {descriptionOptions.map((desc) => {
+                      const isActive = itemDesc === desc;
+                      const isAddMore = desc === "+ Add More";
+                      return (
+                        <TouchableOpacity
+                          key={desc}
+                          style={[
+                            styles.roomPill,
+                            isActive && styles.roomPillActive,
+                            isAddMore &&
+                              !isActive && {
+                                borderColor: "#2563EB",
+                                backgroundColor: "#EFF6FF",
+                              },
+                          ]}
+                          onPress={() => handleSelectDescription(desc)}
+                        >
+                          <Text
+                            style={[
+                              styles.roomPillText,
+                              isActive && styles.roomPillTextActive,
+                              isAddMore &&
+                                !isActive && {
+                                  color: "#1D4ED8",
+                                  fontWeight: "700",
+                                },
+                            ]}
+                          >
+                            {desc}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+
+                  {showCustomDescriptionInput && (
+                    <View
+                      style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}
+                    >
+                      <TextInput
+                        style={[styles.textInput, { flex: 1 }]}
+                        placeholder="Type custom description option..."
+                        value={customDescriptionText}
+                        onChangeText={(val) => {
+                          setCustomDescriptionText(val);
+                          if (val.trim()) setItemDesc(val);
+                        }}
+                        autoFocus
+                      />
+                      <TouchableOpacity
+                        style={styles.addCustomBtn}
+                        onPress={() => handleConfirmCustomDescription()}
+                      >
+                        <Text style={styles.addCustomBtnText}>+ Option</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
 
                   {/* Unit Selection Pills */}
                   <Text style={[styles.inputLabel, { marginTop: 10 }]}>
@@ -2141,7 +2257,7 @@ export default function QuotationScreen() {
                       { fontWeight: "700", marginTop: 6 },
                     ]}
                   >
-                    Add Accessories (Wicker basket, BPO, Innotech, etc.):
+                    Add Accessories:
                   </Text>
                   <ScrollView
                     horizontal
@@ -2445,35 +2561,41 @@ export default function QuotationScreen() {
                   <TouchableOpacity
                     style={[
                       styles.roomPill,
-                      parseFloat(gstPercent) > 0 && styles.roomPillActive,
+                      gstType === "AS_PER_ACTUAL" && styles.roomPillActive,
                     ]}
-                    onPress={() => setGstPercent("18")}
+                    onPress={() => {
+                      setGstPercent("18");
+                      setGstType("AS_PER_ACTUAL");
+                    }}
                   >
                     <Text
                       style={[
                         styles.roomPillText,
-                        parseFloat(gstPercent) > 0 && styles.roomPillTextActive,
+                        gstType === "AS_PER_ACTUAL" && styles.roomPillTextActive,
                       ]}
                     >
-                      ✓ Apply GST (18%)
+                      18% (As per actuals)
                     </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
                     style={[
                       styles.roomPill,
-                      parseFloat(gstPercent) === 0 && styles.roomPillActive,
+                      gstType !== "AS_PER_ACTUAL" && parseFloat(gstPercent) === 18 && styles.roomPillActive,
                     ]}
-                    onPress={() => setGstPercent("0")}
+                    onPress={() => {
+                      setGstPercent("18");
+                      setGstType("CGST_SGST");
+                    }}
                   >
                     <Text
                       style={[
                         styles.roomPillText,
-                        parseFloat(gstPercent) === 0 &&
+                        gstType !== "AS_PER_ACTUAL" && parseFloat(gstPercent) === 18 &&
                           styles.roomPillTextActive,
                       ]}
                     >
-                      ✕ No GST / Exempt (0%)
+                      GST 18% (Calculated in total)
                     </Text>
                   </TouchableOpacity>
 
@@ -2482,15 +2604,18 @@ export default function QuotationScreen() {
                       key={rate}
                       style={[
                         styles.roomPill,
-                        parseFloat(gstPercent) === rate &&
+                        gstType !== "AS_PER_ACTUAL" && parseFloat(gstPercent) === rate &&
                           styles.roomPillActive,
                       ]}
-                      onPress={() => setGstPercent(String(rate))}
+                      onPress={() => {
+                        setGstPercent(String(rate));
+                        if (gstType === "AS_PER_ACTUAL") setGstType("CGST_SGST");
+                      }}
                     >
                       <Text
                         style={[
                           styles.roomPillText,
-                          parseFloat(gstPercent) === rate &&
+                          gstType !== "AS_PER_ACTUAL" && parseFloat(gstPercent) === rate &&
                             styles.roomPillTextActive,
                         ]}
                       >
@@ -2500,58 +2625,100 @@ export default function QuotationScreen() {
                   ))}
                 </ScrollView>
 
-                {parseFloat(gstPercent) > 0 ? (
-                  <View style={{ flexDirection: "row", gap: 12, marginTop: 4 }}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.inputLabel}>GST Rate (%)</Text>
-                      <TextInput
-                        style={styles.textInput}
-                        placeholder="18"
-                        keyboardType="numeric"
-                        value={gstPercent}
-                        onChangeText={setGstPercent}
-                      />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.inputLabel}>GST Type</Text>
-                      <View
-                        style={{ flexDirection: "row", gap: 6, marginTop: 4 }}
+                <View style={{ flexDirection: "row", gap: 12, marginTop: 4 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.inputLabel}>GST Rate (%)</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="18"
+                      keyboardType="numeric"
+                      value={gstPercent}
+                      onChangeText={setGstPercent}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.inputLabel}>GST Type</Text>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      style={{ flexDirection: "row", marginTop: 4 }}
+                    >
+                      <TouchableOpacity
+                        style={[
+                          styles.smallPill,
+                          gstType === "AS_PER_ACTUAL" && styles.smallPillActive,
+                        ]}
+                        onPress={() => setGstType("AS_PER_ACTUAL")}
                       >
-                        <TouchableOpacity
+                        <Text
                           style={[
-                            styles.smallPill,
-                            gstType === "CGST_SGST" && styles.smallPillActive,
+                            styles.smallPillText,
+                            gstType === "AS_PER_ACTUAL" &&
+                              styles.smallPillTextActive,
                           ]}
-                          onPress={() => setGstType("CGST_SGST")}
                         >
-                          <Text
-                            style={[
-                              styles.smallPillText,
-                              gstType === "CGST_SGST" &&
-                                styles.smallPillTextActive,
-                            ]}
-                          >
-                            CGST+SGST
-                          </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
+                          As Actuals
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.smallPill,
+                          gstType === "CGST_SGST" && styles.smallPillActive,
+                          { marginLeft: 4 },
+                        ]}
+                        onPress={() => setGstType("CGST_SGST")}
+                      >
+                        <Text
                           style={[
-                            styles.smallPill,
-                            gstType === "IGST" && styles.smallPillActive,
+                            styles.smallPillText,
+                            gstType === "CGST_SGST" &&
+                              styles.smallPillTextActive,
                           ]}
-                          onPress={() => setGstType("IGST")}
                         >
-                          <Text
-                            style={[
-                              styles.smallPillText,
-                              gstType === "IGST" && styles.smallPillTextActive,
-                            ]}
-                          >
-                            IGST
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
+                          CGST+SGST
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.smallPill,
+                          gstType === "IGST" && styles.smallPillActive,
+                          { marginLeft: 4 },
+                        ]}
+                        onPress={() => setGstType("IGST")}
+                      >
+                        <Text
+                          style={[
+                            styles.smallPillText,
+                            gstType === "IGST" && styles.smallPillTextActive,
+                          ]}
+                        >
+                          IGST
+                        </Text>
+                      </TouchableOpacity>
+                    </ScrollView>
+                  </View>
+                </View>
+
+                {gstType === "AS_PER_ACTUAL" ? (
+                  <View
+                    style={{
+                      backgroundColor: "#EFF6FF",
+                      padding: 10,
+                      borderRadius: 8,
+                      borderColor: "#BFDBFE",
+                      borderWidth: 1,
+                      marginTop: 8,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        color: "#1D4ED8",
+                        fontWeight: "600",
+                      }}
+                    >
+                      ℹ️ GST 18% will be charged as per actuals and is not included in the estimated total.
+                    </Text>
                   </View>
                 ) : (
                   <View
@@ -2561,18 +2728,17 @@ export default function QuotationScreen() {
                       borderRadius: 8,
                       borderColor: "#A7F3D0",
                       borderWidth: 1,
-                      marginTop: 4,
+                      marginTop: 8,
                     }}
                   >
                     <Text
                       style={{
                         fontSize: 11,
                         color: "#059669",
-                        fontWeight: "700",
+                        fontWeight: "600",
                       }}
                     >
-                      ✓ GST set to 0% (Tax-Exempt Proposal). Payable total
-                      equals taxable subtotal.
+                      ✓ GST {gstPercent}% is calculated and included in the estimated total.
                     </Text>
                   </View>
                 )}
@@ -2630,9 +2796,13 @@ export default function QuotationScreen() {
                     </Text>
                   </View>
                   <View style={styles.priceRow}>
-                    <Text style={styles.priceLabel}>GST ({gstPercent}%):</Text>
+                    <Text style={styles.priceLabel}>
+                      GST ({gstPercent}%{gstType === "AS_PER_ACTUAL" ? " – As per Actuals" : ""}):
+                    </Text>
                     <Text style={styles.priceVal}>
-                      {formatINR(liveCalculation.gstAmt)}
+                      {gstType === "AS_PER_ACTUAL"
+                        ? "18% – As per Actuals (Not included)"
+                        : formatINR(liveCalculation.gstAmt)}
                     </Text>
                   </View>
                   <View

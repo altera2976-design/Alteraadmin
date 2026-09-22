@@ -4,21 +4,47 @@ import { API_URL, STORAGE_KEYS } from '../constants/config';
 
 const api = axios.create({
   baseURL: API_URL,
-  headers: { 'Content-Type': 'application/json' },
+  headers: {
+    'Content-Type': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest',
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+  },
   timeout: 15000,
 });
 
-// Attach JWT token to every request
-api.interceptors.request.use(async (config) => {
-  try {
-    const token = await SecureStore.getItemAsync(STORAGE_KEYS.TOKEN);
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+// Attach JWT token to every request securely from SecureStore
+api.interceptors.request.use(
+  async (config) => {
+    try {
+      const token = await SecureStore.getItemAsync(STORAGE_KEYS.TOKEN);
+      if (token && config.headers) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    } catch (err) {
+      console.warn('⚠️ SecureStore access warning during request:', err);
     }
-  } catch {
-    // Ignore SecureStore errors
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Response interceptor to handle token expiration & security errors
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const status = error?.response?.status;
+    if (status === 401) {
+      console.warn('🔒 [SECURITY] 401 Unauthorized received. Clearing expired session token...');
+      try {
+        await SecureStore.deleteItemAsync(STORAGE_KEYS.TOKEN).catch(() => {});
+        await SecureStore.deleteItemAsync(STORAGE_KEYS.USER).catch(() => {});
+      } catch (err) {
+        console.error('Failed to wipe SecureStore on 401:', err);
+      }
+    }
+    return Promise.reject(error);
   }
-  return config;
-});
+);
 
 export default api;

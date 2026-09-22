@@ -15,31 +15,35 @@
  * - Bank details, Terms & Conditions, and Authorized Signature
  */
 
-import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system/legacy';
-import { Platform, Alert } from 'react-native';
-import { QuotationDoc, QuotationItemDoc } from './quotationApi';
+import * as FileSystem from "expo-file-system/legacy";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
+import { Alert, Platform } from "react-native";
+import { QuotationItemDoc } from "./quotationApi";
 
 function inr(v: number | undefined): string {
-  if (v === undefined || isNaN(v)) return '₹0';
-  return '₹' + Math.round(v).toLocaleString('en-IN');
+  if (v === undefined || isNaN(v)) return "₹0";
+  return "₹" + Math.round(v).toLocaleString("en-IN");
 }
 
 function esc(s: any): string {
-  if (s === null || s === undefined) return '';
+  if (s === null || s === undefined) return "";
   return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 function formatDate(d: any): string {
-  if (!d) return '—';
+  if (!d) return "—";
   try {
     const date = new Date(d);
-    return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    return date.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
   } catch {
     return String(d);
   }
@@ -49,12 +53,15 @@ function formatDate(d: any): string {
  * Returns safe filename for downloaded/shared PDF
  */
 export function getPdfFileName(q: any): string {
-  const client = (q.client?.name || q.customerName || 'Client')
-    .replace(/[^a-zA-Z0-9 ]/g, '')
+  const client = (q.client?.name || q.customerName || "Client")
+    .replace(/[^a-zA-Z0-9 ]/g, "")
     .trim()
-    .replace(/\s+/g, '_');
-  const no = (q.quotationNumber || q.quotationNo || q.id || 'QT').replace(/[^a-zA-Z0-9-]/g, '');
-  const rev = q.revision ? `_Rev${q.revision}` : '';
+    .replace(/\s+/g, "_");
+  const no = (q.quotationNumber || q.quotationNo || q.id || "QT").replace(
+    /[^a-zA-Z0-9-]/g,
+    "",
+  );
+  const rev = q.revision ? `_Rev${q.revision}` : "";
   return `Quotation_${no}${rev}_${client}.pdf`;
 }
 
@@ -63,34 +70,36 @@ export function getPdfFileName(q: any): string {
  */
 export function buildQuotationHtml(q: any): string {
   const company = q.companyDetails || {
-    name: 'ALTERA INTERIOR',
-    tagline: 'The Modern Home Maker • Interior | Architect | Construction',
-    address: 'Plot 42, Sector 18, Commercial Hub, New Delhi - 110001',
-    phone: '+91 98765 43210',
-    email: 'contact@alterainterior.com',
-    gstin: '07AAAAA0000A1Z5',
+    name: "ALTERA INTERIOR",
+    tagline: "The Modern Home Maker • Interior | Architect | Construction",
+    address: "Plot 42, Sector 18, Commercial Hub, New Delhi - 110001",
+    phone: "+91 98765 43210",
+    email: "contact@alterainterior.com",
+    gstin: "07AAAAA0000A1Z5",
   };
 
   const client = q.client || {
-    name: q.customerName || 'Valued Client',
-    company: '',
-    phone: q.customerPhone || '',
-    email: q.customerEmail || '',
-    address: q.customerAddress || q.siteLocation || '',
-    gstin: '',
+    name: q.customerName || "Valued Client",
+    company: "",
+    phone: q.customerPhone || "",
+    email: q.customerEmail || "",
+    address: q.customerAddress || q.siteLocation || "",
+    gstin: "",
   };
 
-  const quotationNumber = q.quotationNumber || q.quotationNo || 'QT-2026-0001';
+  const quotationNumber = q.quotationNumber || q.quotationNo || "QT-2026-0001";
   const qDate = formatDate(q.quotationDate || q.date || new Date());
-  const vUntil = formatDate(q.validUntil || new Date(Date.now() + 30 * 86400000));
-  const status = (q.status || 'Draft').toUpperCase();
+  const vUntil = formatDate(
+    q.validUntil || new Date(Date.now() + 30 * 86400000),
+  );
+  const status = (q.status || "Draft").toUpperCase();
 
   // ── Group Items by Room / Area ─────────────────────────────────────────────
   let roomGroups: { [roomName: string]: QuotationItemDoc[] } = {};
 
   if (Array.isArray(q.items) && q.items.length > 0) {
     q.items.forEach((item: any) => {
-      const room = item.room || 'General Works';
+      const room = item.room || "General Works";
       if (!roomGroups[room]) roomGroups[room] = [];
       roomGroups[room].push(item);
     });
@@ -107,7 +116,7 @@ export function buildQuotationHtml(q: any): string {
       }));
     });
   } else {
-    roomGroups['General Works'] = [];
+    roomGroups["General Works"] = [];
   }
 
   // ── Build Room Work Item Tables ────────────────────────────────────────────
@@ -115,30 +124,38 @@ export function buildQuotationHtml(q: any): string {
   let computedSubtotal = 0;
 
   const roomSectionsHtml = Object.keys(roomGroups)
-    .map(roomName => {
+    .map((roomName) => {
       const items = roomGroups[roomName];
-      const roomTotal = items.reduce((acc, it) => acc + (it.amount || it.quantity * it.rate || 0), 0);
+      const roomTotal = items.reduce(
+        (acc, it) => acc + (it.amount || it.quantity * it.rate || 0),
+        0,
+      );
       computedSubtotal += roomTotal;
 
       const itemRows = items
-        .map(it => {
+        .map((it) => {
           globalItemIndex++;
-          const amt = it.amount !== undefined ? it.amount : (it.quantity || 1) * (it.rate || 0);
+          const amt =
+            it.amount !== undefined
+              ? it.amount
+              : (it.quantity || 1) * (it.rate || 0);
 
           // Specs badges
           const specs = it.specifications || {};
-          const specEntries = Object.entries(specs).filter(([_, v]) => Boolean(v));
+          const specEntries = Object.entries(specs).filter(([_, v]) =>
+            Boolean(v),
+          );
           const specsHtml =
             specEntries.length > 0
               ? `<div class="specs-grid">
                   ${specEntries
                     .map(
                       ([k, v]) =>
-                        `<span class="spec-chip"><strong>${esc(k)}:</strong> ${esc(v)}</span>`
+                        `<span class="spec-chip"><strong>${esc(k)}:</strong> ${esc(v)}</span>`,
                     )
-                    .join('')}
+                    .join("")}
                 </div>`
-              : '';
+              : "";
 
           // Accessories list
           const accs = it.accessories || [];
@@ -148,39 +165,39 @@ export function buildQuotationHtml(q: any): string {
                   <strong>Accessories:</strong> ${accs
                     .map(
                       (a: any) =>
-                        `${esc(a.name)} (${a.qty} nos - <span class="acc-type">${esc(a.inclusionType)}</span>)`
+                        `${esc(a.name)} (${a.qty} nos - <span class="acc-type">${esc(a.inclusionType)}</span>)`,
                     )
-                    .join('; ')}
+                    .join("; ")}
                 </div>`
-              : '';
+              : "";
 
           // Dimension info
           const m = it.measurements;
           const dimInfo =
             m && m.length > 0 && (m.height > 0 || m.width > 0)
               ? `<div class="dim-tag">📏 ${m.length} × ${m.height || m.width} = ${m.calculatedArea} ${it.unit}</div>`
-              : '';
+              : "";
 
           return `
             <tr class="item-tr">
               <td class="center col-num">${globalItemIndex}</td>
               <td class="col-desc">
                 <div class="item-title">${esc(it.name)}</div>
-                ${it.description ? `<div class="item-subdesc">${esc(it.description)}</div>` : ''}
+                ${it.description ? `<div class="item-subdesc">${esc(it.description)}</div>` : ""}
                 ${dimInfo}
                 ${specsHtml}
                 ${accsHtml}
-                ${it.remarks ? `<div class="item-remark">Note: ${esc(it.remarks)}</div>` : ''}
-                ${it.costVariationNote ? `<div class="variation-note">⚠️ ${esc(it.costVariationNote)}</div>` : ''}
+                ${it.remarks ? `<div class="item-remark">Note: ${esc(it.remarks)}</div>` : ""}
+                ${it.costVariationNote ? `<div class="variation-note">⚠️ ${esc(it.costVariationNote)}</div>` : ""}
               </td>
-              <td class="center col-unit">${esc(it.unit || 'Nos')}</td>
+              <td class="center col-unit">${esc(it.unit || "Nos")}</td>
               <td class="center col-qty">${it.quantity || 1}</td>
               <td class="right col-rate">${inr(it.rate || 0)}</td>
               <td class="right col-amt">${inr(amt)}</td>
             </tr>
           `;
         })
-        .join('');
+        .join("");
 
       return `
         <div class="room-group">
@@ -206,18 +223,32 @@ export function buildQuotationHtml(q: any): string {
         </div>
       `;
     })
-    .join('');
+    .join("");
 
   // ── Pricing Breakdown ──────────────────────────────────────────────────────
   const pricing = q.pricing || {};
-  const subtotal = pricing.subtotal !== undefined ? pricing.subtotal : computedSubtotal;
-  const handlingFee = pricing.handlingFeeAmount !== undefined ? pricing.handlingFeeAmount : Math.round(subtotal * 0.02);
-  const designFee = pricing.designFeeAmount !== undefined ? pricing.designFeeAmount : Math.round(subtotal * 0.02);
+  const subtotal =
+    pricing.subtotal !== undefined ? pricing.subtotal : computedSubtotal;
+  const handlingFee =
+    pricing.handlingFeeAmount !== undefined
+      ? pricing.handlingFeeAmount
+      : Math.round(subtotal * 0.02);
+  const designFee =
+    pricing.designFeeAmount !== undefined
+      ? pricing.designFeeAmount
+      : Math.round(subtotal * 0.02);
   const discount = pricing.discountAmount || 0;
-  const taxable = pricing.taxableAmount !== undefined ? pricing.taxableAmount : subtotal + handlingFee + designFee - discount;
-  const totalGst = pricing.totalGstAmount !== undefined ? pricing.totalGstAmount : Math.round(taxable * 0.18);
-  const grandTotal = pricing.grandTotal !== undefined ? pricing.grandTotal : taxable + totalGst;
-  const amountInWords = pricing.amountInWords || '';
+  const taxable =
+    pricing.taxableAmount !== undefined
+      ? pricing.taxableAmount
+      : subtotal + handlingFee + designFee - discount;
+  const totalGst =
+    pricing.totalGstAmount !== undefined
+      ? pricing.totalGstAmount
+      : Math.round(taxable * 0.18);
+  const grandTotal =
+    pricing.grandTotal !== undefined ? pricing.grandTotal : taxable + totalGst;
+  const amountInWords = pricing.amountInWords || "";
 
   // ── Payment Milestones ─────────────────────────────────────────────────────
   const milestones = q.paymentMilestones || [];
@@ -241,34 +272,33 @@ export function buildQuotationHtml(q: any): string {
                 (m: any) => `
               <tr>
                 <td><strong>${esc(m.milestoneName)}</strong></td>
-                <td>${esc(m.stage || 'As per project stage approval')}</td>
+                <td>${esc(m.stage || "As per project stage approval")}</td>
                 <td class="center font-bold">${m.percentage}%</td>
                 <td class="right font-bold">${inr(m.amount || Math.round(grandTotal * (m.percentage / 100)))}</td>
               </tr>
-            `
+            `,
               )
-              .join('')}
+              .join("")}
           </tbody>
         </table>
       </div>`
-      : '';
+      : "";
 
   // ── Bank Details ───────────────────────────────────────────────────────────
   const bank = q.bankDetails || {
-    accountName: 'Altera Interior Pvt. Ltd.',
-    bankName: 'HDFC Bank',
-    accountNumber: '50200012345678',
-    ifscCode: 'HDFC0001234',
-    branch: 'Main Commercial Branch',
-    upiId: 'altera@hdfcbank',
+    accountName: "Altera Interior Pvt. Ltd.",
+    bankName: "Induslnd Bank",
+    accountNumber: "201002880175",
+    ifscCode: "INDB0000518",
+    branch: "Gurugram Branch",
   };
 
   // ── Terms & Conditions ─────────────────────────────────────────────────────
   const terms = q.termsAndConditions || [
-    '1. Quotation Validity: 30 days from date of issue.',
-    '2. Measurement Variation: Cost may vary as per actual site measurements and drawings.',
-    '3. Milestone Payments: Work commences upon milestone release.',
-    '4. GST @ 18% is applicable as per government statutory norms.',
+    "1. Quotation Validity: 30 days from date of issue.",
+    "2. Measurement Variation: Cost may vary as per actual site measurements and drawings.",
+    "3. Milestone Payments: Work commences upon milestone release.",
+    "4. GST @ 18% is applicable as per government statutory norms.",
   ];
 
   return `<!DOCTYPE html>
@@ -651,7 +681,7 @@ export function buildQuotationHtml(q: any): string {
       </td>
       <td style="width: 40%; vertical-align: top;" class="doc-type-box">
         <div class="doc-type-title">QUOTATION</div>
-        <div class="doc-ref-tag">${esc(quotationNumber)}${q.revision ? ` (Rev ${q.revision})` : ''}</div>
+        <div class="doc-ref-tag">${esc(quotationNumber)}${q.revision ? ` (Rev ${q.revision})` : ""}</div>
         <div class="status-badge status-${esc(status)}">${esc(status)}</div>
         <div style="font-size: 9.5px; color: #64748B; margin-top: 4px;">
           Date: <strong>${qDate}</strong><br />
@@ -666,24 +696,24 @@ export function buildQuotationHtml(q: any): string {
     <div class="meta-col">
       <div class="meta-label">Quotation Prepared For</div>
       <div class="meta-val-name">${esc(client.name)}</div>
-      ${client.company ? `<div class="meta-row"><strong>Company:</strong> ${esc(client.company)}</div>` : ''}
-      <div class="meta-row"><strong>Phone:</strong> ${esc(client.phone || '—')}</div>
-      <div class="meta-row"><strong>Email:</strong> ${esc(client.email || '—')}</div>
-      ${client.gstin ? `<div class="meta-row"><strong>Client GSTIN:</strong> ${esc(client.gstin)}</div>` : ''}
+      ${client.company ? `<div class="meta-row"><strong>Company:</strong> ${esc(client.company)}</div>` : ""}
+      <div class="meta-row"><strong>Phone:</strong> ${esc(client.phone || "—")}</div>
+      <div class="meta-row"><strong>Email:</strong> ${esc(client.email || "—")}</div>
+      ${client.gstin ? `<div class="meta-row"><strong>Client GSTIN:</strong> ${esc(client.gstin)}</div>` : ""}
     </div>
     <div class="meta-col">
       <div class="meta-label">Site &amp; Project Coordinates</div>
-      <div class="meta-val-name">${esc(q.projectTitle || 'Interior Execution')}</div>
-      <div class="meta-row"><strong>Project Type:</strong> ${esc(q.projectType || 'Residential Interior')}</div>
-      <div class="meta-row"><strong>Site Address:</strong> ${esc(q.siteLocation || client.address || 'Onsite')}</div>
-      <div class="meta-row"><strong>Assigned Designer:</strong> ${esc(q.assignedDesignerName || 'Altera Design Team')}</div>
+      <div class="meta-val-name">${esc(q.projectTitle || "Interior Execution")}</div>
+      <div class="meta-row"><strong>Project Type:</strong> ${esc(q.projectType || "Residential Interior")}</div>
+      <div class="meta-row"><strong>Site Address:</strong> ${esc(q.siteLocation || client.address || "Onsite")}</div>
+      <div class="meta-row"><strong>Assigned Designer:</strong> ${esc(q.assignedDesignerName || "Altera Design Team")}</div>
     </div>
   </div>
 
   <!-- Project Title Banner -->
   <div class="project-banner">
-    <div class="project-banner-title">Project: ${esc(q.projectTitle || 'Interior Execution Scope')}</div>
-    <div class="project-banner-loc">Site: ${esc(q.siteLocation || 'Client Residence')}</div>
+    <div class="project-banner-title">Project: ${esc(q.projectTitle || "Interior Execution Scope")}</div>
+    <div class="project-banner-loc">Site: ${esc(q.siteLocation || "Client Residence")}</div>
   </div>
 
   <!-- Room-wise Interior Items -->
@@ -696,28 +726,40 @@ export function buildQuotationHtml(q: any): string {
         <td class="font-bold">Raw Items Subtotal:</td>
         <td class="right font-bold">${inr(subtotal)}</td>
       </tr>
-      ${handlingFee > 0 ? `
+      ${
+        handlingFee > 0
+          ? `
       <tr>
         <td>Handling Charges (${pricing.handlingFeePercent || 2}%):</td>
         <td class="right">${inr(handlingFee)}</td>
-      </tr>` : ''}
-      ${designFee > 0 ? `
+      </tr>`
+          : ""
+      }
+      ${
+        designFee > 0
+          ? `
       <tr>
         <td>Designing / Consultation Fees (${pricing.designFeePercent || 2}%):</td>
         <td class="right">${inr(designFee)}</td>
-      </tr>` : ''}
-      ${discount > 0 ? `
+      </tr>`
+          : ""
+      }
+      ${
+        discount > 0
+          ? `
       <tr>
         <td style="color: #059669;">Special Discount:</td>
         <td class="right" style="color: #059669;">-${inr(discount)}</td>
-      </tr>` : ''}
+      </tr>`
+          : ""
+      }
       <tr style="border-top: 1px solid #CBD5E1;">
         <td class="font-bold">Taxable Amount:</td>
         <td class="right font-bold">${inr(taxable)}</td>
       </tr>
       <tr>
-        <td>GST (${pricing.gstPercent || 18}% ${pricing.gstType || 'CGST+SGST'}):</td>
-        <td class="right">${inr(totalGst)}</td>
+        <td>GST (${pricing.gstPercent || 18}% ${pricing.gstType === 'AS_PER_ACTUAL' ? '– As per Actuals' : (pricing.gstType || "CGST+SGST")}):</td>
+        <td class="right" style="${pricing.gstType === 'AS_PER_ACTUAL' ? 'color: #2563EB; font-weight: 600;' : ''}">${pricing.gstType === 'AS_PER_ACTUAL' ? '18% – As per Actuals' : inr(totalGst)}</td>
       </tr>
       <tr class="total-row">
         <td>ESTIMATED GRAND TOTAL:</td>
@@ -726,10 +768,16 @@ export function buildQuotationHtml(q: any): string {
     </table>
   </div>
 
-  ${amountInWords ? `
+  ${pricing.gstType === 'AS_PER_ACTUAL' ? `<div style="margin-top: 12px; padding: 8px 12px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 6px; font-size: 11px; color: #1D4ED8; font-weight: 600;">ℹ️ GST @ 18% will be charged separately as applicable on the actual/final invoice and is not included in this estimated total.</div>` : ''}
+
+  ${
+    amountInWords
+      ? `
   <div class="amount-words-box">
     <strong>Amount in Words:</strong> ${esc(amountInWords)}
-  </div>` : ''}
+  </div>`
+      : ""
+  }
 
   <!-- Payment Milestones Schedule -->
   ${milestonesHtml}
@@ -748,7 +796,6 @@ export function buildQuotationHtml(q: any): string {
       </div>
       <div class="bank-item">
         <strong>Branch:</strong> ${esc(bank.branch)}<br />
-        <strong>UPI ID:</strong> ${esc(bank.upiId || 'altera@hdfcbank')}
       </div>
     </div>
   </div>
@@ -757,7 +804,7 @@ export function buildQuotationHtml(q: any): string {
   <div class="section-card">
     <div class="card-header">📜 TERMS &amp; CONDITIONS</div>
     <div class="terms-box">
-      ${terms.map((t: any) => `<div style="margin-bottom: 3px;">${esc(t)}</div>`).join('')}
+      ${terms.map((t: any) => `<div style="margin-bottom: 3px;">${esc(t)}</div>`).join("")}
     </div>
   </div>
 
@@ -782,13 +829,16 @@ export function buildQuotationHtml(q: any): string {
 /**
  * Generate PDF file on device
  */
-export async function generatePdf(q: any): Promise<{ uri: string; base64: string; filename: string }> {
+export async function generatePdf(
+  q: any,
+): Promise<{ uri: string; base64: string; filename: string }> {
   const html = buildQuotationHtml(q);
   const filename = getPdfFileName(q);
 
   const { uri, base64 } = await Print.printToFileAsync({ html, base64: true });
 
-  const baseDir = FileSystem.documentDirectory || FileSystem.cacheDirectory || '';
+  const baseDir =
+    FileSystem.documentDirectory || FileSystem.cacheDirectory || "";
   const destUri = baseDir ? `${baseDir}${filename}` : uri;
   if (base64 && baseDir) {
     try {
@@ -800,7 +850,7 @@ export async function generatePdf(q: any): Promise<{ uri: string; base64: string
     }
   }
 
-  return { uri: destUri, base64: base64 ?? '', filename };
+  return { uri: destUri, base64: base64 ?? "", filename };
 }
 
 /**
@@ -811,8 +861,8 @@ export async function sharePdf(q: any): Promise<void> {
 
   if (await Sharing.isAvailableAsync()) {
     await Sharing.shareAsync(uri, {
-      mimeType: 'application/pdf',
-      UTI: 'com.adobe.pdf',
+      mimeType: "application/pdf",
+      UTI: "com.adobe.pdf",
       dialogTitle: `Share ${filename}`,
     });
   }
@@ -824,9 +874,10 @@ export async function sharePdf(q: any): Promise<void> {
 export async function downloadPdf(q: any): Promise<void> {
   const { uri, filename, base64 } = await generatePdf(q);
 
-  if (Platform.OS === 'android') {
+  if (Platform.OS === "android") {
     try {
-      const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+      const permissions =
+        await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
       if (!permissions.granted) {
         await sharePdf(q);
         return;
@@ -835,22 +886,22 @@ export async function downloadPdf(q: any): Promise<void> {
       const destUri = await FileSystem.StorageAccessFramework.createFileAsync(
         permissions.directoryUri,
         filename,
-        'application/pdf'
+        "application/pdf",
       );
 
       await FileSystem.writeAsStringAsync(destUri, base64, {
         encoding: FileSystem.EncodingType.Base64,
       });
 
-      Alert.alert('Quotation Downloaded', `"${filename}" saved successfully.`);
+      Alert.alert("Quotation Downloaded", `"${filename}" saved successfully.`);
     } catch {
       await sharePdf(q);
     }
   } else {
     if (await Sharing.isAvailableAsync()) {
       await Sharing.shareAsync(uri, {
-        mimeType: 'application/pdf',
-        UTI: 'com.adobe.pdf',
+        mimeType: "application/pdf",
+        UTI: "com.adobe.pdf",
         dialogTitle: `Save ${filename}`,
       });
     }

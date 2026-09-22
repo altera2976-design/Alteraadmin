@@ -2,11 +2,7 @@ import { Platform } from "react-native";
 import Constants from "expo-constants";
 
 /**
- * API Configuration
- * 
- * For Production / Client APKs:
- * Ensure that EXPO_PUBLIC_API_URL is set in your .env file or build environment.
- * Do NOT use localhost or 192.168.x.x for production builds.
+ * API Configuration & Security Policy
  */
 const extraApiUrl = Constants.expoConfig?.extra?.apiUrl;
 
@@ -31,13 +27,18 @@ if (__DEV__) {
     }
   }
 } else {
-  // Production / Preview APK:
+  // Production / Preview APK: Enforce HTTPS for encrypted traffic
   if (process.env.EXPO_PUBLIC_API_URL) {
     apiUrl = process.env.EXPO_PUBLIC_API_URL;
   } else if (extraApiUrl && !extraApiUrl.includes('localhost') && !extraApiUrl.includes('127.0.0.1')) {
     apiUrl = extraApiUrl;
   } else {
     apiUrl = 'https://alterabackend.onrender.com/api';
+  }
+
+  // Force HTTPS in production if unencrypted HTTP was configured
+  if (apiUrl.startsWith('http://') && !apiUrl.includes('localhost') && !apiUrl.includes('127.0.0.1')) {
+    apiUrl = apiUrl.replace('http://', 'https://');
   }
 }
 
@@ -58,15 +59,9 @@ export const STORAGE_KEYS = {
 export const APP_COLORS = {
   primary: "#D60000",
   primaryDark: "#B00000",
-  primaryLight: "#FDECEC",
-  secondary: "#111111",
-  background: "#F7F7F7",
+  background: "#F4F6F9",
   card: "#FFFFFF",
-  text: "#111111",
-  textLight: "#666666",
-  border: "#E5E5E5",
-  success: "#10B981",
-  danger: "#D60000",
-  warning: "#F59E0B",
-  placeholder: "#A3A3A3",
-} as const;
+  text: "#1A1A1A",
+  textSecondary: "#666666",
+  border: "#E0E0E0",
+};

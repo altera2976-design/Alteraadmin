@@ -1,4 +1,4 @@
-import api from './api';
+import api from "./api";
 
 export interface AttendanceSummary {
   totalCalendarDays: number;
@@ -42,8 +42,14 @@ export interface PayrollRecord {
   _id: string;
   userId: any;
   month: string;
-  status: 'DRAFT' | 'CALCULATED' | 'APPROVED' | 'PROCESSING' | 'PAID' | 'CANCELLED';
-  salaryType: 'MONTHLY' | 'DAILY' | 'HOURLY';
+  status:
+    | "DRAFT"
+    | "CALCULATED"
+    | "APPROVED"
+    | "PROCESSING"
+    | "PAID"
+    | "CANCELLED";
+  salaryType: "MONTHLY" | "DAILY" | "HOURLY";
   perDaySalary: number;
   attendanceSummary: AttendanceSummary;
   earnings: PayrollEarnings;
@@ -58,9 +64,9 @@ export interface PayrollRecord {
   payment?: {
     paidAmount: number;
     paymentDate?: string;
-    paymentMethod: 'BANK_TRANSFER' | 'CASH' | 'UPI' | 'CHEQUE' | 'PENDING';
+    paymentMethod: "BANK_TRANSFER" | "CASH" | "CHEQUE" | "PENDING";
     transactionId?: string;
-    paymentStatus: 'PENDING' | 'PAID' | 'FAILED';
+    paymentStatus: "PENDING" | "PAID" | "FAILED";
   };
   attendanceSnapshotHash?: string;
   attendanceChangedAfterApproval?: boolean;
@@ -112,7 +118,7 @@ export interface PayrollConfig {
   workingDaysPerWeek: number;
   weekOffDays: number[];
   holidays: Array<{ date: string; name: string }>;
-  calculationMethod: 'CALENDAR_DAYS' | 'WORKING_DAYS';
+  calculationMethod: "CALENDAR_DAYS" | "WORKING_DAYS";
   defaultOvertimeRatePerHour: number;
   halfDaySalaryRatio: number;
   deductionRules: {
@@ -127,11 +133,14 @@ export const payrollService = {
   /**
    * Calculate or retrieve monthly payroll
    */
-  calculate: async (month: string, recalculate?: boolean): Promise<PayrollCalculateResponse> => {
-    const res = await api.get('/payroll/calculate', {
+  calculate: async (
+    month: string,
+    recalculate?: boolean,
+  ): Promise<PayrollCalculateResponse> => {
+    const res = await api.get("/payroll/calculate", {
       params: {
         month,
-        ...(recalculate ? { recalculate: 'true' } : {}),
+        ...(recalculate ? { recalculate: "true" } : {}),
       },
     });
     return res.data;
@@ -140,7 +149,15 @@ export const payrollService = {
   /**
    * Get detailed salary breakdown for an employee
    */
-  getEmployeeDetail: async (id: string, month?: string): Promise<{ success: boolean; month: string; employee: any; payroll: PayrollRecord }> => {
+  getEmployeeDetail: async (
+    id: string,
+    month?: string,
+  ): Promise<{
+    success: boolean;
+    month: string;
+    employee: any;
+    payroll: PayrollRecord;
+  }> => {
     const res = await api.get(`/payroll/employee/${id}`, {
       params: { month },
     });
@@ -150,8 +167,11 @@ export const payrollService = {
   /**
    * Approve monthly payroll
    */
-  approve: async (month: string, employeeIds?: string[]): Promise<{ success: boolean; message: string; count: number }> => {
-    const res = await api.post('/payroll/approve', { month, employeeIds });
+  approve: async (
+    month: string,
+    employeeIds?: string[],
+  ): Promise<{ success: boolean; message: string; count: number }> => {
+    const res = await api.post("/payroll/approve", { month, employeeIds });
     return res.data;
   },
 
@@ -164,8 +184,12 @@ export const payrollService = {
     transactionId?: string;
     paidAmount?: number;
     paymentDate?: string;
-  }): Promise<{ success: boolean; message: string; payroll: PayrollRecord }> => {
-    const res = await api.post('/payroll/pay', payload);
+  }): Promise<{
+    success: boolean;
+    message: string;
+    payroll: PayrollRecord;
+  }> => {
+    const res = await api.post("/payroll/pay", payload);
     return res.data;
   },
 
@@ -179,7 +203,7 @@ export const payrollService = {
     message?: string;
     pdfBase64: string;
   }): Promise<{ success: boolean; message: string; previewUrl?: string }> => {
-    const res = await api.post('/payroll/send-payslip', payload);
+    const res = await api.post("/payroll/send-payslip", payload);
     return res.data;
   },
 
@@ -187,15 +211,17 @@ export const payrollService = {
    * Get payroll rules & holidays configuration
    */
   getConfig: async (): Promise<{ success: boolean; data: PayrollConfig }> => {
-    const res = await api.get('/payroll/config');
+    const res = await api.get("/payroll/config");
     return res.data;
   },
 
   /**
    * Update payroll rules & holidays configuration
    */
-  updateConfig: async (config: Partial<PayrollConfig>): Promise<{ success: boolean; message: string; data: PayrollConfig }> => {
-    const res = await api.put('/payroll/config', config);
+  updateConfig: async (
+    config: Partial<PayrollConfig>,
+  ): Promise<{ success: boolean; message: string; data: PayrollConfig }> => {
+    const res = await api.put("/payroll/config", config);
     return res.data;
   },
 
@@ -204,7 +230,7 @@ export const payrollService = {
    */
   updateEmployeeSalary: async (
     id: string,
-    payload: { salary?: number; salaryType?: string; salaryStructure?: any }
+    payload: { salary?: number; salaryType?: string; salaryStructure?: any },
   ): Promise<{ success: boolean; message: string; employee: any }> => {
     const res = await api.put(`/payroll/employee-salary/${id}`, payload);
     return res.data;

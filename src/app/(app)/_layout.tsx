@@ -153,6 +153,12 @@ function CustomDrawerContent(props: any) {
                 onPress={() => navigateTo("/(app)/quotation")}
               />
               <DrawerItem
+                icon="card"
+                label="Transactions"
+                isActive={isItemActive("/(app)/transactions")}
+                onPress={() => navigateTo("/(app)/transactions")}
+              />
+              <DrawerItem
                 icon="stats-chart"
                 label="Reports"
                 isActive={isItemActive("/(app)/tabs/reports")}
@@ -190,6 +196,12 @@ function CustomDrawerContent(props: any) {
                 label="Bike Tracking"
                 isActive={isItemActive("/(app)/tabs/bike")}
                 onPress={() => navigateTo("/(app)/tabs/bike")}
+              />
+              <DrawerItem
+                icon="card"
+                label="Transactions"
+                isActive={isItemActive("/(app)/transactions")}
+                onPress={() => navigateTo("/(app)/transactions")}
               />
               <DrawerItem
                 icon="settings"

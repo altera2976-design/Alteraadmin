@@ -51,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setLoading] = useState(true);
 
-  // Restore session from SecureStore on app launch
+  // Securely restore session from SecureStore on app launch
   useEffect(() => {
     const restore = async () => {
       try {
@@ -60,13 +60,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           SecureStore.getItemAsync(STORAGE_KEYS.USER),
         ]);
         if (storedToken && storedUser) {
-          setToken(storedToken);
-          setUser(normalizeUser(JSON.parse(storedUser)));
+          const parsed = JSON.parse(storedUser);
+          if (parsed && typeof parsed === 'object') {
+            setToken(storedToken);
+            setUser(normalizeUser(parsed));
+          } else {
+            throw new Error("Invalid stored user structure");
+          }
         }
-      } catch {
-        // Clear corrupted data
+      } catch (err) {
+        console.warn("⚠️ [SECURITY] Clearing corrupted auth session:", err);
         await SecureStore.deleteItemAsync(STORAGE_KEYS.TOKEN).catch(() => {});
         await SecureStore.deleteItemAsync(STORAGE_KEYS.USER).catch(() => {});
+        setToken(null);
+        setUser(null);
       } finally {
         setLoading(false);
       }
@@ -75,12 +82,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    const response = await authService.login(email, password);
+    const cleanEmail = email.trim().toLowerCase();
+    const response = await authService.login(cleanEmail, password);
     const normalized = normalizeUser(response.user)!;
     await SecureStore.setItemAsync(STORAGE_KEYS.TOKEN, response.token);
     await SecureStore.setItemAsync(
       STORAGE_KEYS.USER,
-      JSON.stringify(normalized),
+      JSON.stringify(normalized)
     );
     setToken(response.token);
     setUser(normalized);
@@ -93,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await SecureStore.setItemAsync(STORAGE_KEYS.TOKEN, response.token);
       await SecureStore.setItemAsync(
         STORAGE_KEYS.USER,
-        JSON.stringify(normalized),
+        JSON.stringify(normalized)
       );
       setToken(response.token);
       setUser(normalized);
@@ -106,13 +114,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password: string;
     phone?: string;
   }) => {
-    const response = await authService.register(data);
+    const cleanData = { ...data, email: data.email.trim().toLowerCase() };
+    const response = await authService.register(cleanData);
     if (response.token && response.user) {
       const normalized = normalizeUser(response.user)!;
       await SecureStore.setItemAsync(STORAGE_KEYS.TOKEN, response.token);
       await SecureStore.setItemAsync(
         STORAGE_KEYS.USER,
-        JSON.stringify(normalized),
+        JSON.stringify(normalized)
       );
       setToken(response.token);
       setUser(normalized);
@@ -130,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const normalized = normalizeUser(updatedUser)!;
     await SecureStore.setItemAsync(
       STORAGE_KEYS.USER,
-      JSON.stringify(normalized),
+      JSON.stringify(normalized)
     );
     setUser(normalized);
     return normalized;
@@ -141,7 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await SecureStore.setItemAsync(STORAGE_KEYS.TOKEN, newToken);
     await SecureStore.setItemAsync(
       STORAGE_KEYS.USER,
-      JSON.stringify(normalized),
+      JSON.stringify(normalized)
     );
     setToken(newToken);
     setUser(normalized);
@@ -151,9 +160,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await SecureStore.deleteItemAsync(STORAGE_KEYS.TOKEN);
       await SecureStore.deleteItemAsync(STORAGE_KEYS.USER);
-    } catch {}
-    setToken(null);
-    setUser(null);
+    } catch (err) {
+      console.error("Error clearing SecureStore on logout:", err);
+    } finally {
+      setToken(null);
+      setUser(null);
+    }
   };
 
   return (

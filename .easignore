@@ -7,4 +7,5 @@ android/build/
 *.log
 backend/
 admin-web/
+dist/
 .env
