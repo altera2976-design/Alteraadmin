@@ -35,6 +35,8 @@ export default function AddEmployeePage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
+
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
 

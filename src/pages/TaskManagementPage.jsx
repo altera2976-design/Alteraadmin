@@ -25,6 +25,9 @@ export default function TaskManagementPage() {
   // Modal & Form state
   const [showModal, setShowModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [fileError, setFileError] = useState('');
+  const [viewingTaskFiles, setViewingTaskFiles] = useState(null);
 
   const [form, setForm] = useState({
     name: '',
@@ -34,6 +37,48 @@ export default function TaskManagementPage() {
     dueDate: new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0],
     projectId: '',
   });
+
+  const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'pdf', 'doc', 'docx', 'xls', 'xlsx'];
+  const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+  const MAX_FILES = 10;
+
+  const formatFileSize = (bytes) => {
+    if (!bytes || bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  };
+
+  const handleFileSelect = (e) => {
+    const files = Array.from(e.target.files || []);
+    setFileError('');
+
+    if (selectedFiles.length + files.length > MAX_FILES) {
+      setFileError(`Maximum ${MAX_FILES} attachments allowed per task.`);
+      return;
+    }
+
+    const validNewFiles = [];
+    for (const file of files) {
+      const ext = (file.name.split('.').pop() || '').toLowerCase();
+      if (!ALLOWED_EXTENSIONS.includes(ext)) {
+        setFileError(`Unsupported file type: .${ext}. Allowed: JPG, PNG, WEBP, PDF, DOC/DOCX, XLS/XLSX.`);
+        return;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        setFileError(`File "${file.name}" exceeds maximum allowed size of 50MB.`);
+        return;
+      }
+      validNewFiles.push(file);
+    }
+
+    setSelectedFiles((prev) => [...prev, ...validNewFiles]);
+  };
+
+  const handleRemoveFile = (index) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const fetchData = async (showSpinner = true) => {
     if (showSpinner) setLoading(true);
@@ -61,6 +106,7 @@ export default function TaskManagementPage() {
 
     const socket = io(SOCKET_URL);
     socket.on('task:created', () => fetchData(false));
+    socket.on('task:updated', () => fetchData(false));
     socket.on('dashboard_updated', () => fetchData(false));
 
     return () => socket.disconnect();
@@ -78,17 +124,30 @@ export default function TaskManagementPage() {
     setSuccess('');
 
     try {
-      await api.post('/tasks', {
-        name: form.name.trim(),
-        description: form.description.trim(),
-        assignedTo: form.assignedTo,
-        priority: form.priority,
-        dueDate: form.dueDate,
-        projectId: form.projectId || undefined,
+      const formData = new FormData();
+      formData.append('name', form.name.trim());
+      formData.append('description', form.description.trim());
+      formData.append('assignedTo', form.assignedTo);
+      formData.append('priority', form.priority);
+      formData.append('dueDate', form.dueDate);
+      if (form.projectId) {
+        formData.append('projectId', form.projectId);
+      }
+
+      selectedFiles.forEach((file) => {
+        formData.append('attachments', file);
       });
 
-      setSuccess('Task assigned successfully!');
+      await api.post('/tasks', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      setSuccess('Task assigned successfully with attachments!');
       setShowModal(false);
+      setSelectedFiles([]);
+      setFileError('');
       setForm({
         name: '',
         description: '',
@@ -125,6 +184,14 @@ export default function TaskManagementPage() {
     } catch {
       setError('Failed to delete task.');
     }
+  };
+
+  const getFileUrl = (url) => {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+      return url;
+    }
+    return `${SOCKET_URL}/${url.replace(/^\/+/, '')}`;
   };
 
   // Filter tasks
@@ -268,10 +335,10 @@ export default function TaskManagementPage() {
                 <th style={{ padding: '12px 14px' }}>Task ID</th>
                 <th style={{ padding: '12px 14px' }}>Task Name</th>
                 <th style={{ padding: '12px 14px' }}>Assigned To</th>
-                <th style={{ padding: '12px 14px' }}>Assigned By</th>
                 <th style={{ padding: '12px 14px' }}>Project / Category</th>
                 <th style={{ padding: '12px 14px' }}>Priority</th>
                 <th style={{ padding: '12px 14px' }}>Due Date</th>
+                <th style={{ padding: '12px 14px' }}>Attachments</th>
                 <th style={{ padding: '12px 14px' }}>Status</th>
                 <th style={{ padding: '12px 14px', textAlign: 'right' }}>Actions</th>
               </tr>
@@ -279,8 +346,8 @@ export default function TaskManagementPage() {
             <tbody>
               {filteredTasks.map((task) => {
                 const prioStyle = getPriorityStyle(task.priority);
-                const statStyle = getStatusStyle(task.status);
                 const isAssignedAdmin = (task.assignedToRole || '').toUpperCase() === 'ADMIN';
+                const attachCount = task.attachments?.length || 0;
 
                 return (
                   <tr key={task._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
@@ -307,9 +374,6 @@ export default function TaskManagementPage() {
                         <strong style={{ color: '#1e293b' }}>{task.assignedToName || 'Unassigned'}</strong>
                       </div>
                     </td>
-                    <td style={{ padding: '12px 14px', color: '#64748b', fontSize: 12 }}>
-                      {task.createdByName ? `${task.createdByName} (${task.createdByRole || 'ADMIN'})` : 'Super Admin'}
-                    </td>
                     <td style={{ padding: '12px 14px', color: '#475569' }}>
                       {task.projectName || 'General Operations'}
                     </td>
@@ -327,6 +391,27 @@ export default function TaskManagementPage() {
                       </span>
                     </td>
                     <td style={{ padding: '12px 14px', color: '#64748b', fontSize: 12 }}>{task.dueDate || 'No Due Date'}</td>
+                    <td style={{ padding: '12px 14px' }}>
+                      {attachCount > 0 ? (
+                        <button
+                          style={{
+                            background: '#eff6ff',
+                            color: '#2563eb',
+                            border: '1px solid #bfdbfe',
+                            borderRadius: 6,
+                            padding: '4px 8px',
+                            fontSize: 11,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                          }}
+                          onClick={() => setViewingTaskFiles(task)}
+                        >
+                          📎 {attachCount} {attachCount === 1 ? 'file' : 'files'}
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: 11, color: '#94a3b8' }}>None</span>
+                      )}
+                    </td>
                     <td style={{ padding: '12px 14px' }}>
                       <select
                         style={{
@@ -373,7 +458,11 @@ export default function TaskManagementPage() {
               <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Assign New Task</h3>
               <button
                 style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#64748b' }}
-                onClick={() => setShowModal(false)}
+                onClick={() => {
+                  setShowModal(false);
+                  setSelectedFiles([]);
+                  setFileError('');
+                }}
               >
                 ✖
               </button>
@@ -465,13 +554,81 @@ export default function TaskManagementPage() {
                     ))}
                   </select>
                 </div>
+
+                {/* ── File Attachments Upload Section ────────────────── */}
+                <div style={{ marginBottom: 14, background: '#f8fafc', padding: 12, borderRadius: 8, border: '1px dashed #cbd5e1' }}>
+                  <label style={styles.label}>Attachments / Reference Files (Optional)</label>
+                  <p style={{ fontSize: 11, color: '#64748b', margin: '0 0 8px 0' }}>
+                    Upload JPG, PNG, WEBP, PDF, DOC/DOCX, XLS/XLSX (Max 10MB per file)
+                  </p>
+
+                  <input
+                    type="file"
+                    multiple
+                    accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.xls,.xlsx"
+                    onChange={handleFileSelect}
+                    style={{ fontSize: 12 }}
+                  />
+
+                  {fileError ? (
+                    <div style={{ color: '#ef4444', fontSize: 11, marginTop: 6, fontWeight: 700 }}>
+                      ⚠️ {fileError}
+                    </div>
+                  ) : null}
+
+                  {selectedFiles.length > 0 && (
+                    <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {selectedFiles.map((file, idx) => (
+                        <div
+                          key={idx}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            background: '#ffffff',
+                            padding: '6px 10px',
+                            borderRadius: 6,
+                            border: '1px solid #e2e8f0',
+                            fontSize: 12,
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
+                            <span>📎</span>
+                            <span style={{ fontWeight: 600, color: '#1e293b', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: 220 }}>
+                              {file.name}
+                            </span>
+                            <span style={{ color: '#64748b', fontSize: 11 }}>({formatFileSize(file.size)})</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveFile(idx)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#ef4444',
+                              fontWeight: 'bold',
+                              cursor: 'pointer',
+                              padding: '2px 6px',
+                            }}
+                          >
+                            ✖
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div style={styles.modalFooter}>
                 <button
                   type="button"
                   className="btn btn-secondary"
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false);
+                    setSelectedFiles([]);
+                    setFileError('');
+                  }}
                   disabled={isSubmitting}
                 >
                   Cancel
@@ -481,10 +638,112 @@ export default function TaskManagementPage() {
                   className="btn btn-primary"
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? 'Assigning Task...' : 'Assign Task'}
+                  {isSubmitting ? 'Uploading & Assigning...' : 'Assign Task'}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: VIEW TASK ATTACHMENTS ─────────────────────── */}
+      {viewingTaskFiles && (
+        <div style={styles.modalBackdrop}>
+          <div style={styles.modalCard}>
+            <div style={styles.modalHeader}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>
+                  Attachments: {viewingTaskFiles.name}
+                </h3>
+                <span style={{ fontSize: 12, color: '#64748b' }}>Task ID: {viewingTaskFiles.taskId}</span>
+              </div>
+              <button
+                style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#64748b' }}
+                onClick={() => setViewingTaskFiles(null)}
+              >
+                ✖
+              </button>
+            </div>
+
+            <div style={styles.modalBody}>
+              {(!viewingTaskFiles.attachments || viewingTaskFiles.attachments.length === 0) ? (
+                <div style={{ textAlign: 'center', padding: 20, color: '#64748b' }}>
+                  No files attached to this task.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {viewingTaskFiles.attachments.map((att, index) => {
+                    const fUrl = getFileUrl(att.fileUrl || att.url);
+                    const fName = att.fileName || att.name || `Attachment-${index + 1}`;
+                    const isImg = (att.fileType || '').startsWith('image/') || /\.(jpg|jpeg|png|webp)$/i.test(fName);
+
+                    return (
+                      <div
+                        key={index}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: 10,
+                          borderRadius: 8,
+                          border: '1px solid #e2e8f0',
+                          background: '#f8fafc',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          {isImg ? (
+                            <img
+                              src={fUrl}
+                              alt={fName}
+                              style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6, border: '1px solid #cbd5e1' }}
+                            />
+                          ) : (
+                            <div style={{
+                              width: 44,
+                              height: 44,
+                              borderRadius: 6,
+                              background: '#e2e8f0',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: 18,
+                            }}>
+                              📄
+                            </div>
+                          )}
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>{fName}</div>
+                            <div style={{ fontSize: 11, color: '#64748b' }}>
+                              {att.fileSize ? formatFileSize(att.fileSize) : 'Document'} • Uploaded by {att.uploadedByName || 'Admin'}
+                            </div>
+                          </div>
+                        </div>
+
+                        <a
+                          href={fUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn-sm btn-primary"
+                          style={{ fontSize: 11, padding: '4px 10px', textDecoration: 'none' }}
+                        >
+                          🔗 Open / View
+                        </a>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div style={styles.modalFooter}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setViewingTaskFiles(null)}
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
