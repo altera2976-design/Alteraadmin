@@ -15,6 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { THEME } from '../../constants/theme';
+import { useAuth } from '../../context/AuthContext';
 import {
   getTransactions,
   getTransactionSummary,
@@ -65,6 +66,15 @@ function getStatusBadgeStyle(status: string) {
 
 export default function TransactionsScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+  const userRole = (user as any)?.role;
+  const isAdmin =
+    userRole === 'ADMIN' ||
+    userRole === 'SUPER_ADMIN' ||
+    userRole?.toUpperCase() === 'ADMIN' ||
+    userRole?.toUpperCase() === 'SUPER_ADMIN' ||
+    user?.email?.toLowerCase() === 'admin@company.com' ||
+    user?.email?.toLowerCase()?.includes('admin');
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -79,6 +89,7 @@ export default function TransactionsScreen() {
   const [modalVisible, setModalVisible] = useState(false);
 
   const loadData = async (isRefresh = false) => {
+    if (!isAdmin) return;
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
 
@@ -104,8 +115,12 @@ export default function TransactionsScreen() {
   };
 
   useEffect(() => {
-    loadData();
-  }, [selectedStatus, selectedMethod]);
+    if (isAdmin) {
+      loadData();
+    } else {
+      setLoading(false);
+    }
+  }, [selectedStatus, selectedMethod, isAdmin]);
 
   const handleSearchSubmit = () => {
     loadData();
@@ -171,6 +186,40 @@ export default function TransactionsScreen() {
       </TouchableOpacity>
     );
   };
+
+  if (!isAdmin) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.headerBar}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Access Denied</Text>
+          <View style={{ width: 24 }} />
+        </View>
+        <View style={[styles.centerContainer, { paddingHorizontal: 24 }]}>
+          <Ionicons name="lock-closed-outline" size={64} color={THEME.colors.primary} style={{ marginBottom: 16 }} />
+          <Text style={{ fontSize: 20, fontWeight: '700', color: '#111827', marginBottom: 8, textAlign: 'center' }}>
+            Admin Access Only
+          </Text>
+          <Text style={{ fontSize: 14, color: '#6B7280', textAlign: 'center', marginBottom: 24 }}>
+            Transaction history is restricted to administrators.
+          </Text>
+          <TouchableOpacity
+            style={{
+              backgroundColor: THEME.colors.primary,
+              paddingVertical: 12,
+              paddingHorizontal: 24,
+              borderRadius: 8,
+            }}
+            onPress={() => router.replace('/(app)/tabs/dashboard')}
+          >
+            <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 15 }}>Go to Dashboard</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>

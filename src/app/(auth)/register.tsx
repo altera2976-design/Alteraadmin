@@ -30,6 +30,8 @@ export default function RegisterScreen() {
   const [showPass, setShowPass] = useState(false);
 
   const handleRegister = async () => {
+    if (loading) return;
+
     if (!name.trim() || !email.trim() || !password) {
       setError('Please fill in all required fields.');
       return;

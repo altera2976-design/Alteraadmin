@@ -11,13 +11,15 @@ import {
   ActivityIndicator,
   Modal,
   Alert,
+  Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { THEME } from '../../../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../../context/AuthContext';
-import { projectApi, Project } from '../../../services/projectApi';
+import { projectApi, Project, Task } from '../../../services/projectApi';
 import { getSocket } from '../../../services/socket';
+import { API_URL } from '../../../constants/config';
 
 const STATUS_FILTERS = ['All', 'In Progress', 'Planning', 'Completed', 'On Hold', 'Cancelled'];
 
@@ -26,11 +28,18 @@ export default function ProjectsScreen() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
 
+  const [activeTab, setActiveTab] = useState<'projects' | 'tasks'>('projects');
   const [projects, setProjects] = useState<Project[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('All');
+
+  // Task detail & attachment modal
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
 
   // Create Project Modal (Admin Only)
   const [createModalVisible, setCreateModalVisible] = useState(false);
@@ -47,17 +56,24 @@ export default function ProjectsScreen() {
   const [formPriority, setFormPriority] = useState<'Low' | 'Medium' | 'High' | 'Urgent'>('Medium');
   const [formDescription, setFormDescription] = useState('');
 
-  const loadProjects = useCallback(async () => {
+  const loadData = useCallback(async () => {
     try {
-      const res = await projectApi.getProjects({
-        search: searchQuery.trim() || undefined,
-        status: selectedStatus !== 'All' ? selectedStatus : undefined,
-      });
-      if (res?.success) {
-        setProjects(res.data || []);
+      const [projRes, tasksRes] = await Promise.all([
+        projectApi.getProjects({
+          search: searchQuery.trim() || undefined,
+          status: selectedStatus !== 'All' ? selectedStatus : undefined,
+        }).catch(() => null),
+        projectApi.getTasks({}).catch(() => null),
+      ]);
+
+      if (projRes?.success) {
+        setProjects(projRes.data || []);
+      }
+      if (tasksRes?.success) {
+        setTasks(tasksRes.data || []);
       }
     } catch (error) {
-      console.error('Error fetching projects:', error);
+      console.error('Error fetching projects/tasks:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -65,26 +81,85 @@ export default function ProjectsScreen() {
   }, [searchQuery, selectedStatus]);
 
   useEffect(() => {
-    loadProjects();
+    loadData();
 
     const socket = getSocket();
     if (socket) {
-      const handleLive = () => loadProjects();
+      const handleLive = () => loadData();
       socket.on('project:created', handleLive);
       socket.on('project:updated', handleLive);
       socket.on('project:deleted', handleLive);
+      socket.on('task:created', handleLive);
+      socket.on('task:updated', handleLive);
+      socket.on('task:deleted', handleLive);
 
       return () => {
         socket.off('project:created', handleLive);
         socket.off('project:updated', handleLive);
         socket.off('project:deleted', handleLive);
+        socket.off('task:created', handleLive);
+        socket.off('task:updated', handleLive);
+        socket.off('task:deleted', handleLive);
       };
     }
-  }, [loadProjects]);
+  }, [loadData]);
 
   const onRefresh = () => {
     setRefreshing(true);
-    loadProjects();
+    loadData();
+  };
+
+  const handleUpdateTaskStatus = async (taskId: string, newStatus: string) => {
+    try {
+      setUpdatingTaskId(taskId);
+      let progress = 0;
+      if (newStatus === 'Completed') progress = 100;
+      else if (newStatus === 'In Progress') progress = 50;
+
+      await projectApi.updateTaskProgress(taskId, {
+        status: newStatus,
+        progress,
+      });
+
+      if (selectedTask && selectedTask._id === taskId) {
+        setSelectedTask((prev) => prev ? { ...prev, status: newStatus as any, progress } : null);
+      }
+      loadData();
+    } catch (err: any) {
+      Alert.alert('Error', err.response?.data?.message || 'Failed to update task status.');
+    } finally {
+      setUpdatingTaskId(null);
+    }
+  };
+
+  const getFullAttachmentUrl = (rawUrl?: string) => {
+    if (!rawUrl) return '';
+    if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://') || rawUrl.startsWith('data:')) {
+      return rawUrl;
+    }
+    const baseUrl = API_URL.replace(/\/api\/?$/, '');
+    return `${baseUrl}/${rawUrl.replace(/^\/+/, '')}`;
+  };
+
+  const handleOpenAttachment = async (rawUrl?: string) => {
+    const fullUrl = getFullAttachmentUrl(rawUrl);
+    if (!fullUrl) return;
+
+    try {
+      const supported = await Linking.canOpenURL(fullUrl);
+      if (supported) {
+        await Linking.openURL(fullUrl);
+      } else {
+        Alert.alert('Open File', `Opening URL in browser:\n${fullUrl}`, [
+          { text: 'Open Browser', onPress: () => Linking.openURL(fullUrl) },
+          { text: 'Cancel', style: 'cancel' }
+        ]);
+      }
+    } catch {
+      Linking.openURL(fullUrl).catch(() => {
+        Alert.alert('Error', 'Unable to open file attachment.');
+      });
+    }
   };
 
   const handleCreateProject = async () => {
@@ -133,7 +208,7 @@ export default function ProjectsScreen() {
       setFormExpectedEnd('');
       setFormDescription('');
 
-      loadProjects();
+      loadData();
       Alert.alert('Success', 'Project created successfully!');
     } catch (err: any) {
       Alert.alert('Error', err.response?.data?.message || 'Failed to create project.');
@@ -178,13 +253,38 @@ export default function ProjectsScreen() {
         </ScrollView>
       </View>
 
-      {/* Projects List */}
+      {/* Tab Switcher: Projects vs My Tasks */}
+      <View style={styles.tabToggleRow}>
+        <TouchableOpacity
+          style={[styles.tabToggleBtn, activeTab === 'projects' && styles.tabToggleBtnActive]}
+          onPress={() => setActiveTab('projects')}
+        >
+          <Ionicons name="briefcase-outline" size={16} color={activeTab === 'projects' ? '#fff' : '#555'} />
+          <Text style={[styles.tabToggleText, activeTab === 'projects' && styles.tabToggleTextActive]}>
+            Projects ({projects.length})
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tabToggleBtn, activeTab === 'tasks' && styles.tabToggleBtnActive]}
+          onPress={() => setActiveTab('tasks')}
+        >
+          <Ionicons name="checkbox-outline" size={16} color={activeTab === 'tasks' ? '#fff' : '#555'} />
+          <Text style={[styles.tabToggleText, activeTab === 'tasks' && styles.tabToggleTextActive]}>
+            My Tasks ({tasks.length})
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Main Content View: Projects or Tasks */}
       {loading && !refreshing ? (
         <View style={styles.centerBox}>
           <ActivityIndicator size="large" color={THEME.colors.primary} />
-          <Text style={styles.loadingText}>Loading Projects...</Text>
+          <Text style={styles.loadingText}>
+            {activeTab === 'projects' ? 'Loading Projects...' : 'Loading Assigned Tasks...'}
+          </Text>
         </View>
-      ) : (
+      ) : activeTab === 'projects' ? (
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
@@ -315,6 +415,151 @@ export default function ProjectsScreen() {
                     </View>
                   </View>
                 </TouchableOpacity>
+              );
+            })
+          )}
+        </ScrollView>
+      ) : (
+        /* ── MY ASSIGNED TASKS VIEW ─────────────────────────────────────── */
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[THEME.colors.primary]} />}
+        >
+          <View style={styles.listHeaderRow}>
+            <Text style={styles.listHeaderTitle}>My Assigned Tasks</Text>
+            <Text style={styles.listHeaderCount}>
+              {tasks.length} {tasks.length === 1 ? 'Task' : 'Tasks'}
+            </Text>
+          </View>
+
+          {tasks.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="checkbox-outline" size={54} color="#ccc" />
+              <Text style={styles.emptyTitle}>No Tasks Assigned</Text>
+              <Text style={styles.emptySub}>
+                Tasks assigned to you by Super Admin or Admin managers will automatically appear here.
+              </Text>
+            </View>
+          ) : (
+            tasks.map((t) => {
+              const attachCount = t.attachments?.length || 0;
+              const formattedAssignedDate = t.createdAt
+                ? new Date(t.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+                : 'N/A';
+
+              const isCompleted = t.status === 'Completed';
+              const isInProgress = t.status === 'In Progress';
+
+              return (
+                <View key={t._id} style={styles.taskCard}>
+                  {/* Card Header: Project Name & Priority */}
+                  <View style={styles.taskHeaderRow}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={styles.taskProjectTag} numberOfLines={1}>
+                        <Ionicons name="folder-outline" size={11} color={THEME.colors.primary} /> Project: {t.projectName || 'General Operations'}
+                      </Text>
+                      <Text style={styles.taskTitle}>{t.name}</Text>
+                    </View>
+
+                    <View style={[
+                      styles.prioTag,
+                      t.priority === 'Urgent' ? styles.prioUrgent :
+                      t.priority === 'High' ? styles.prioHigh : styles.prioNormal
+                    ]}>
+                      <Text style={styles.prioTagText}>{t.priority}</Text>
+                    </View>
+                  </View>
+
+                  {/* Task Description / Notes */}
+                  {t.description ? (
+                    <Text style={styles.taskDesc} numberOfLines={3}>
+                      {t.description}
+                    </Text>
+                  ) : null}
+
+                  {/* Dates & Attachments Info */}
+                  <View style={styles.taskMetaRow}>
+                    <View style={styles.metaItem}>
+                      <Ionicons name="calendar-outline" size={13} color="#666" />
+                      <Text style={styles.metaText}>Assigned: {formattedAssignedDate}</Text>
+                    </View>
+
+                    {t.dueDate ? (
+                      <View style={styles.metaItem}>
+                        <Ionicons name="alarm-outline" size={13} color="#d97706" />
+                        <Text style={[styles.metaText, { color: '#b45309' }]}>Due: {t.dueDate}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+
+                  {/* Attachments Counter Badge */}
+                  <TouchableOpacity
+                    style={styles.attachmentBadgeRow}
+                    activeOpacity={0.7}
+                    onPress={() => setSelectedTask(t)}
+                  >
+                    <Ionicons name="attach-outline" size={16} color={attachCount > 0 ? '#2563eb' : '#64748b'} />
+                    <Text style={[styles.attachmentBadgeText, attachCount > 0 && { color: '#2563eb', fontWeight: '700' }]}>
+                      Attachments: {attachCount} {attachCount === 1 ? 'file' : 'files'}
+                    </Text>
+                    <Ionicons name="chevron-forward" size={14} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                  </TouchableOpacity>
+
+                  {/* Status Picker Buttons */}
+                  <View style={styles.statusActionRow}>
+                    <Text style={styles.statusActionLabel}>Status:</Text>
+                    <View style={styles.statusBtnGroup}>
+                      <TouchableOpacity
+                        style={[
+                          styles.statusActionBtn,
+                          ((t.status as string) === 'To Do' || (t.status as string) === 'Pending') && styles.statusActionBtnActiveTodo
+                        ]}
+                        disabled={updatingTaskId === t._id}
+                        onPress={() => handleUpdateTaskStatus(t._id, 'To Do')}
+                      >
+                        <Text style={[
+                          styles.statusActionText,
+                          ((t.status as string) === 'To Do' || (t.status as string) === 'Pending') && styles.statusActionTextActive
+                        ]}>
+                          Pending
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[
+                          styles.statusActionBtn,
+                          isInProgress && styles.statusActionBtnActiveProgress
+                        ]}
+                        disabled={updatingTaskId === t._id}
+                        onPress={() => handleUpdateTaskStatus(t._id, 'In Progress')}
+                      >
+                        <Text style={[
+                          styles.statusActionText,
+                          isInProgress && styles.statusActionTextActive
+                        ]}>
+                          In Progress
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[
+                          styles.statusActionBtn,
+                          isCompleted && styles.statusActionBtnActiveDone
+                        ]}
+                        disabled={updatingTaskId === t._id}
+                        onPress={() => handleUpdateTaskStatus(t._id, 'Completed')}
+                      >
+                        <Text style={[
+                          styles.statusActionText,
+                          isCompleted && styles.statusActionTextActive
+                        ]}>
+                          Completed
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
               );
             })
           )}
@@ -473,6 +718,161 @@ export default function ProjectsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Task Details & Attachment Viewer Modal */}
+      <Modal visible={!!selectedTask} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalHeaderTitle} numberOfLines={1}>
+                  {selectedTask?.name}
+                </Text>
+                <Text style={{ fontSize: 11, color: '#888', marginTop: 2 }}>
+                  {`${selectedTask?.taskId || ''} - Project: ${selectedTask?.projectName || 'General Operations'}`}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setSelectedTask(null)}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.formContent}>
+              {selectedTask?.description ? (
+                <View style={styles.detailBox}>
+                  <Text style={styles.detailLabel}>Description & Instructions:</Text>
+                  <Text style={styles.detailText}>{selectedTask.description}</Text>
+                </View>
+              ) : null}
+
+              {/* Priority & Due Date info */}
+              <View style={styles.detailRow}>
+                <View style={styles.detailHalf}>
+                  <Text style={styles.detailLabel}>Priority Level:</Text>
+                  <Text style={[styles.detailValText, { fontWeight: '700' }]}>{selectedTask?.priority || 'Medium'}</Text>
+                </View>
+                <View style={styles.detailHalf}>
+                  <Text style={styles.detailLabel}>Due Date:</Text>
+                  <Text style={styles.detailValText}>{selectedTask?.dueDate || 'No Due Date'}</Text>
+                </View>
+              </View>
+
+              {/* Status Update buttons inside Modal */}
+              <View style={styles.detailBox}>
+                <Text style={styles.detailLabel}>Task Status:</Text>
+                <View style={[styles.statusBtnGroup, { marginTop: 6 }]}>
+                  <TouchableOpacity
+                    style={[
+                      styles.statusActionBtn,
+                      ((selectedTask?.status as string) === 'To Do' || (selectedTask?.status as string) === 'Pending') && styles.statusActionBtnActiveTodo
+                    ]}
+                    onPress={() => selectedTask && handleUpdateTaskStatus(selectedTask._id, 'To Do')}
+                  >
+                    <Text style={[
+                      styles.statusActionText,
+                      ((selectedTask?.status as string) === 'To Do' || (selectedTask?.status as string) === 'Pending') && styles.statusActionTextActive
+                    ]}>
+                      Pending
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.statusActionBtn,
+                      selectedTask?.status === 'In Progress' && styles.statusActionBtnActiveProgress
+                    ]}
+                    onPress={() => selectedTask && handleUpdateTaskStatus(selectedTask._id, 'In Progress')}
+                  >
+                    <Text style={[
+                      styles.statusActionText,
+                      selectedTask?.status === 'In Progress' && styles.statusActionTextActive
+                    ]}>
+                      In Progress
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.statusActionBtn,
+                      selectedTask?.status === 'Completed' && styles.statusActionBtnActiveDone
+                    ]}
+                    onPress={() => selectedTask && handleUpdateTaskStatus(selectedTask._id, 'Completed')}
+                  >
+                    <Text style={[
+                      styles.statusActionText,
+                      selectedTask?.status === 'Completed' && styles.statusActionTextActive
+                    ]}>
+                      Completed
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Attachments Section */}
+              <View style={styles.attachmentsSection}>
+                <Text style={styles.sectionHeaderTitle}>
+                  Attachments & Files ({selectedTask?.attachments?.length || 0})
+                </Text>
+
+                {(!selectedTask?.attachments || selectedTask.attachments.length === 0) ? (
+                  <View style={styles.emptyAttachments}>
+                    <Ionicons name="document-text-outline" size={32} color="#ccc" />
+                    <Text style={styles.emptySub}>No attachments uploaded for this task.</Text>
+                  </View>
+                ) : (
+                  selectedTask.attachments.map((att, idx) => {
+                    const rawName = att.fileName || att.name || `Attachment-${idx + 1}`;
+                    const rawUrl = att.fileUrl || att.url;
+                    const fullUrl = getFullAttachmentUrl(rawUrl);
+                    const isImg = (att.fileType || '').startsWith('image/') || /\.(jpg|jpeg|png|webp)$/i.test(rawName);
+
+                    return (
+                      <View key={idx} style={styles.attachmentCard}>
+                        {isImg ? (
+                          <TouchableOpacity onPress={() => setPreviewImageUrl(fullUrl)}>
+                            <Image source={{ uri: fullUrl }} style={styles.attachmentThumbnail} />
+                          </TouchableOpacity>
+                        ) : (
+                          <View style={styles.docIconBox}>
+                            <Ionicons name="document-attach" size={24} color={THEME.colors.primary} />
+                          </View>
+                        )}
+
+                        <View style={{ flex: 1, marginRight: 8 }}>
+                          <Text style={styles.attachmentName} numberOfLines={1}>{rawName}</Text>
+                          <Text style={styles.attachmentMeta}>
+                            {att.fileSize ? `${(att.fileSize / 1024).toFixed(1)} KB` : 'Document'} • {att.uploadedByName || 'Admin'}
+                          </Text>
+                        </View>
+
+                        <TouchableOpacity
+                          style={styles.openFileBtn}
+                          onPress={() => handleOpenAttachment(rawUrl)}
+                        >
+                          <Ionicons name="open-outline" size={14} color="#fff" />
+                          <Text style={styles.openFileBtnText}>Open</Text>
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })
+                )}
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Full Image Preview Modal */}
+      <Modal visible={!!previewImageUrl} transparent animationType="fade">
+        <View style={styles.imageOverlay}>
+          <TouchableOpacity style={styles.closeImageBtn} onPress={() => setPreviewImageUrl(null)}>
+            <Ionicons name="close" size={30} color="#fff" />
+          </TouchableOpacity>
+          {previewImageUrl ? (
+            <Image source={{ uri: previewImageUrl }} style={styles.fullPreviewImg} resizeMode="contain" />
+          ) : null}
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -514,6 +914,34 @@ const styles = StyleSheet.create({
   },
   filterChipText: { fontSize: 12, color: '#666', fontWeight: '500' },
   filterChipTextActive: { color: '#fff', fontWeight: '700' },
+
+  tabToggleRow: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    gap: 10,
+  },
+  tabToggleBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#F5F5F7',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  tabToggleBtnActive: {
+    backgroundColor: THEME.colors.primary,
+    borderColor: THEME.colors.primary,
+  },
+  tabToggleText: { fontSize: 13, fontWeight: '600', color: '#555' },
+  tabToggleTextActive: { color: '#fff', fontWeight: '700' },
 
   scroll: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 90 },
@@ -630,6 +1058,174 @@ const styles = StyleSheet.create({
   },
   viewBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
 
+  // Task Card styles
+  taskCard: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+  taskHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 6,
+  },
+  taskProjectTag: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: THEME.colors.primary,
+    marginBottom: 3,
+  },
+  taskTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  taskDesc: {
+    fontSize: 12,
+    color: '#475569',
+    marginTop: 4,
+    marginBottom: 8,
+    lineHeight: 17,
+  },
+  taskMetaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 10,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  metaText: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+
+  prioTag: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  prioUrgent: { backgroundColor: '#FEF2F2', borderColor: '#FECACA' },
+  prioHigh: { backgroundColor: '#FFFBEB', borderColor: '#FDE68A' },
+  prioNormal: { backgroundColor: '#F8FAFC', borderColor: '#E2E8F0' },
+  prioTagText: { fontSize: 10, fontWeight: '700', color: '#1E293B' },
+
+  attachmentBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 10,
+  },
+  attachmentBadgeText: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+
+  statusActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    paddingTop: 8,
+  },
+  statusActionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  statusBtnGroup: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  statusActionBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#F8FAFC',
+  },
+  statusActionBtnActiveTodo: { backgroundColor: '#64748B', borderColor: '#64748B' },
+  statusActionBtnActiveProgress: { backgroundColor: '#2563EB', borderColor: '#2563EB' },
+  statusActionBtnActiveDone: { backgroundColor: '#16A34A', borderColor: '#16A34A' },
+  statusActionText: { fontSize: 11, fontWeight: '600', color: '#334155' },
+  statusActionTextActive: { color: '#FFFFFF', fontWeight: '700' },
+
+  detailBox: {
+    backgroundColor: '#F8FAFC',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 10,
+  },
+  detailLabel: { fontSize: 11, fontWeight: '700', color: '#64748B', textTransform: 'uppercase' },
+  detailText: { fontSize: 13, color: '#1E293B', marginTop: 4, lineHeight: 18 },
+  detailRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
+  detailHalf: { flex: 1, backgroundColor: '#F8FAFC', padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0' },
+  detailValText: { fontSize: 12, color: '#1E293B', marginTop: 2 },
+
+  attachmentsSection: { marginTop: 10 },
+  sectionHeaderTitle: { fontSize: 14, fontWeight: '700', color: '#0F172A', marginBottom: 8 },
+  emptyAttachments: { alignItems: 'center', paddingVertical: 20 },
+  attachmentCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    padding: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  attachmentThumbnail: { width: 42, height: 42, borderRadius: 6, marginRight: 8, borderWidth: 1, borderColor: '#CBD5E1' },
+  docIconBox: {
+    width: 42,
+    height: 42,
+    borderRadius: 6,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  attachmentName: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
+  attachmentMeta: { fontSize: 11, color: '#64748B', marginTop: 1 },
+  openFileBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: THEME.colors.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  openFileBtnText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+
+  imageOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', alignItems: 'center' },
+  closeImageBtn: { position: 'absolute', top: 40, right: 20, zIndex: 10, padding: 10 },
+  fullPreviewImg: { width: '90%', height: '80%' },
+
   fab: {
     position: 'absolute',
     bottom: 24,
@@ -709,3 +1305,4 @@ const styles = StyleSheet.create({
   },
   createBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
 });
+

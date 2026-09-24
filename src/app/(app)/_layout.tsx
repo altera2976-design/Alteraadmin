@@ -198,12 +198,6 @@ function CustomDrawerContent(props: any) {
                 onPress={() => navigateTo("/(app)/tabs/bike")}
               />
               <DrawerItem
-                icon="card"
-                label="Transactions"
-                isActive={isItemActive("/(app)/transactions")}
-                onPress={() => navigateTo("/(app)/transactions")}
-              />
-              <DrawerItem
                 icon="settings"
                 label="Settings"
                 isActive={isItemActive("/(app)/tabs/profile")}

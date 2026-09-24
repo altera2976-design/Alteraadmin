@@ -105,8 +105,13 @@ export interface Task {
     createdAt: string;
   }>;
   attachments?: Array<{
-    name: string;
-    url: string;
+    _id?: string;
+    fileName?: string;
+    fileUrl?: string;
+    fileType?: string;
+    fileSize?: number;
+    name?: string;
+    url?: string;
     uploadedByName?: string;
     uploadedAt?: string;
   }>;
