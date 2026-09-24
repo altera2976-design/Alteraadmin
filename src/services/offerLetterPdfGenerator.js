@@ -4,6 +4,8 @@
  * Ensures downloaded/printed PDFs contain ONLY the Offer Letter document, excluding CRM UI.
  */
 
+import { COMPANY_LOGO_DATA_URL } from '../constants/companyLogo';
+
 export function formatINR(val) {
   if (val === undefined || val === null || isNaN(val)) return '₹0';
   return '₹' + Math.round(Number(val)).toLocaleString('en-IN');
@@ -340,8 +342,7 @@ export function buildOfferLetterHtml(offer) {
     <!-- Header -->
     <div class="header-bar">
       <div>
-        <h1 class="brand-title">ALTERA INTERIOR</h1>
-        <div class="brand-sub">THE MODERN HOME MAKER • GURUGRAM, HARYANA</div>
+        <img src="${COMPANY_LOGO_DATA_URL}" alt="Altera Interior Logo" style="height: 54px; width: auto; max-width: 280px; object-fit: contain; display: block;" />
       </div>
       <div class="doc-meta">
         <div class="doc-title">OFFER OF EMPLOYMENT</div>

@@ -5,6 +5,8 @@
  * Generates branded multi-page printable document matching corporate standards.
  */
 
+import { COMPANY_LOGO_DATA_URL } from "../constants/companyLogo";
+
 export function formatINR(v) {
   if (v === undefined || v === null || isNaN(v)) return "₹0";
   return "₹" + Math.round(Number(v)).toLocaleString("en-IN");
@@ -265,8 +267,7 @@ export function buildQuotationHtml(q) {
         <table class="header-table">
           <tr>
             <td>
-              <div class="brand-title">${escapeHtml(company.name)}</div>
-              <div class="brand-sub">${escapeHtml(company.tagline)}</div>
+              <img src="${COMPANY_LOGO_DATA_URL}" alt="Altera Interior Logo" style="height: 52px; width: auto; max-width: 270px; object-fit: contain; margin-bottom: 6px; display: block;" />
               <div style="font-size: 11px; color: #64748b; margin-top: 4px;">
                 📍 ${escapeHtml(company.address)} | 📞 ${escapeHtml(company.phone)} | ✉️ ${escapeHtml(company.email)}<br/>
                 GSTIN: <strong>${escapeHtml(company.gstin)}</strong>

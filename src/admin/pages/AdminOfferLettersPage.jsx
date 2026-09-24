@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import AdminAppLayout from '../layouts/AdminAppLayout';
 import api from '../../services/api';
 import { printOfferLetterPdf } from '../../services/offerLetterPdfGenerator';
+import { COMPANY_LOGO_DATA_URL } from '../../constants/companyLogo';
 
 const EXACT_15_RULES = [
   {
@@ -346,12 +347,7 @@ export default function AdminOfferLettersPage({ subRoute = 'list', offerLetterId
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '3px solid #9F0B22', paddingBottom: 16, marginBottom: 24 }}>
               <div>
-                <h2 style={{ color: '#9F0B22', margin: 0, fontSize: 24, fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
-                  ALTERA INTERIOR
-                </h2>
-                <div style={{ fontSize: 11, color: '#64748B', fontWeight: 700, letterSpacing: '0.06em', marginTop: 2 }}>
-                  THE MODERN HOME MAKER • GURUGRAM, HARYANA
-                </div>
+                <img src={COMPANY_LOGO_DATA_URL} alt="Altera Interior Logo" style={{ height: 50, maxWidth: 260, objectFit: 'contain', display: 'block' }} />
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 14, fontWeight: 800, color: '#0F172A', letterSpacing: '0.04em' }}>OFFER OF EMPLOYMENT</div>
