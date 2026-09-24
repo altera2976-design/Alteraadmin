@@ -19,6 +19,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { Alert, Platform } from "react-native";
+import { COMPANY_LOGO_DATA_URL } from "../constants/companyLogo";
 import { QuotationItemDoc } from "./quotationApi";
 
 function inr(v: number | undefined): string {
@@ -671,8 +672,7 @@ export function buildQuotationHtml(q: any): string {
   <table class="header-table">
     <tr>
       <td style="width: 60%; vertical-align: top;">
-        <div class="brand-title">${esc(company.name)}</div>
-        <div class="brand-subtitle">${esc(company.tagline)}</div>
+        <img src="${COMPANY_LOGO_DATA_URL}" alt="Altera Interior Logo" style="height: 52px; width: auto; max-width: 280px; object-fit: contain; margin-bottom: 6px; display: block;" />
         <div class="company-info">
           ${esc(company.address)}<br />
           Phone: ${esc(company.phone)} | Email: ${esc(company.email)}<br />
