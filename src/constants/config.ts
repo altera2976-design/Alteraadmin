@@ -9,19 +9,19 @@ const extraApiUrl = Constants.expoConfig?.extra?.apiUrl;
 let apiUrl = 'http://192.168.1.52:5001/api';
 
 if (__DEV__) {
-  if (Platform.OS === 'web') {
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    apiUrl = process.env.EXPO_PUBLIC_API_URL;
+  } else if (extraApiUrl) {
+    apiUrl = extraApiUrl;
+  } else if (Platform.OS === 'web') {
     const host = typeof window !== 'undefined' && window.location?.hostname ? window.location.hostname : 'localhost';
     apiUrl = `http://${host}:5001/api`;
   } else {
-    // Determine local network IP from Expo debugger host if running via Expo Go / Metro
+    // Determine local network IP from Expo debugger host if running via Expo Go / Metro when env/config is missing
     const hostUri = Constants.expoConfig?.hostUri || Constants.manifest?.hostUri || (Constants.manifest2 as any)?.extra?.expoGo?.debuggerHost;
     if (hostUri) {
       const ip = hostUri.split(':')[0];
       apiUrl = `http://${ip}:5001/api`;
-    } else if (process.env.EXPO_PUBLIC_API_URL) {
-      apiUrl = process.env.EXPO_PUBLIC_API_URL;
-    } else if (extraApiUrl) {
-      apiUrl = extraApiUrl;
     } else {
       apiUrl = 'http://192.168.1.52:5001/api';
     }

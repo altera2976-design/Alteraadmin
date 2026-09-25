@@ -20,6 +20,7 @@ export interface QuotationAccessory {
   _id?: string;
   name: string;
   qty: number;
+  unitPrice?: number;
   inclusionType: 'INCLUDED' | 'EXCLUDED' | 'LUMP_SUM' | 'ACTUAL_COST';
   cost: number;
 }
@@ -85,6 +86,7 @@ export interface QuotationBankDetails {
   accountNumber: string;
   ifscCode: string;
   branch: string;
+  bankAddress?: string;
   upiId?: string;
 }
 

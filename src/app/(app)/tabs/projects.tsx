@@ -14,12 +14,16 @@ import {
   Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import * as WebBrowser from 'expo-web-browser';
+import * as SecureStore from 'expo-secure-store';
 import { THEME } from '../../../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../../context/AuthContext';
 import { projectApi, Project, Task } from '../../../services/projectApi';
 import { getSocket } from '../../../services/socket';
-import { API_URL } from '../../../constants/config';
+import { API_URL, STORAGE_KEYS } from '../../../constants/config';
 
 const STATUS_FILTERS = ['All', 'In Progress', 'Planning', 'Completed', 'On Hold', 'Cancelled'];
 
@@ -40,6 +44,14 @@ export default function ProjectsScreen() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const [openingFileId, setOpeningFileId] = useState<string | null>(null);
+  const [authToken, setAuthToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    SecureStore.getItemAsync(STORAGE_KEYS.TOKEN).then((tok) => {
+      if (tok) setAuthToken(tok);
+    }).catch(() => {});
+  }, []);
 
   // Create Project Modal (Admin Only)
   const [createModalVisible, setCreateModalVisible] = useState(false);
@@ -134,31 +146,115 @@ export default function ProjectsScreen() {
 
   const getFullAttachmentUrl = (rawUrl?: string) => {
     if (!rawUrl) return '';
-    if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://') || rawUrl.startsWith('data:')) {
+    if (rawUrl.startsWith('data:')) {
       return rawUrl;
     }
-    const baseUrl = API_URL.replace(/\/api\/?$/, '');
-    return `${baseUrl}/${rawUrl.replace(/^\/+/, '')}`;
+    const baseHost = API_URL.replace(/\/api\/?$/, '');
+
+    if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
+      if (/http:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?/i.test(rawUrl)) {
+        const pathPart = rawUrl.replace(/^http:\/\/[^\/]+/, '');
+        const cleanPath = pathPart.replace(/^\/+/, '');
+        return `${baseHost}/${cleanPath}`;
+      }
+      return rawUrl;
+    }
+
+    const cleanPath = rawUrl.replace(/^\/+/, '');
+    return `${baseHost}/${cleanPath}`;
   };
 
-  const handleOpenAttachment = async (rawUrl?: string) => {
-    const fullUrl = getFullAttachmentUrl(rawUrl);
-    if (!fullUrl) return;
+  const handleOpenAttachment = async (att: any) => {
+    const rawUrl = att?.fileUrl || att?.url || (att?.driveFileId ? `/api/files/drive/${att.driveFileId}` : att?.driveUrl);
+    const finalUrl = getFullAttachmentUrl(rawUrl);
+    const rawName = att?.fileName || att?.originalName || att?.name || 'attachment.pdf';
+    const mimeType = (att?.mimeType || att?.fileType || '').toLowerCase();
+    const attId = att?._id || att?.id || att?.driveFileId || rawName;
+
+    if (!finalUrl) {
+      Alert.alert('Invalid File', 'This attachment has no valid file URL.');
+      return;
+    }
+
+    const isPdf =
+      mimeType.includes('pdf') ||
+      /\.pdf$/i.test(rawName) ||
+      finalUrl.toLowerCase().includes('.pdf');
+
+    const isImg =
+      !isPdf &&
+      (mimeType.startsWith('image/') ||
+        /\.(jpg|jpeg|png|webp|gif)$/i.test(rawName));
+
+    if (isImg) {
+      setPreviewImageUrl(finalUrl);
+      return;
+    }
 
     try {
-      const supported = await Linking.canOpenURL(fullUrl);
-      if (supported) {
-        await Linking.openURL(fullUrl);
-      } else {
-        Alert.alert('Open File', `Opening URL in browser:\n${fullUrl}`, [
-          { text: 'Open Browser', onPress: () => Linking.openURL(fullUrl) },
-          { text: 'Cancel', style: 'cancel' }
-        ]);
+      setOpeningFileId(attId);
+      const token = await SecureStore.getItemAsync(STORAGE_KEYS.TOKEN);
+
+      let ext = '.pdf';
+      if (!isPdf && rawName.includes('.')) {
+        ext = `.${rawName.split('.').pop()}`;
       }
-    } catch {
-      Linking.openURL(fullUrl).catch(() => {
-        Alert.alert('Error', 'Unable to open file attachment.');
-      });
+      const safeBaseName = rawName.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const filenameWithExt = safeBaseName.toLowerCase().endsWith(ext.toLowerCase())
+        ? safeBaseName
+        : `${safeBaseName}${ext}`;
+
+      const localFileUri = `${FileSystem.cacheDirectory}${Date.now()}_${filenameWithExt}`;
+
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      console.log('[ATTACHMENT DEBUG] Starting file download...');
+      const downloadRes = await FileSystem.downloadAsync(finalUrl, localFileUri, { headers });
+
+      // SAFE DEBUG LOGGING (Requirement 13)
+      console.log(`[ATTACHMENT DEBUG]
+File name: ${rawName}
+File type: ${att?.fileType || 'N/A'}
+MIME type: ${att?.mimeType || (isPdf ? 'application/pdf' : 'N/A')}
+Attachment ID: ${attId}
+Original URL: ${rawUrl}
+Final URL: ${finalUrl}
+Response status: ${downloadRes.status}
+Local file URI: ${downloadRes.uri}`);
+
+      if (downloadRes.status === 200) {
+        const canShare = await Sharing.isAvailableAsync();
+        if (canShare) {
+          await Sharing.shareAsync(downloadRes.uri, {
+            mimeType: isPdf ? 'application/pdf' : (att?.mimeType || att?.fileType || 'application/octet-stream'),
+            dialogTitle: `Open ${rawName}`,
+            UTI: isPdf ? 'com.adobe.pdf' : undefined,
+          });
+        } else {
+          await WebBrowser.openBrowserAsync(downloadRes.uri);
+        }
+      } else if (downloadRes.status === 401) {
+        Alert.alert('Unauthorized (401)', 'Session expired or invalid credentials. Please log in again.');
+      } else if (downloadRes.status === 403) {
+        Alert.alert('Forbidden (403)', 'You do not have permission to access this attachment.');
+      } else if (downloadRes.status === 404) {
+        Alert.alert('File Not Found (404)', 'The requested attachment was not found on the server.');
+      } else if (downloadRes.status >= 500) {
+        Alert.alert('Server Error (500)', 'The server encountered an error while downloading the file.');
+      } else {
+        Alert.alert('Download Error', `Failed to download file. Server status: ${downloadRes.status}`);
+      }
+    } catch (err: any) {
+      console.error('[ATTACHMENT ERROR]', err);
+      Alert.alert(
+        'Error Opening File',
+        err?.message || 'Network error or unable to open file attachment.'
+      );
+    } finally {
+      setOpeningFileId(null);
     }
   };
 
@@ -820,37 +916,59 @@ export default function ProjectsScreen() {
                     <Text style={styles.emptySub}>No attachments uploaded for this task.</Text>
                   </View>
                 ) : (
-                  selectedTask.attachments.map((att, idx) => {
-                    const rawName = att.fileName || att.name || `Attachment-${idx + 1}`;
-                    const rawUrl = att.fileUrl || att.url;
+                  selectedTask.attachments.map((att: any, idx: number) => {
+                    const rawName = att.fileName || att.originalName || att.name || `Attachment-${idx + 1}`;
+                    const rawUrl = att.fileUrl || att.url || (att.driveFileId ? `/api/files/drive/${att.driveFileId}` : att.driveUrl);
                     const fullUrl = getFullAttachmentUrl(rawUrl);
-                    const isImg = (att.fileType || '').startsWith('image/') || /\.(jpg|jpeg|png|webp)$/i.test(rawName);
+                    const mimeType = (att.mimeType || att.fileType || '').toLowerCase();
+                    const isPdf = mimeType.includes('pdf') || /\.pdf$/i.test(rawName) || fullUrl.toLowerCase().includes('.pdf');
+                    const isImg = !isPdf && (mimeType.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif)$/i.test(rawName));
+                    const attId = att._id || att.id || att.driveFileId || String(idx);
+                    const isOpening = openingFileId === attId;
 
                     return (
                       <View key={idx} style={styles.attachmentCard}>
                         {isImg ? (
                           <TouchableOpacity onPress={() => setPreviewImageUrl(fullUrl)}>
-                            <Image source={{ uri: fullUrl }} style={styles.attachmentThumbnail} />
+                            <Image
+                              source={{
+                                uri: fullUrl,
+                                headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
+                              }}
+                              style={styles.attachmentThumbnail}
+                            />
                           </TouchableOpacity>
                         ) : (
-                          <View style={styles.docIconBox}>
-                            <Ionicons name="document-attach" size={24} color={THEME.colors.primary} />
-                          </View>
+                          <TouchableOpacity onPress={() => handleOpenAttachment(att)} style={styles.docIconBox}>
+                            <Ionicons
+                              name={isPdf ? 'document-text' : 'document-attach'}
+                              size={24}
+                              color={THEME.colors.primary}
+                            />
+                          </TouchableOpacity>
                         )}
 
-                        <View style={{ flex: 1, marginRight: 8 }}>
+                        <TouchableOpacity
+                          style={{ flex: 1, marginRight: 8 }}
+                          onPress={() => (isImg ? setPreviewImageUrl(fullUrl) : handleOpenAttachment(att))}
+                        >
                           <Text style={styles.attachmentName} numberOfLines={1}>{rawName}</Text>
                           <Text style={styles.attachmentMeta}>
-                            {att.fileSize ? `${(att.fileSize / 1024).toFixed(1)} KB` : 'Document'} • {att.uploadedByName || 'Admin'}
+                            {att.fileSize ? `${(att.fileSize / 1024).toFixed(1)} KB` : (isPdf ? 'PDF Document' : 'Document')} • {att.uploadedByName || 'Admin'}
                           </Text>
-                        </View>
+                        </TouchableOpacity>
 
                         <TouchableOpacity
-                          style={styles.openFileBtn}
-                          onPress={() => handleOpenAttachment(rawUrl)}
+                          style={[styles.openFileBtn, isOpening && { opacity: 0.7 }]}
+                          onPress={() => handleOpenAttachment(att)}
+                          disabled={isOpening}
                         >
-                          <Ionicons name="open-outline" size={14} color="#fff" />
-                          <Text style={styles.openFileBtnText}>Open</Text>
+                          {isOpening ? (
+                            <ActivityIndicator size="small" color="#fff" style={{ marginRight: 4 }} />
+                          ) : (
+                            <Ionicons name="open-outline" size={14} color="#fff" />
+                          )}
+                          <Text style={styles.openFileBtnText}>{isOpening ? 'Opening...' : 'Open'}</Text>
                         </TouchableOpacity>
                       </View>
                     );
@@ -869,7 +987,14 @@ export default function ProjectsScreen() {
             <Ionicons name="close" size={30} color="#fff" />
           </TouchableOpacity>
           {previewImageUrl ? (
-            <Image source={{ uri: previewImageUrl }} style={styles.fullPreviewImg} resizeMode="contain" />
+            <Image
+              source={{
+                uri: previewImageUrl,
+                headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
+              }}
+              style={styles.fullPreviewImg}
+              resizeMode="contain"
+            />
           ) : null}
         </View>
       </Modal>

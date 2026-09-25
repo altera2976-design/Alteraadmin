@@ -70,14 +70,40 @@ export function getPdfFileName(q: any): string {
  * Build professional multi-page HTML matching reference quotation
  */
 export function buildQuotationHtml(q: any): string {
-  const company = q.companyDetails || {
+  const defaultCompany = {
     name: "ALTERA INTERIOR",
     tagline: "The Modern Home Maker • Interior | Architect | Construction",
     address:
-      "Plot 16/2, Dhanwapur Villae,Behind Ats Triump Tower,Dwarka Expressway,Sec-104,Gurugram(HR)",
+      "Plot 16/2, Dhanwapur Village, Behind ATS Triumph Tower, Dwarka Expressway, Sec-104, Gurugram (HR)",
     phone: "+91 9718374407",
-    email: "[EMAIL_ADDRESS]",
+    email: "info@alterainterior.com",
     gstin: "06CFEPS8731P1Z0",
+  };
+
+  const rawCompany = q.companyDetails || {};
+  const company = {
+    name: rawCompany.name || defaultCompany.name,
+    tagline: rawCompany.tagline || defaultCompany.tagline,
+    address:
+      !rawCompany.address ||
+      rawCompany.address.includes("Plot 42") ||
+      rawCompany.address.includes("New Delhi")
+        ? defaultCompany.address
+        : rawCompany.address,
+    phone:
+      !rawCompany.phone || rawCompany.phone.includes("98765")
+        ? defaultCompany.phone
+        : rawCompany.phone,
+    email:
+      !rawCompany.email ||
+      rawCompany.email.includes("EMAIL_ADDRESS") ||
+      rawCompany.email.includes("contact@alterainterior.com")
+        ? defaultCompany.email
+        : rawCompany.email,
+    gstin:
+      !rawCompany.gstin || rawCompany.gstin.includes("07AAAAA")
+        ? defaultCompany.gstin
+        : rawCompany.gstin,
   };
 
   const client = q.client || {
@@ -128,8 +154,28 @@ export function buildQuotationHtml(q: any): string {
   const roomSectionsHtml = Object.keys(roomGroups)
     .map((roomName) => {
       const items = roomGroups[roomName];
+      const getItemAmt = (it: any) => {
+        const baseAmt = Math.round((it.quantity || 1) * (it.rate || 0));
+        const accTotal = (it.accessories || []).reduce(
+          (sum: number, a: any) => {
+            if (a.name && it.name && a.name.trim().toLowerCase() === it.name.trim().toLowerCase()) return sum;
+            return (
+              sum +
+              (a.cost !== undefined
+                ? Number(a.cost)
+                : (Number(a.qty) || 1) * (Number(a.unitPrice) || 0))
+            );
+          },
+          0,
+        );
+        const expected = baseAmt + accTotal;
+        return it.amount !== undefined && Number(it.amount) > expected
+          ? Number(it.amount)
+          : expected;
+      };
+
       const roomTotal = items.reduce(
-        (acc, it) => acc + (it.amount || it.quantity * it.rate || 0),
+        (acc, it) => acc + getItemAmt(it),
         0,
       );
       computedSubtotal += roomTotal;
@@ -137,85 +183,77 @@ export function buildQuotationHtml(q: any): string {
       const itemRows = items
         .map((it) => {
           globalItemIndex++;
-          const amt =
-            it.amount !== undefined
-              ? it.amount
-              : (it.quantity || 1) * (it.rate || 0);
+          const amt = getItemAmt(it);
 
-          // Specs badges
+          // Specs list
           const specs = it.specifications || {};
           const specEntries = Object.entries(specs).filter(([_, v]) =>
             Boolean(v),
           );
           const specsHtml =
             specEntries.length > 0
-              ? `<div class="specs-grid">
-                  ${specEntries
-                    .map(
-                      ([k, v]) =>
-                        `<span class="spec-chip"><strong>${esc(k)}:</strong> ${esc(v)}</span>`,
-                    )
-                    .join("")}
-                </div>`
+              ? `<div class="item-specs"><strong>Specifications:</strong> ${specEntries
+                    .map(([k, v]) => `${esc(k)}: ${esc(v)}`)
+                    .join(" | ")}</div>`
               : "";
 
           // Accessories list
           const accs = it.accessories || [];
           const accsHtml =
             accs.length > 0
-              ? `<div class="acc-box">
-                  <strong>Accessories:</strong> ${accs
-                    .map(
-                      (a: any) =>
-                        `${esc(a.name)} (${a.qty} nos - <span class="acc-type">${esc(a.inclusionType)}</span>)`,
-                    )
-                    .join("; ")}
-                </div>`
+              ? `<div class="item-accs"><strong>Accessories:</strong> ${accs
+                    .map((a: any) => {
+                      const qty = a.qty || 1;
+                      const unitPrice = a.unitPrice || (a.cost ? Math.round(a.cost / qty) : 0);
+                      const totalCost = a.cost || qty * unitPrice;
+                      return `${esc(a.name)} (Qty: ${qty}, Unit Price: ${inr(unitPrice)}, Total: ${inr(totalCost)})`;
+                    })
+                    .join("; ")}</div>`
               : "";
 
           // Dimension info
           const m = it.measurements;
           const dimInfo =
             m && m.length > 0 && (m.height > 0 || m.width > 0)
-              ? `<div class="dim-tag">📏 ${m.length} × ${m.height || m.width} = ${m.calculatedArea} ${it.unit}</div>`
+              ? `<div class="item-specs"><strong>Measurements:</strong> ${m.length} × ${m.height || m.width} = ${m.calculatedArea} ${it.unit}</div>`
               : "";
 
           return `
-            <tr class="item-tr">
-              <td class="center col-num">${globalItemIndex}</td>
-              <td class="col-desc">
-                <div class="item-title">${esc(it.name)}</div>
-                ${it.description ? `<div class="item-subdesc">${esc(it.description)}</div>` : ""}
+            <tr>
+              <td class="center font-bold">${globalItemIndex}</td>
+              <td>
+                <div class="item-name">${esc(it.name)}</div>
+                ${it.description ? `<div class="item-desc">${esc(it.description)}</div>` : ""}
                 ${dimInfo}
                 ${specsHtml}
                 ${accsHtml}
-                ${it.remarks ? `<div class="item-remark">Note: ${esc(it.remarks)}</div>` : ""}
-                ${it.costVariationNote ? `<div class="variation-note">⚠️ ${esc(it.costVariationNote)}</div>` : ""}
+                ${it.remarks ? `<div class="item-note">Note: ${esc(it.remarks)}</div>` : ""}
+                ${it.costVariationNote ? `<div class="item-note" style="color: #DC2626;">${esc(it.costVariationNote)}</div>` : ""}
               </td>
-              <td class="center col-unit">${esc(it.unit || "Nos")}</td>
-              <td class="center col-qty">${it.quantity || 1}</td>
-              <td class="right col-rate">${inr(it.rate || 0)}</td>
-              <td class="right col-amt">${inr(amt)}</td>
+              <td class="center">${esc(it.unit || "Nos")}</td>
+              <td class="center font-bold">${it.quantity || 1}</td>
+              <td class="right">${inr(it.rate || 0)}</td>
+              <td class="right font-bold">${inr(amt)}</td>
             </tr>
           `;
         })
         .join("");
 
       return `
-        <div class="room-group">
+        <div class="room-block">
           <div class="room-header">
-            <div class="room-title">📍 ${esc(roomName.toUpperCase())}</div>
-            <div class="room-subtotal">Area Subtotal: ${inr(roomTotal)}</div>
+            <span>${esc(roomName.toUpperCase())}</span>
+            <span>Area Subtotal: ${inr(roomTotal)}</span>
           </div>
           <table class="item-table">
             <thead>
               <tr>
-                <th class="center" style="width: 5%;">#</th>
+                <th class="center" style="width: 4%;">#</th>
                 <th style="width: 48%;">Item Description &amp; Specifications</th>
                 <th class="center" style="width: 10%;">Unit</th>
-                <th class="center" style="width: 9%;">Qty</th>
-                <th class="right" style="width: 13%;">Rate</th>
-                <th class="right" style="width: 15%;">Amount</th>
+                <th class="center" style="width: 8%;">Qty</th>
+                <th class="right" style="width: 14%;">Rate</th>
+                <th class="right" style="width: 16%;">Amount</th>
               </tr>
             </thead>
             <tbody>
@@ -257,33 +295,33 @@ export function buildQuotationHtml(q: any): string {
   const milestonesHtml =
     milestones.length > 0
       ? `
-      <div class="section-card">
-        <div class="card-header">📅 PAYMENT MILESTONES SCHEDULE</div>
-        <table class="milestone-table">
-          <thead>
+      <div class="section-title">4. Payment Milestones</div>
+      <table class="standard-table">
+        <thead>
+          <tr>
+            <th style="width: 5%;" class="center">#</th>
+            <th style="width: 35%;">Milestone / Stage</th>
+            <th style="width: 40%;">Stage Description / Deliverables</th>
+            <th class="center" style="width: 8%;">Share (%)</th>
+            <th class="right" style="width: 12%;">Payable</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${milestones
+            .map(
+              (m: any, idx: number) => `
             <tr>
-              <th style="width: 35%;">Milestone / Stage</th>
-              <th style="width: 35%;">Deliverables / Work Description</th>
-              <th class="center" style="width: 12%;">Share (%)</th>
-              <th class="right" style="width: 18%;">Payable Amount</th>
+              <td class="center">${idx + 1}</td>
+              <td><strong>${esc(m.milestoneName)}</strong></td>
+              <td>${esc(m.stage || "As per stage completion approval")}</td>
+              <td class="center font-bold">${m.percentage}%</td>
+              <td class="right font-bold">${inr(m.amount || Math.round(grandTotal * (m.percentage / 100)))}</td>
             </tr>
-          </thead>
-          <tbody>
-            ${milestones
-              .map(
-                (m: any) => `
-              <tr>
-                <td><strong>${esc(m.milestoneName)}</strong></td>
-                <td>${esc(m.stage || "As per project stage approval")}</td>
-                <td class="center font-bold">${m.percentage}%</td>
-                <td class="right font-bold">${inr(m.amount || Math.round(grandTotal * (m.percentage / 100)))}</td>
-              </tr>
-            `,
-              )
-              .join("")}
-          </tbody>
-        </table>
-      </div>`
+          `,
+            )
+            .join("")}
+        </tbody>
+      </table>`
       : "";
 
   // ── Payment & Transaction History ─────────────────────────────────────────
@@ -311,67 +349,69 @@ export function buildQuotationHtml(q: any): string {
   };
 
   const paymentSummaryHtml = `
-    <div class="section-card">
-      <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-        <span>💳 PAYMENT &amp; TRANSACTION HISTORY</span>
-        <span style="padding: 2px 8px; border-radius: 4px; font-weight: 800; font-size: 9px; ${
-          paySummary.paymentStatus === "PAID"
-            ? "background: #DCFCE7; color: #15803D;"
-            : paySummary.paymentStatus === "PARTIALLY_PAID"
-              ? "background: #FEF3C7; color: #B45309;"
-              : "background: #FEE2E2; color: #B91C1C;"
-        }">
-          STATUS: ${paySummary.paymentStatus.replace("_", " ")}
-        </span>
-      </div>
-      <div style="display: flex; background: #F8FAFC; padding: 8px 12px; border-bottom: 1px solid #E2E8F0; font-size: 10px;">
-        <div style="flex: 1;"><strong>Total Amount:</strong> ${inr(paySummary.totalAmount || grandTotal)}</div>
-        <div style="flex: 1; color: #16A34A;"><strong>Total Paid:</strong> ${inr(paySummary.paidAmount)}</div>
-        <div style="flex: 1; color: #DC2626;"><strong>Balance Remaining:</strong> ${inr(paySummary.remainingAmount)}</div>
-      </div>
-      ${
-        txList.length > 0
-          ? `
-        <table class="milestone-table">
-          <thead>
+    <div class="section-title">6. Payment &amp; Transaction History</div>
+    <table class="standard-table">
+      <thead>
+        <tr>
+          <th style="width: 25%;">Payment Status</th>
+          <th style="width: 25%;" class="right">Total Amount</th>
+          <th style="width: 25%;" class="right">Total Paid</th>
+          <th style="width: 25%;" class="right">Balance Remaining</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="font-bold">${esc(paySummary.paymentStatus.replace("_", " "))}</td>
+          <td class="right font-bold">${inr(paySummary.totalAmount || grandTotal)}</td>
+          <td class="right font-bold" style="color: #059669;">${inr(paySummary.paidAmount)}</td>
+          <td class="right font-bold" style="color: #DC2626;">${inr(paySummary.remainingAmount)}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    ${
+      txList.length > 0
+        ? `
+      <table class="standard-table">
+        <thead>
+          <tr>
+            <th style="width: 5%;" class="center">#</th>
+            <th style="width: 30%;">Txn Ref ID</th>
+            <th style="width: 20%;">Date</th>
+            <th style="width: 20%;">Payment Mode</th>
+            <th style="width: 10%;" class="center">Status</th>
+            <th class="right" style="width: 15%;">Amount Paid</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${txList
+            .map(
+              (tx: any, idx: number) => `
             <tr>
-              <th style="width: 5%;">#</th>
-              <th style="width: 25%;">Txn Ref ID</th>
-              <th style="width: 20%;">Date</th>
-              <th style="width: 20%;">Payment Mode</th>
-              <th style="width: 15%;">Status</th>
-              <th class="right" style="width: 15%;">Amount Paid</th>
+              <td class="center">${idx + 1}</td>
+              <td><strong>${esc(tx.transactionId || tx.referenceId || "TXN")}</strong></td>
+              <td>${formatDate(tx.transactionDate || tx.createdAt)}</td>
+              <td>${esc(tx.paymentMethod || "UPI")}</td>
+              <td class="center" style="color: #059669; font-weight: 700;">${esc(tx.status || "Completed")}</td>
+              <td class="right font-bold">${inr(tx.amount)}</td>
             </tr>
-          </thead>
-          <tbody>
-            ${txList
-              .map(
-                (tx: any, idx: number) => `
-              <tr>
-                <td>${idx + 1}</td>
-                <td><strong>${esc(tx.transactionId || tx.referenceId || "TXN")}</strong></td>
-                <td>${formatDate(tx.transactionDate || tx.createdAt)}</td>
-                <td>${esc(tx.paymentMethod || "UPI")}</td>
-                <td><span style="color: #16A34A; font-weight: 700;">${esc(tx.status || "Completed")}</span></td>
-                <td class="right font-bold" style="color: #0F172A;">${inr(tx.amount)}</td>
-              </tr>
-            `,
-              )
-              .join("")}
-          </tbody>
-        </table>`
-          : `<div style="padding: 10px 12px; font-size: 10px; color: #64748B;">No payment transactions recorded yet for this quotation.</div>`
-      }
-    </div>
+          `,
+            )
+            .join("")}
+        </tbody>
+      </table>`
+        : ""
+    }
   `;
 
   // ── Bank Details ───────────────────────────────────────────────────────────
   const bank = q.bankDetails || {
-    accountName: "Altera Interior Pvt. Ltd.",
-    bankName: "Induslnd Bank",
+    accountName: "Altera Interior",
+    bankName: "IndusInd Bank Limited",
     accountNumber: "201002880175",
     ifscCode: "INDB0000518",
-    branch: "Gurugram Branch",
+    branch: "Sector-31, Gurgaon Branch",
+    bankAddress: "SCO-8, Sector 31/32A HUDA Market, Gurgaon – 122 002, Haryana, India",
   };
 
   // ── Terms & Conditions ─────────────────────────────────────────────────────
@@ -388,359 +428,323 @@ export function buildQuotationHtml(q: any): string {
   <meta charset="utf-8" />
   <title>Quotation_${esc(quotationNumber)}</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    @page {
+      size: A4;
+      margin: 12mm 15mm 12mm 15mm;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
     body {
-      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      font-size: 11px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 9.5pt;
       color: #1E293B;
-      background: #ffffff;
-      padding: 24px;
-      line-height: 1.45;
+      background: #FFFFFF;
+      line-height: 1.4;
+      padding: 10px 0;
     }
 
-    /* ── Document Header ── */
+    /* ── Header ── */
     .header-table {
       width: 100%;
-      border-bottom: 3px solid #7A131A;
+      border-collapse: collapse;
+      border-bottom: 2px solid #0F172A;
       padding-bottom: 12px;
       margin-bottom: 16px;
     }
-    .brand-title {
-      font-size: 26px;
-      font-weight: 900;
-      color: #7A131A;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
+    .header-table td {
+      vertical-align: top;
     }
-    .brand-subtitle {
-      font-size: 9px;
-      font-weight: 700;
-      letter-spacing: 1.2px;
-      color: #64748B;
-      margin-top: 2px;
-      text-transform: uppercase;
+    .company-logo {
+      height: 48px;
+      width: auto;
+      max-width: 240px;
+      object-fit: contain;
+      margin-bottom: 6px;
+      display: block;
     }
-    .company-info {
-      font-size: 10px;
+    .company-name {
+      font-size: 14pt;
+      font-weight: 800;
+      color: #0F172A;
+      letter-spacing: 0.5px;
+    }
+    .company-details {
+      font-size: 8.5pt;
       color: #475569;
+      line-height: 1.35;
+      margin-top: 2px;
+    }
+    .header-right {
+      text-align: right;
+    }
+    .doc-title {
+      font-size: 16pt;
+      font-weight: 800;
+      color: #0F172A;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .doc-meta {
+      font-size: 9pt;
+      color: #334155;
       margin-top: 4px;
       line-height: 1.4;
     }
-    .doc-type-box {
-      text-align: right;
-    }
-    .doc-type-title {
-      font-size: 22px;
-      font-weight: 900;
-      color: #7A131A;
-      letter-spacing: 2px;
-    }
-    .doc-ref-tag {
-      font-size: 13px;
-      font-weight: 800;
-      color: #0F172A;
-      margin-top: 3px;
-      font-family: monospace;
-    }
-    .status-badge {
+    .doc-status {
       display: inline-block;
-      margin-top: 6px;
-      padding: 3px 10px;
-      border-radius: 12px;
-      font-size: 9px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      background: #F1F5F9;
-      color: #475569;
-    }
-    .status-Approved { background: #DCFCE7; color: #15803D; }
-    .status-Sent { background: #E0E7FF; color: #4338CA; }
-    .status-Draft { background: #FEF3C7; color: #B45309; }
-
-    /* ── Meta Info Grid ── */
-    .meta-grid {
-      display: table;
-      width: 100%;
-      margin-bottom: 14px;
-      background: #F8FAFC;
-      border: 1px solid #E2E8F0;
-      border-radius: 8px;
-      padding: 12px 16px;
-    }
-    .meta-col {
-      display: table-cell;
-      width: 50%;
-      vertical-align: top;
-    }
-    .meta-label {
-      font-size: 9px;
+      margin-top: 4px;
+      padding: 2px 8px;
+      border: 1px solid #CBD5E1;
+      font-size: 8pt;
       font-weight: 700;
-      color: #64748B;
       text-transform: uppercase;
-      letter-spacing: 0.6px;
-      margin-bottom: 3px;
+      color: #334155;
+      background: #F8FAFC;
     }
-    .meta-val-name {
-      font-size: 14px;
+
+    /* ── Client & Project Info ── */
+    .info-section {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 18px;
+      page-break-inside: avoid;
+    }
+    .info-card {
+      width: 49%;
+      vertical-align: top;
+      border: 1px solid #CBD5E1;
+      background: #F8FAFC;
+      padding: 10px 12px;
+    }
+    .info-card-title {
+      font-size: 9pt;
       font-weight: 800;
+      text-transform: uppercase;
       color: #0F172A;
-      margin-bottom: 3px;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid #CBD5E1;
+      padding-bottom: 4px;
+      margin-bottom: 6px;
     }
-    .meta-row {
-      font-size: 10.5px;
+    .info-card-name {
+      font-size: 11pt;
+      font-weight: 700;
+      color: #0F172A;
+      margin-bottom: 4px;
+    }
+    .info-row {
+      font-size: 8.5pt;
       color: #334155;
       margin-bottom: 2px;
     }
 
-    /* ── Project Title Banner ── */
-    .project-banner {
-      background: #FFF1F2;
-      border-left: 4px solid #7A131A;
-      padding: 8px 14px;
-      border-radius: 4px;
-      margin-bottom: 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .project-banner-title {
-      font-size: 12px;
+    /* ── Section Title ── */
+    .section-title {
+      font-size: 10pt;
       font-weight: 800;
-      color: #7A131A;
       text-transform: uppercase;
-    }
-    .project-banner-loc {
-      font-size: 11px;
-      color: #4C0519;
-      font-weight: 600;
+      color: #0F172A;
+      letter-spacing: 0.5px;
+      border-bottom: 1.5px solid #0F172A;
+      padding-bottom: 3px;
+      margin-top: 16px;
+      margin-bottom: 8px;
+      page-break-after: avoid;
     }
 
-    /* ── Room Groups & Item Tables ── */
-    .room-group {
-      margin-bottom: 18px;
+    /* ── Room / Scope Group ── */
+    .room-block {
+      margin-bottom: 16px;
       page-break-inside: avoid;
     }
     .room-header {
-      background: #1E293B;
-      color: #ffffff;
-      padding: 7px 12px;
-      border-radius: 4px 4px 0 0;
+      background: #F1F5F9;
+      border: 1px solid #CBD5E1;
+      border-bottom: none;
+      padding: 6px 10px;
+      font-size: 9.5pt;
+      font-weight: 800;
+      color: #0F172A;
       display: flex;
       justify-content: space-between;
-      align-items: center;
-    }
-    .room-title {
-      font-size: 11px;
-      font-weight: 800;
-      letter-spacing: 0.8px;
-    }
-    .room-subtotal {
-      font-size: 11px;
-      font-weight: 800;
-      color: #F8FAFC;
     }
 
+    /* ── Item Table ── */
     .item-table {
       width: 100%;
       border-collapse: collapse;
-      border: 1px solid #E2E8F0;
-      border-top: none;
+      border: 1px solid #CBD5E1;
+      font-size: 8.5pt;
     }
     .item-table th {
-      background: #F1F5F9;
-      font-size: 9px;
+      background: #F8FAFC;
+      color: #334155;
+      font-size: 8pt;
       font-weight: 700;
       text-transform: uppercase;
-      color: #475569;
       padding: 6px 8px;
       border-bottom: 1px solid #CBD5E1;
+      border-right: 1px solid #E2E8F0;
+    }
+    .item-table th:last-child {
+      border-right: none;
     }
     .item-table td {
-      padding: 8px;
-      border-bottom: 1px solid #F1F5F9;
-      font-size: 10px;
+      padding: 6px 8px;
+      border-bottom: 1px solid #E2E8F0;
+      border-right: 1px solid #E2E8F0;
       vertical-align: top;
+      color: #1E293B;
     }
-    .item-tr:nth-child(even) {
-      background: #F8FAFC;
+    .item-table td:last-child {
+      border-right: none;
     }
-    .item-title {
-      font-size: 11px;
+    .item-table tr:nth-child(even) {
+      background: #FAFAFA;
+    }
+    .item-name {
       font-weight: 700;
       color: #0F172A;
+      font-size: 9pt;
       margin-bottom: 2px;
     }
-    .item-subdesc {
-      font-size: 9.5px;
+    .item-desc {
       color: #475569;
-      margin-bottom: 4px;
+      margin-bottom: 3px;
+      font-size: 8pt;
     }
-    .dim-tag {
-      font-size: 9.5px;
-      font-weight: 600;
-      color: #0369A1;
-      background: #E0F2FE;
-      padding: 1px 6px;
-      border-radius: 3px;
-      display: inline-block;
-      margin-bottom: 4px;
+    .item-specs {
+      font-size: 8pt;
+      color: #475569;
+      margin-top: 2px;
     }
-    .specs-grid {
-      margin-top: 4px;
-      margin-bottom: 4px;
+    .item-accs {
+      font-size: 8pt;
+      color: #475569;
+      margin-top: 2px;
     }
-    .spec-chip {
-      display: inline-block;
-      font-size: 8.5px;
-      background: #EEF2F6;
-      color: #334155;
-      padding: 1px 5px;
-      border-radius: 3px;
-      margin-right: 4px;
-      margin-bottom: 2px;
-    }
-    .acc-box {
-      font-size: 9px;
-      background: #FEF3C7;
-      color: #92400E;
-      padding: 3px 6px;
-      border-radius: 3px;
-      margin-top: 4px;
-    }
-    .acc-type {
-      font-weight: 700;
-      font-size: 8.5px;
-      color: #B45309;
-    }
-    .item-remark {
-      font-size: 9px;
+    .item-note {
+      font-size: 7.5pt;
       color: #64748B;
       font-style: italic;
-      margin-top: 3px;
-    }
-    .variation-note {
-      font-size: 8.5px;
-      color: #DC2626;
-      font-weight: 600;
       margin-top: 2px;
     }
 
-    .col-num { font-weight: 700; color: #64748B; }
-    .col-unit { font-weight: 600; }
-    .col-qty { font-weight: 700; }
-    .col-rate { font-weight: 600; }
-    .col-amt { font-weight: 800; color: #0F172A; }
-
-    /* ── Summary & Grand Total ── */
-    .summary-wrap {
-      margin-top: 14px;
-      margin-bottom: 18px;
-      display: flex;
-      justify-content: flex-end;
+    /* ── Summary Table & Layout ── */
+    .summary-container {
+      width: 100%;
+      margin-top: 16px;
+      margin-bottom: 16px;
       page-break-inside: avoid;
     }
     .summary-table {
-      width: 45%;
+      width: 48%;
+      margin-left: auto;
       border-collapse: collapse;
+      font-size: 9pt;
+      border: 1px solid #CBD5E1;
     }
     .summary-table td {
-      padding: 5px 8px;
-      font-size: 10.5px;
-    }
-    .summary-table tr.total-row td {
-      background: #7A131A;
-      color: #ffffff;
-      font-size: 13px;
-      font-weight: 900;
-      padding: 8px 10px;
-    }
-    .amount-words-box {
-      background: #FFF5F5;
-      border: 1px solid #FECDD3;
-      padding: 8px 14px;
-      border-radius: 6px;
-      font-size: 11px;
-      color: #881337;
-      margin-bottom: 18px;
-      page-break-inside: avoid;
-    }
-
-    /* ── Section Cards (Milestones, Bank, Terms) ── */
-    .section-card {
-      background: #ffffff;
-      border: 1px solid #E2E8F0;
-      border-radius: 6px;
-      margin-bottom: 16px;
-      overflow: hidden;
-      page-break-inside: avoid;
-    }
-    .card-header {
-      background: #F8FAFC;
-      color: #334155;
-      font-size: 10.5px;
-      font-weight: 800;
-      letter-spacing: 0.6px;
-      padding: 6px 12px;
+      padding: 5px 10px;
       border-bottom: 1px solid #E2E8F0;
     }
-    .milestone-table {
+    .summary-table tr.grand-row td {
+      background: #0F172A;
+      color: #FFFFFF;
+      font-weight: 800;
+      font-size: 10.5pt;
+      border-bottom: none;
+    }
+
+    /* ── Tables (Milestones, Transactions, Bank) ── */
+    .standard-table {
       width: 100%;
       border-collapse: collapse;
-    }
-    .milestone-table th {
-      background: #FAFAFA;
-      font-size: 8.5px;
-      color: #64748B;
-      text-transform: uppercase;
-      padding: 5px 8px;
-      border-bottom: 1px solid #E2E8F0;
-    }
-    .milestone-table td {
-      padding: 6px 8px;
-      font-size: 9.5px;
-      border-bottom: 1px solid #F1F5F9;
-    }
-
-    .bank-grid {
-      display: table;
-      width: 100%;
-      padding: 8px 12px;
-    }
-    .bank-item {
-      display: table-cell;
-      width: 33.3%;
-      font-size: 9.5px;
-      line-height: 1.5;
-    }
-
-    .terms-box {
-      padding: 8px 12px;
-      font-size: 9px;
-      color: #475569;
-      line-height: 1.5;
-    }
-
-    /* ── Signature Block ── */
-    .sign-table {
-      width: 100%;
-      margin-top: 28px;
+      border: 1px solid #CBD5E1;
+      font-size: 8.5pt;
+      margin-bottom: 14px;
       page-break-inside: avoid;
     }
-    .sign-box {
-      width: 50%;
-      vertical-align: bottom;
-      font-size: 10px;
-    }
-    .sign-line {
-      width: 180px;
-      border-top: 1px solid #0F172A;
-      margin-top: 36px;
-      padding-top: 4px;
+    .standard-table th {
+      background: #F8FAFC;
+      color: #334155;
+      font-size: 8pt;
       font-weight: 700;
+      text-transform: uppercase;
+      padding: 6px 8px;
+      border-bottom: 1px solid #CBD5E1;
+      border-right: 1px solid #E2E8F0;
+    }
+    .standard-table th:last-child {
+      border-right: none;
+    }
+    .standard-table td {
+      padding: 6px 8px;
+      border-bottom: 1px solid #E2E8F0;
+      border-right: 1px solid #E2E8F0;
+      color: #1E293B;
+    }
+    .standard-table td:last-child {
+      border-right: none;
     }
 
-    /* ── Utilities ── */
+    /* ── Bank Grid Horizontal ── */
+    .bank-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid #CBD5E1;
+      font-size: 8.5pt;
+      margin-bottom: 14px;
+      page-break-inside: avoid;
+    }
+    .bank-table td {
+      padding: 8px 10px;
+      border-right: 1px solid #E2E8F0;
+      vertical-align: top;
+    }
+    .bank-table td:last-child {
+      border-right: none;
+    }
+
+    /* ── Terms & Notes ── */
+    .terms-block {
+      border: 1px solid #E2E8F0;
+      background: #F8FAFC;
+      padding: 8px 12px;
+      font-size: 8pt;
+      color: #475569;
+      line-height: 1.4;
+      margin-bottom: 16px;
+      page-break-inside: avoid;
+    }
+
+    /* ── Signatures ── */
+    .signature-table {
+      width: 100%;
+      margin-top: 32px;
+      page-break-inside: avoid;
+    }
+    .signature-box {
+      width: 45%;
+      vertical-align: bottom;
+    }
+    .signature-line {
+      border-top: 1px solid #0F172A;
+      margin-top: 40px;
+      padding-top: 4px;
+      font-size: 9pt;
+      font-weight: 700;
+      color: #0F172A;
+    }
+    .signature-sub {
+      font-size: 8pt;
+      color: #64748B;
+    }
+
+    /* Helper Utilities */
     .center { text-align: center; }
     .right { text-align: right; }
     .font-bold { font-weight: 700; }
@@ -751,59 +755,62 @@ export function buildQuotationHtml(q: any): string {
   <!-- Header -->
   <table class="header-table">
     <tr>
-      <td style="width: 60%; vertical-align: top;">
-        <img src="${COMPANY_LOGO_DATA_URL}" alt="Altera Interior Logo" style="height: 52px; width: auto; max-width: 280px; object-fit: contain; margin-bottom: 6px; display: block;" />
-        <div class="company-info">
+      <td style="width: 55%; vertical-align: top;">
+        <img src="${COMPANY_LOGO_DATA_URL}" alt="Altera Interior Logo" class="company-logo" />
+        <div class="company-name">${esc(company.name)}</div>
+        <div class="company-details">
           ${esc(company.address)}<br />
-          Phone: ${esc(company.phone)} | Email: ${esc(company.email)}<br />
+          Phone: ${esc(company.phone)} &bull; Email: ${esc(company.email)}<br />
           <strong>GSTIN:</strong> ${esc(company.gstin)}
         </div>
       </td>
-      <td style="width: 40%; vertical-align: top;" class="doc-type-box">
-        <div class="doc-type-title">QUOTATION</div>
-        <div class="doc-ref-tag">${esc(quotationNumber)}${q.revision ? ` (Rev ${q.revision})` : ""}</div>
-        <div class="status-badge status-${esc(status)}">${esc(status)}</div>
-        <div style="font-size: 9.5px; color: #64748B; margin-top: 4px;">
-          Date: <strong>${qDate}</strong><br />
-          Valid Till: <strong>${vUntil}</strong>
+      <td style="width: 45%; vertical-align: top;" class="header-right">
+        <div class="doc-title">OFFICIAL QUOTATION</div>
+        <div class="doc-meta">
+          <strong>Quotation No:</strong> ${esc(quotationNumber)}${q.revision ? ` (Rev ${q.revision})` : ""}<br />
+          <strong>Date:</strong> ${qDate}<br />
+          <strong>Valid Until:</strong> ${vUntil}
         </div>
+        <div class="doc-status">${esc(status)}</div>
       </td>
     </tr>
   </table>
 
-  <!-- Client & Site Info -->
-  <div class="meta-grid">
-    <div class="meta-col">
-      <div class="meta-label">Quotation Prepared For</div>
-      <div class="meta-val-name">${esc(client.name)}</div>
-      ${client.company ? `<div class="meta-row"><strong>Company:</strong> ${esc(client.company)}</div>` : ""}
-      <div class="meta-row"><strong>Phone:</strong> ${esc(client.phone || "—")}</div>
-      <div class="meta-row"><strong>Email:</strong> ${esc(client.email || "—")}</div>
-      ${client.gstin ? `<div class="meta-row"><strong>Client GSTIN:</strong> ${esc(client.gstin)}</div>` : ""}
-    </div>
-    <div class="meta-col">
-      <div class="meta-label">Site &amp; Project Coordinates</div>
-      <div class="meta-val-name">${esc(q.projectTitle || "Interior Execution")}</div>
-      <div class="meta-row"><strong>Project Type:</strong> ${esc(q.projectType || "Residential Interior")}</div>
-      <div class="meta-row"><strong>Site Address:</strong> ${esc(q.siteLocation || client.address || "Onsite")}</div>
-      <div class="meta-row"><strong>Assigned Designer:</strong> ${esc(q.assignedDesignerName || "Altera Design Team")}</div>
-    </div>
-  </div>
+  <!-- 1. Client Information & 2. Project & Site Details -->
+  <table class="info-section">
+    <tr>
+      <td class="info-card" style="width: 49%;">
+        <div class="info-card-title">1. Client Information</div>
+        <div class="info-card-name">${esc(client.name)}</div>
+        ${client.company ? `<div class="info-row"><strong>Company:</strong> ${esc(client.company)}</div>` : ""}
+        <div class="info-row"><strong>Phone:</strong> ${esc(client.phone || "—")}</div>
+        <div class="info-row"><strong>Email:</strong> ${esc(client.email || "—")}</div>
+        ${client.gstin ? `<div class="info-row"><strong>GSTIN:</strong> ${esc(client.gstin)}</div>` : ""}
+      </td>
+      <td style="width: 2%;"></td>
+      <td class="info-card" style="width: 49%;">
+        <div class="info-card-title">2. Project &amp; Site Details</div>
+        <div class="info-card-name">${esc(q.projectTitle || "Interior Execution")}</div>
+        <div class="info-row"><strong>Project Type:</strong> ${esc(q.projectType || "Residential Interior")}</div>
+        <div class="info-row"><strong>Site Address:</strong> ${esc(q.siteLocation || client.address || "Onsite")}</div>
+        <div class="info-row"><strong>Designer:</strong> ${esc(q.assignedDesignerName || "Altera Design Team")}</div>
+      </td>
+    </tr>
+  </table>
 
-  <!-- Project Title Banner -->
-  <div class="project-banner">
-    <div class="project-banner-title">Project: ${esc(q.projectTitle || "Interior Execution Scope")}</div>
-    <div class="project-banner-loc">Site: ${esc(q.siteLocation || "Client Residence")}</div>
-  </div>
-
-  <!-- Room-wise Interior Items -->
+  <!-- 3. Items / Scope of Work -->
+  <div class="section-title">3. Items / Scope of Work</div>
   ${roomSectionsHtml}
 
-  <!-- Financial Summary -->
-  <div class="summary-wrap">
+  <!-- 4. Milestones -->
+  ${milestonesHtml}
+
+  <!-- 5. Cost Summary -->
+  <div class="section-title">5. Cost Summary</div>
+  <div class="summary-container">
     <table class="summary-table">
       <tr>
-        <td class="font-bold">Raw Items Subtotal:</td>
+        <td>Items Subtotal:</td>
         <td class="right font-bold">${inr(subtotal)}</td>
       </tr>
       ${
@@ -834,73 +841,67 @@ export function buildQuotationHtml(q: any): string {
           : ""
       }
       <tr style="border-top: 1px solid #CBD5E1;">
-        <td class="font-bold">Taxable Amount:</td>
+        <td class="font-bold">Taxable Total:</td>
         <td class="right font-bold">${inr(taxable)}</td>
       </tr>
       <tr>
         <td>GST (${pricing.gstPercent || 18}% ${pricing.gstType === "AS_PER_ACTUAL" ? "– As per Actuals" : pricing.gstType || "CGST+SGST"}):</td>
         <td class="right" style="${pricing.gstType === "AS_PER_ACTUAL" ? "color: #2563EB; font-weight: 600;" : ""}">${pricing.gstType === "AS_PER_ACTUAL" ? "18% – As per Actuals" : inr(totalGst)}</td>
       </tr>
-      <tr class="total-row">
+      <tr class="grand-row">
         <td>ESTIMATED GRAND TOTAL:</td>
         <td class="right">${inr(grandTotal)}</td>
       </tr>
     </table>
   </div>
-
-  ${pricing.gstType === "AS_PER_ACTUAL" ? `<div style="margin-top: 12px; padding: 8px 12px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 6px; font-size: 11px; color: #1D4ED8; font-weight: 600;">ℹ️ GST @ 18% will be charged separately as applicable on the actual/final invoice and is not included in this estimated total.</div>` : ""}
-
   ${
     amountInWords
+      ? `<div style="font-size: 8.5pt; color: #334155; margin-bottom: 12px;"><strong>Amount in Words:</strong> ${esc(amountInWords)}</div>`
+      : ""
+  }
+  ${
+    pricing.gstType === "AS_PER_ACTUAL"
+      ? `<div style="font-size: 8.5pt; color: #1D4ED8; background: #EFF6FF; border: 1px solid #BFDBFE; padding: 6px 10px; margin-bottom: 12px; font-weight: 600;">GST @ 18% will be charged separately as applicable on the actual/final invoice and is not included in this estimated total.</div>`
+      : ""
+  }
+
+  <!-- 6. Payment & Transaction History -->
+  ${paymentSummaryHtml}
+
+  <!-- 7. Bank & Payment Details -->
+  <div class="section-title">7. Bank &amp; Payment Details</div>
+  <table class="bank-table">
+    <tr>
+      <td style="width: 20%;"><strong>Beneficiary:</strong><br />${esc(bank.accountName)}</td>
+      <td style="width: 20%;"><strong>Bank Name:</strong><br />${esc(bank.bankName)}</td>
+      <td style="width: 20%;"><strong>Account Number:</strong><br />${esc(bank.accountNumber)}</td>
+      <td style="width: 15%;"><strong>IFSC Code:</strong><br />${esc(bank.ifscCode)}</td>
+      <td style="width: 25%;"><strong>Branch:</strong><br />${esc(bank.branch)}${bank.bankAddress ? `<br/><span style="font-size: 7.5pt; color: #64748B;">${esc(bank.bankAddress)}</span>` : ""}</td>
+    </tr>
+  </table>
+
+  <!-- Terms & Conditions -->
+  ${
+    terms && terms.length > 0
       ? `
-  <div class="amount-words-box">
-    <strong>Amount in Words:</strong> ${esc(amountInWords)}
+  <div class="terms-block">
+    <div style="font-weight: 700; color: #0F172A; margin-bottom: 4px; text-transform: uppercase;">Terms &amp; Conditions</div>
+    ${terms.map((t: any) => `<div style="margin-bottom: 2px;">${esc(t)}</div>`).join("")}
   </div>`
       : ""
   }
 
-  <!-- Payment Milestones Schedule -->
-  ${milestonesHtml}
-
-  <!-- Payment & Transaction History Summary -->
-  ${paymentSummaryHtml}
-
-  <!-- Bank & Payment Details -->
-  <div class="section-card">
-    <div class="card-header">🏦 BANK &amp; PAYMENT DETAILS</div>
-    <div class="bank-grid">
-      <div class="bank-item">
-        <strong>Beneficiary:</strong> ${esc(bank.accountName)}<br />
-        <strong>Bank Name:</strong> ${esc(bank.bankName)}
-      </div>
-      <div class="bank-item">
-        <strong>Account Number:</strong> ${esc(bank.accountNumber)}<br />
-        <strong>IFSC Code:</strong> ${esc(bank.ifscCode)}
-      </div>
-      <div class="bank-item">
-        <strong>Branch:</strong> ${esc(bank.branch)}<br />
-      </div>
-    </div>
-  </div>
-
-  <!-- Terms & Conditions -->
-  <div class="section-card">
-    <div class="card-header">📜 TERMS &amp; CONDITIONS</div>
-    <div class="terms-box">
-      ${terms.map((t: any) => `<div style="margin-bottom: 3px;">${esc(t)}</div>`).join("")}
-    </div>
-  </div>
-
-  <!-- Signatures -->
-  <table class="sign-table">
+  <!-- 8. Signature Section -->
+  <table class="signature-table">
     <tr>
-      <td class="sign-box">
-        <div class="sign-line">Client Acceptance Signature</div>
-        <div style="font-size: 8.5px; color: #64748B; margin-top: 2px;">Name, Date &amp; Official Seal</div>
+      <td class="signature-box">
+        <div class="signature-line">Client Acceptance Signature</div>
+        <div class="signature-sub">Name, Date &amp; Official Seal</div>
       </td>
-      <td class="sign-box" style="text-align: right;">
-        <div class="sign-line" style="margin-left: auto;">For ${esc(company.name)}</div>
-        <div style="font-size: 8.5px; color: #64748B; margin-top: 2px;">Authorized Signatory</div>
+      <td style="width: 10%;"></td>
+      <td class="signature-box" style="text-align: right;">
+        <div class="signature-line" style="margin-left: auto;">For ${esc(company.name)}</div>
+        <div class="signature-sub">Authorized Signatory</div>
       </td>
     </tr>
   </table>

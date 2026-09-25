@@ -22,12 +22,14 @@ api.interceptors.request.use(
         config.headers.Authorization = `Bearer ${token}`;
       }
     } catch (err) {
-      console.warn('⚠️ SecureStore access warning during request:', err);
+      console.log('⚠️ SecureStore access warning during request:', err);
     }
     return config;
   },
   (error) => Promise.reject(error)
 );
+
+let isClearingToken = false;
 
 // Response interceptor to handle token expiration & security errors
 api.interceptors.response.use(
@@ -35,12 +37,19 @@ api.interceptors.response.use(
   async (error) => {
     const status = error?.response?.status;
     if (status === 401) {
-      console.warn('🔒 [SECURITY] 401 Unauthorized received. Clearing expired session token...');
-      try {
-        await SecureStore.deleteItemAsync(STORAGE_KEYS.TOKEN).catch(() => {});
-        await SecureStore.deleteItemAsync(STORAGE_KEYS.USER).catch(() => {});
-      } catch (err) {
-        console.error('Failed to wipe SecureStore on 401:', err);
+      if (!isClearingToken) {
+        isClearingToken = true;
+        console.log('🔒 [SECURITY] 401 Unauthorized received. Clearing expired session token...');
+        try {
+          await SecureStore.deleteItemAsync(STORAGE_KEYS.TOKEN).catch(() => {});
+          await SecureStore.deleteItemAsync(STORAGE_KEYS.USER).catch(() => {});
+        } catch (err) {
+          console.error('Failed to wipe SecureStore on 401:', err);
+        } finally {
+          setTimeout(() => {
+            isClearingToken = false;
+          }, 3000);
+        }
       }
     }
     return Promise.reject(error);

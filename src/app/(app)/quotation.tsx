@@ -5,7 +5,7 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
-  Image,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   RefreshControl,
@@ -170,6 +170,15 @@ const DEFAULT_ACCESSORY_OPTIONS = [
   "Cutlery Tray",
   "+ Add More",
 ];
+
+const DEFAULT_ACCESSORY_PRICES: Record<string, number> = {
+  "Wicker Basket": 1500,
+  "BPO (Bottle Pull Out)": 2500,
+  "Innotech Drawers": 4500,
+  "Tandem Box": 3800,
+  "Corner Carousel": 6500,
+  "Cutlery Tray": 1200,
+};
 
 const DEFAULT_DESCRIPTION_OPTIONS = [
   "HDHMR Carcass with High Gloss Acrylic",
@@ -385,12 +394,19 @@ export default function QuotationScreen() {
   const [specThickness, setSpecThickness] = useState("18mm");
   // Accessories
   const [accName, setAccName] = useState("");
+  const [accUnitPrice, setAccUnitPrice] = useState("1500");
   const [accQty, setAccQty] = useState("1");
   const [accInclusion, setAccInclusion] = useState<
     "INCLUDED" | "EXCLUDED" | "LUMP_SUM" | "ACTUAL_COST"
   >("INCLUDED");
   const [itemAccessories, setItemAccessories] = useState<
-    Array<{ name: string; qty: number; inclusionType: any; cost: number }>
+    Array<{
+      name: string;
+      qty: number;
+      unitPrice?: number;
+      inclusionType: any;
+      cost: number;
+    }>
   >([]);
   const [itemRemarks, setItemRemarks] = useState("");
 
@@ -402,7 +418,9 @@ export default function QuotationScreen() {
   );
   const [discountValue, setDiscountValue] = useState("0");
   const [gstPercent, setGstPercent] = useState("18");
-  const [gstType, setGstType] = useState<"AS_PER_ACTUAL" | "CGST_SGST" | "IGST">("AS_PER_ACTUAL");
+  const [gstType, setGstType] = useState<
+    "AS_PER_ACTUAL" | "CGST_SGST" | "IGST"
+  >("AS_PER_ACTUAL");
 
   // Step 4: Milestones & Notes
   const [milestones, setMilestones] = useState<QuotationMilestone[]>(
@@ -445,10 +463,45 @@ export default function QuotationScreen() {
 
   // ── Live Calculation for Modal Form ────────────────────────────────────────
   const liveCalculation = useMemo(() => {
-    const rawSubtotal = items.reduce(
-      (acc, it) => acc + (it.amount || it.quantity * it.rate || 0),
+    const addedSub = items.reduce((acc, it) => {
+      const baseAmt = Math.round((it.quantity || 1) * (it.rate || 0));
+      const accTotal = (it.accessories || []).reduce((sum, a) => {
+        if (
+          a.name &&
+          it.name &&
+          a.name.trim().toLowerCase() === it.name.trim().toLowerCase()
+        )
+          return sum;
+        return (
+          sum +
+          (a.cost !== undefined
+            ? Number(a.cost)
+            : (Number(a.qty) || 1) * (Number(a.unitPrice) || 0))
+        );
+      }, 0);
+      const expected = baseAmt + accTotal;
+      const effectiveItemAmt =
+        it.amount !== undefined && Number(it.amount) > expected
+          ? Number(it.amount)
+          : expected;
+      return acc + effectiveItemAmt;
+    }, 0);
+
+    const sizeNum =
+      parseFloat(itemSize) > 0 ? parseFloat(itemSize) : itemRate ? 1 : 0;
+    const rateNum = parseFloat(itemRate) || 0;
+    const draftBaseAmt = Math.round(sizeNum * rateNum);
+    const draftAccAmt = (itemAccessories || []).reduce(
+      (sum, a) =>
+        sum +
+        (a.cost !== undefined
+          ? Number(a.cost)
+          : (Number(a.qty) || 1) * (Number(a.unitPrice) || 0)),
       0,
     );
+    const currentDraftAmt = draftBaseAmt + draftAccAmt;
+
+    const rawSubtotal = addedSub + currentDraftAmt;
     const handlingFee = Math.round(
       rawSubtotal * ((parseFloat(handlingPercent) || 0) / 100),
     );
@@ -467,7 +520,8 @@ export default function QuotationScreen() {
       rawSubtotal + handlingFee + designFee - discountAmt,
     );
     const gstPct = parseFloat(gstPercent) || 0;
-    const gstAmt = gstType === "AS_PER_ACTUAL" ? 0 : Math.round(taxable * (gstPct / 100));
+    const gstAmt =
+      gstType === "AS_PER_ACTUAL" ? 0 : Math.round(taxable * (gstPct / 100));
     const grandTotal = taxable + gstAmt;
 
     const totalMilestonePct = milestones.reduce(
@@ -478,6 +532,8 @@ export default function QuotationScreen() {
 
     return {
       rawSubtotal,
+      addedSub,
+      currentDraftAmt,
       handlingFee,
       designFee,
       discountAmt,
@@ -489,6 +545,9 @@ export default function QuotationScreen() {
     };
   }, [
     items,
+    itemSize,
+    itemRate,
+    itemAccessories,
     handlingPercent,
     designPercent,
     discountType,
@@ -709,6 +768,9 @@ export default function QuotationScreen() {
       return;
     }
     setAccName(acc);
+    const price = DEFAULT_ACCESSORY_PRICES[acc] || 1500;
+    setAccUnitPrice(String(price));
+    setAccQty("1");
     setShowCustomAccessoryInput(false);
   };
 
@@ -728,6 +790,8 @@ export default function QuotationScreen() {
     }
 
     setAccName(trimmed);
+    setAccUnitPrice("1500");
+    setAccQty("1");
     setCustomAccessoryName("");
     setShowCustomAccessoryInput(false);
   };
@@ -735,13 +799,122 @@ export default function QuotationScreen() {
   const handleAddAccessory = () => {
     const trimmed = accName.trim();
     if (!trimmed) return;
-    const qty = parseInt(accQty, 10) || 1;
+    const qty = Math.max(1, parseInt(accQty, 10) || 1);
+    const unitPrice = Math.max(0, parseFloat(accUnitPrice) || 0);
+    const cost = Math.round(qty * unitPrice);
     setItemAccessories((prev) => [
       ...prev,
-      { name: trimmed, qty, inclusionType: "INCLUDED", cost: 0 },
+      { name: trimmed, qty, unitPrice, inclusionType: "INCLUDED", cost },
     ]);
     setAccName("");
+    setAccUnitPrice("1500");
     setAccQty("1");
+  };
+
+  const handleAddAccessoryToScope = () => {
+    const trimmed = accName.trim();
+    if (!trimmed) {
+      Alert.alert(
+        "Validation Error",
+        "Please select or enter an accessory name.",
+      );
+      return;
+    }
+    const qty = Math.max(1, parseInt(accQty, 10) || 1);
+    const unitPrice = Math.max(0, parseFloat(accUnitPrice) || 0);
+    const cost = Math.round(qty * unitPrice);
+
+    const newItem: QuotationItemDoc = {
+      itemNumber: items.length + 1,
+      room: selectedRoom || "Modular Kitchen",
+      name: trimmed,
+      description: `Accessory (${trimmed})`,
+      unit: "Pieces",
+      quantity: qty,
+      rate: unitPrice,
+      amount: cost,
+      specifications: {
+        carcass: specCarcass,
+        shutter: specShutter,
+        finish: specFinish,
+        brand: specBrand,
+        hardware: specHardware,
+        thickness: specThickness,
+      },
+      accessories: [],
+      remarks: itemRemarks.trim(),
+      scope: "COMPANY_SCOPE",
+      costVariationNote: "Cost may vary as per Design or Measurements.",
+    };
+
+    setItems((prev) => [...prev, newItem]);
+    setAccName("");
+    setAccUnitPrice("1500");
+    setAccQty("1");
+    Alert.alert("Accessory Added", `"${trimmed}" added to ${selectedRoom}`);
+  };
+
+  const handleUpdateAccessoryQty = (index: number, newQty: string) => {
+    const qty = Math.max(1, parseInt(newQty, 10) || 1);
+    setItemAccessories((prev) => {
+      const updated = [...prev];
+      const acc = updated[index];
+      acc.qty = qty;
+      acc.cost = Math.round(qty * (acc.unitPrice || 0));
+      return updated;
+    });
+  };
+
+  const handleUpdateItemQty = (index: number, newQty: string) => {
+    const qty = Math.max(0.01, parseFloat(newQty) || 0);
+    setItems((prev) => {
+      const updated = [...prev];
+      const it = updated[index];
+      it.quantity = qty;
+      const baseAmt = Math.round(qty * (it.rate || 0));
+      const accTotal = (it.accessories || []).reduce((sum, a) => {
+        if (
+          a.name &&
+          it.name &&
+          a.name.trim().toLowerCase() === it.name.trim().toLowerCase()
+        )
+          return sum;
+        return (
+          sum +
+          (a.cost !== undefined
+            ? Number(a.cost)
+            : (Number(a.qty) || 1) * (Number(a.unitPrice) || 0))
+        );
+      }, 0);
+      it.amount = baseAmt + accTotal;
+      return updated;
+    });
+  };
+
+  const handleUpdateItemRate = (index: number, newRate: string) => {
+    const rate = Math.max(0, parseFloat(newRate) || 0);
+    setItems((prev) => {
+      const updated = [...prev];
+      const it = updated[index];
+      it.rate = rate;
+      const baseAmt = Math.round((it.quantity || 1) * rate);
+      const accTotal = (it.accessories || []).reduce((sum, a) => {
+        if (
+          a.name &&
+          it.name &&
+          a.name.trim().toLowerCase() === it.name.trim().toLowerCase()
+        )
+          return sum;
+        return (
+          sum +
+          (a.cost !== undefined
+            ? Number(a.cost)
+            : (Number(a.qty) || 1) * (Number(a.unitPrice) || 0))
+        );
+      }, 0);
+      it.amount = baseAmt + accTotal;
+      return updated;
+    });
   };
 
   const handleAddItemToRoom = () => {
@@ -756,7 +929,16 @@ export default function QuotationScreen() {
     const rateNum = parseFloat(itemRate) || 0;
     const sizeNum = parseFloat(itemSize) || 0;
     const qtyNum = sizeNum > 0 ? sizeNum : 1;
-    const itemAmt = Math.round(qtyNum * rateNum);
+    const baseAmt = Math.round(qtyNum * rateNum);
+    const accTotalAmt = itemAccessories.reduce(
+      (sum, acc) =>
+        sum +
+        (acc.cost !== undefined
+          ? acc.cost
+          : (acc.qty || 1) * (acc.unitPrice || 0)),
+      0,
+    );
+    const itemAmt = baseAmt + accTotalAmt;
 
     const newItem: QuotationItemDoc = {
       itemNumber: items.length + 1,
@@ -880,7 +1062,52 @@ export default function QuotationScreen() {
       setFormStep(1);
       return;
     }
-    if (items.length === 0) {
+    let currentItems = [...items];
+    if (currentItems.length === 0 && liveCalculation.currentDraftAmt > 0) {
+      const sizeNum =
+        parseFloat(itemSize) > 0 ? parseFloat(itemSize) : itemRate ? 1 : 0;
+      const rateNum = parseFloat(itemRate) || 0;
+      const baseAmt = Math.round(sizeNum * rateNum);
+      const accTotalAmt = itemAccessories.reduce(
+        (sum, acc) =>
+          sum +
+          (acc.cost !== undefined
+            ? acc.cost
+            : (acc.qty || 1) * (acc.unitPrice || 0)),
+        0,
+      );
+      const autoItem: QuotationItemDoc = {
+        itemNumber: 1,
+        room: selectedRoom || "Modular Kitchen",
+        name: itemName.trim() || selectedRoom || "Modular Kitchen",
+        description: itemDesc.trim(),
+        unit: itemUnit || "Sq Ft",
+        measurements: {
+          length: 0,
+          width: 0,
+          height: 0,
+          calculatedArea: sizeNum,
+        },
+        quantity: sizeNum || 1,
+        rate: rateNum,
+        amount: baseAmt + accTotalAmt,
+        specifications: {
+          carcass: specCarcass,
+          shutter: specShutter,
+          finish: specFinish,
+          brand: specBrand,
+          hardware: specHardware,
+          thickness: specThickness,
+        },
+        accessories: itemAccessories,
+        remarks: itemRemarks.trim(),
+        scope: "COMPANY_SCOPE",
+        costVariationNote: "Cost may vary as per Design or Measurements.",
+      };
+      currentItems = [autoItem];
+      setItems(currentItems);
+    }
+    if (currentItems.length === 0) {
       Alert.alert(
         "Validation Error",
         "Please add at least one quotation work item.",
@@ -912,7 +1139,7 @@ export default function QuotationScreen() {
           projectTitle.trim() || `${clientName.trim()} Interior Proposal`,
         projectType,
         siteLocation: siteLocation.trim() || clientAddress.trim(),
-        items,
+        items: currentItems,
         pricing: {
           handlingFeePercent: parseFloat(handlingPercent) || 0,
           designFeePercent: parseFloat(designPercent) || 0,
@@ -1195,6 +1422,7 @@ export default function QuotationScreen() {
       <ScrollView
         style={styles.listScroll}
         contentContainerStyle={styles.listContent}
+        keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -1474,92 +1702,271 @@ export default function QuotationScreen() {
                   </View>
 
                   {/* Payment & Transaction Summary Card */}
-                  <View style={[styles.sectionBox, { backgroundColor: '#F8FAFC', borderColor: '#CBD5E1' }]}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                      <Text style={styles.boxTitle}>Payment &amp; Transactions</Text>
+                  <View
+                    style={[
+                      styles.sectionBox,
+                      { backgroundColor: "#F8FAFC", borderColor: "#CBD5E1" },
+                    ]}
+                  >
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: 10,
+                      }}
+                    >
+                      <Text style={styles.boxTitle}>
+                        Payment &amp; Transactions
+                      </Text>
                       <View
                         style={[
                           styles.statusTag,
-                          selectedQuotation.paymentSummary?.paymentStatus === 'PAID'
+                          selectedQuotation.paymentSummary?.paymentStatus ===
+                          "PAID"
                             ? styles.statusTagApproved
-                            : selectedQuotation.paymentSummary?.paymentStatus === 'PARTIALLY_PAID'
-                            ? styles.statusTagSent
-                            : styles.statusTagRejected,
+                            : selectedQuotation.paymentSummary
+                                  ?.paymentStatus === "PARTIALLY_PAID"
+                              ? styles.statusTagSent
+                              : styles.statusTagRejected,
                         ]}
                       >
                         <Text
                           style={[
                             styles.statusTagText,
-                            selectedQuotation.paymentSummary?.paymentStatus === 'PAID'
+                            selectedQuotation.paymentSummary?.paymentStatus ===
+                            "PAID"
                               ? styles.statusTextApproved
-                              : selectedQuotation.paymentSummary?.paymentStatus === 'PARTIALLY_PAID'
-                              ? styles.statusTextSent
-                              : styles.statusTextRejected,
+                              : selectedQuotation.paymentSummary
+                                    ?.paymentStatus === "PARTIALLY_PAID"
+                                ? styles.statusTextSent
+                                : styles.statusTextRejected,
                           ]}
                         >
-                          {(selectedQuotation.paymentSummary?.paymentStatus || 'UNPAID').replace('_', ' ')}
+                          {(
+                            selectedQuotation.paymentSummary?.paymentStatus ||
+                            "UNPAID"
+                          ).replace("_", " ")}
                         </Text>
                       </View>
                     </View>
 
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                      <Text style={styles.priceLabel}>Quotation Grand Total:</Text>
-                      <Text style={styles.priceVal}>{formatINR(selectedQuotation.paymentSummary?.totalAmount || selectedQuotation.pricing?.grandTotal)}</Text>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        marginBottom: 6,
+                      }}
+                    >
+                      <Text style={styles.priceLabel}>
+                        Quotation Grand Total:
+                      </Text>
+                      <Text style={styles.priceVal}>
+                        {formatINR(
+                          selectedQuotation.paymentSummary?.totalAmount ||
+                            selectedQuotation.pricing?.grandTotal,
+                        )}
+                      </Text>
                     </View>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                      <Text style={[styles.priceLabel, { color: '#059669' }]}>Total Amount Paid:</Text>
-                      <Text style={[styles.priceVal, { color: '#059669', fontWeight: '800' }]}>{formatINR(selectedQuotation.paymentSummary?.paidAmount || 0)}</Text>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        marginBottom: 6,
+                      }}
+                    >
+                      <Text style={[styles.priceLabel, { color: "#059669" }]}>
+                        Total Amount Paid:
+                      </Text>
+                      <Text
+                        style={[
+                          styles.priceVal,
+                          { color: "#059669", fontWeight: "800" },
+                        ]}
+                      >
+                        {formatINR(
+                          selectedQuotation.paymentSummary?.paidAmount || 0,
+                        )}
+                      </Text>
                     </View>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-                      <Text style={[styles.priceLabel, { color: '#DC2626' }]}>Balance Remaining:</Text>
-                      <Text style={[styles.priceVal, { color: '#DC2626', fontWeight: '800' }]}>{formatINR(selectedQuotation.paymentSummary?.remainingAmount ?? (selectedQuotation.pricing?.grandTotal || 0))}</Text>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        marginBottom: 12,
+                      }}
+                    >
+                      <Text style={[styles.priceLabel, { color: "#DC2626" }]}>
+                        Balance Remaining:
+                      </Text>
+                      <Text
+                        style={[
+                          styles.priceVal,
+                          { color: "#DC2626", fontWeight: "800" },
+                        ]}
+                      >
+                        {formatINR(
+                          selectedQuotation.paymentSummary?.remainingAmount ??
+                            (selectedQuotation.pricing?.grandTotal || 0),
+                        )}
+                      </Text>
                     </View>
 
                     {/* Record Payment Button */}
                     <TouchableOpacity
                       style={{
-                        backgroundColor: '#7A131A',
+                        backgroundColor: "#7A131A",
                         paddingVertical: 10,
                         paddingHorizontal: 14,
                         borderRadius: 8,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'center',
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
                         gap: 6,
                         marginBottom: 12,
                       }}
                       onPress={() => {
-                        setTxnAmount(String(selectedQuotation.paymentSummary?.remainingAmount || selectedQuotation.pricing?.grandTotal || ''));
+                        setTxnAmount(
+                          String(
+                            selectedQuotation.paymentSummary?.remainingAmount ||
+                              selectedQuotation.pricing?.grandTotal ||
+                              "",
+                          ),
+                        );
                         setIsAddTxnModalOpen(true);
                       }}
                       activeOpacity={0.8}
                     >
-                      <Ionicons name="add-circle-outline" size={18} color="#FFFFFF" />
-                      <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Record Payment / Transaction</Text>
+                      <Ionicons
+                        name="add-circle-outline"
+                        size={18}
+                        color="#FFFFFF"
+                      />
+                      <Text
+                        style={{
+                          color: "#FFFFFF",
+                          fontWeight: "700",
+                          fontSize: 13,
+                        }}
+                      >
+                        Record Payment / Transaction
+                      </Text>
                     </TouchableOpacity>
 
                     {/* Transaction History List */}
-                    {selectedQuotation.transactions && selectedQuotation.transactions.length > 0 ? (
-                      <View style={{ marginTop: 6, borderTopWidth: 1, borderTopColor: '#E2E8F0', paddingTop: 8 }}>
-                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#475569', marginBottom: 8 }}>
-                          Recorded Transactions ({selectedQuotation.transactions.length}):
+                    {selectedQuotation.transactions &&
+                    selectedQuotation.transactions.length > 0 ? (
+                      <View
+                        style={{
+                          marginTop: 6,
+                          borderTopWidth: 1,
+                          borderTopColor: "#E2E8F0",
+                          paddingTop: 8,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 12,
+                            fontWeight: "700",
+                            color: "#475569",
+                            marginBottom: 8,
+                          }}
+                        >
+                          Recorded Transactions (
+                          {selectedQuotation.transactions.length}):
                         </Text>
-                        {selectedQuotation.transactions.map((tx: any, idx: number) => (
-                          <View key={tx._id || idx} style={{ backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 6, padding: 10, marginBottom: 8 }}>
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Text style={{ fontSize: 12, fontWeight: '800', color: '#0F172A' }}>{tx.transactionId || tx.referenceId || `TXN-${idx + 1}`}</Text>
-                              <Text style={{ fontSize: 13, fontWeight: '800', color: '#059669' }}>{formatINR(tx.amount)}</Text>
+                        {selectedQuotation.transactions.map(
+                          (tx: any, idx: number) => (
+                            <View
+                              key={tx._id || idx}
+                              style={{
+                                backgroundColor: "#FFFFFF",
+                                borderWidth: 1,
+                                borderColor: "#E2E8F0",
+                                borderRadius: 6,
+                                padding: 10,
+                                marginBottom: 8,
+                              }}
+                            >
+                              <View
+                                style={{
+                                  flexDirection: "row",
+                                  justifyContent: "space-between",
+                                  alignItems: "center",
+                                }}
+                              >
+                                <Text
+                                  style={{
+                                    fontSize: 12,
+                                    fontWeight: "800",
+                                    color: "#0F172A",
+                                  }}
+                                >
+                                  {tx.transactionId ||
+                                    tx.referenceId ||
+                                    `TXN-${idx + 1}`}
+                                </Text>
+                                <Text
+                                  style={{
+                                    fontSize: 13,
+                                    fontWeight: "800",
+                                    color: "#059669",
+                                  }}
+                                >
+                                  {formatINR(tx.amount)}
+                                </Text>
+                              </View>
+                              <View
+                                style={{
+                                  flexDirection: "row",
+                                  justifyContent: "space-between",
+                                  marginTop: 4,
+                                }}
+                              >
+                                <Text
+                                  style={{ fontSize: 11, color: "#64748B" }}
+                                >
+                                  Mode: {tx.paymentMethod || "UPI"} •{" "}
+                                  {formatDate(
+                                    tx.transactionDate || tx.createdAt,
+                                  )}
+                                </Text>
+                                <Text
+                                  style={{
+                                    fontSize: 11,
+                                    color: "#16A34A",
+                                    fontWeight: "700",
+                                  }}
+                                >
+                                  {tx.status || "Completed"}
+                                </Text>
+                              </View>
+                              {tx.notes ? (
+                                <Text
+                                  style={{
+                                    fontSize: 11,
+                                    color: "#64748B",
+                                    fontStyle: "italic",
+                                    marginTop: 2,
+                                  }}
+                                >
+                                  Note: {tx.notes}
+                                </Text>
+                              ) : null}
                             </View>
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
-                              <Text style={{ fontSize: 11, color: '#64748B' }}>Mode: {tx.paymentMethod || 'UPI'} • {formatDate(tx.transactionDate || tx.createdAt)}</Text>
-                              <Text style={{ fontSize: 11, color: '#16A34A', fontWeight: '700' }}>{tx.status || 'Completed'}</Text>
-                            </View>
-                            {tx.notes ? <Text style={{ fontSize: 11, color: '#64748B', fontStyle: 'italic', marginTop: 2 }}>Note: {tx.notes}</Text> : null}
-                          </View>
-                        ))}
+                          ),
+                        )}
                       </View>
                     ) : (
-                      <Text style={{ fontSize: 11, color: '#64748B', fontStyle: 'italic', textAlign: 'center', marginTop: 4 }}>
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          color: "#64748B",
+                          fontStyle: "italic",
+                          textAlign: "center",
+                          marginTop: 4,
+                        }}
+                      >
                         No transactions recorded yet for this quotation.
                       </Text>
                     )}
@@ -1629,6 +2036,90 @@ export default function QuotationScreen() {
                         ))}
                       </View>
                     )}
+
+                  {/* Bank & Company Info Box */}
+                  <View
+                    style={[
+                      styles.sectionBox,
+                      { backgroundColor: "#F8FAFC", borderColor: "#CBD5E1" },
+                    ]}
+                  >
+                    <Text style={styles.boxTitle}>
+                      🏦 Company &amp; Bank Details
+                    </Text>
+                    <Text style={styles.boxText}>
+                      <Text style={styles.boldText}>Company:</Text>{" "}
+                      {selectedQuotation.companyDetails?.name ||
+                        "Altera Interior"}
+                    </Text>
+                    <Text style={styles.boxText}>
+                      <Text style={styles.boldText}>Address:</Text>{" "}
+                      {selectedQuotation.companyDetails?.address ||
+                        "Plot 16/2, Dhanwapur Village, Behind ATS Triumph Tower, Dwarka Expressway, Sec-104, Gurugram (HR)"}
+                    </Text>
+                    <Text style={styles.boxText}>
+                      <Text style={styles.boldText}>Phone:</Text>{" "}
+                      {selectedQuotation.companyDetails?.phone ||
+                        "+91 9718374407"}{" "}
+                      | <Text style={styles.boldText}>Email:</Text>{" "}
+                      {selectedQuotation.companyDetails?.email ||
+                        "info@alterainterior.com"}
+                    </Text>
+                    <Text style={styles.boxText}>
+                      <Text style={styles.boldText}>GSTIN:</Text>{" "}
+                      {selectedQuotation.companyDetails?.gstin ||
+                        "06CFEPS8731P1Z0"}
+                    </Text>
+                    <View
+                      style={{
+                        marginTop: 8,
+                        paddingTop: 8,
+                        borderTopWidth: 1,
+                        borderTopColor: "#E2E8F0",
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          fontWeight: "700",
+                          color: "#0F172A",
+                          marginBottom: 4,
+                        }}
+                      >
+                        Beneficiary Bank Account:
+                      </Text>
+                      <Text style={styles.boxText}>
+                        <Text style={styles.boldText}>Beneficiary:</Text>{" "}
+                        {selectedQuotation.bankDetails?.accountName ||
+                          "Altera Interior"}
+                      </Text>
+                      <Text style={styles.boxText}>
+                        <Text style={styles.boldText}>Bank Name:</Text>{" "}
+                        {selectedQuotation.bankDetails?.bankName ||
+                          "IndusInd Bank Limited"}
+                      </Text>
+                      <Text style={styles.boxText}>
+                        <Text style={styles.boldText}>Account No:</Text>{" "}
+                        {selectedQuotation.bankDetails?.accountNumber ||
+                          "201002880175"}
+                      </Text>
+                      <Text style={styles.boxText}>
+                        <Text style={styles.boldText}>IFSC Code:</Text>{" "}
+                        {selectedQuotation.bankDetails?.ifscCode ||
+                          "INDB0000518"}
+                      </Text>
+                      <Text style={styles.boxText}>
+                        <Text style={styles.boldText}>Branch:</Text>{" "}
+                        {selectedQuotation.bankDetails?.branch ||
+                          "Sector-31, Gurgaon Branch"}
+                      </Text>
+                      <Text style={styles.boxText}>
+                        <Text style={styles.boldText}>Bank Address:</Text>{" "}
+                        {selectedQuotation.bankDetails?.bankAddress ||
+                          "SCO-8, Sector 31/32A HUDA Market, Gurgaon – 122 002, Haryana, India"}
+                      </Text>
+                    </View>
+                  </View>
 
                   {/* Action Buttons Inside Modal */}
                   <View style={styles.actionButtonsCol}>
@@ -1729,1387 +2220,1794 @@ export default function QuotationScreen() {
         onRequestClose={() => setIsCreateModalOpen(false)}
       >
         <SafeAreaView style={styles.creatorRoot} edges={["top", "bottom"]}>
-          {/* Header */}
-          <View style={styles.creatorHeader}>
-            <TouchableOpacity
-              onPress={() => setIsCreateModalOpen(false)}
-              style={styles.closeBtn}
-            >
-              <Ionicons name="close" size={24} color="#1E293B" />
-            </TouchableOpacity>
-            <Text style={styles.creatorTitle}>
-              {editingQuotationId
-                ? "Revise Quotation"
-                : "Create Interior Quotation"}
-            </Text>
-            <TouchableOpacity
-              style={styles.saveHeaderBtn}
-              onPress={handleSaveQuotation}
-              disabled={isActionLoading}
-            >
-              {isActionLoading ? (
-                <ActivityIndicator size="small" color="#7A131A" />
-              ) : (
-                <Text style={styles.saveHeaderText}>Save</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          {/* Steps Indicator */}
-          <View style={styles.stepTabs}>
-            {[
-              { num: 1, label: "Client" },
-              { num: 2, label: "Items & Rooms" },
-              { num: 3, label: "Pricing & GST" },
-              { num: 4, label: "Milestones" },
-            ].map((s) => (
-              <TouchableOpacity
-                key={s.num}
-                style={[
-                  styles.stepTab,
-                  formStep === s.num && styles.stepTabActive,
-                ]}
-                onPress={() => setFormStep(s.num as any)}
-              >
-                <Text
-                  style={[
-                    styles.stepTabNum,
-                    formStep === s.num && styles.stepTabNumActive,
-                  ]}
-                >
-                  {s.num}
-                </Text>
-                <Text
-                  style={[
-                    styles.stepTabLabel,
-                    formStep === s.num && styles.stepTabLabelActive,
-                  ]}
-                >
-                  {s.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* Form Content */}
-          <ScrollView
+          <KeyboardAvoidingView
             style={{ flex: 1 }}
-            contentContainerStyle={{ padding: 18 }}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
           >
-            {/* STEP 1: CLIENT & PROJECT */}
-            {formStep === 1 && (
-              <View>
-                <Text style={styles.formSectionTitle}>Client Information</Text>
-                <Text style={styles.inputLabel}>Client Name *</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="e.g. Rahul Sharma"
-                  value={clientName}
-                  onChangeText={setClientName}
-                />
+            {/* Header */}
+            <View style={styles.creatorHeader}>
+              <TouchableOpacity
+                onPress={() => setIsCreateModalOpen(false)}
+                style={styles.closeBtn}
+              >
+                <Ionicons name="close" size={24} color="#1E293B" />
+              </TouchableOpacity>
+              <Text style={styles.creatorTitle}>
+                {editingQuotationId
+                  ? "Revise Quotation"
+                  : "Create Interior Quotation"}
+              </Text>
+              <TouchableOpacity
+                style={styles.saveHeaderBtn}
+                onPress={handleSaveQuotation}
+                disabled={isActionLoading}
+              >
+                {isActionLoading ? (
+                  <ActivityIndicator size="small" color="#7A131A" />
+                ) : (
+                  <Text style={styles.saveHeaderText}>Save</Text>
+                )}
+              </TouchableOpacity>
+            </View>
 
-                <Text style={styles.inputLabel}>Company Name (Optional)</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="e.g. Sharma Residences"
-                  value={clientCompany}
-                  onChangeText={setClientCompany}
-                />
-
-                <View style={{ flexDirection: "row", gap: 12 }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.inputLabel}>Phone</Text>
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="+91 98765 43210"
-                      keyboardType="phone-pad"
-                      value={clientPhone}
-                      onChangeText={setClientPhone}
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.inputLabel}>Email</Text>
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="client@example.com"
-                      keyboardType="email-address"
-                      value={clientEmail}
-                      onChangeText={setClientEmail}
-                    />
-                  </View>
-                </View>
-
-                <Text style={styles.inputLabel}>Site / Project Address</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="e.g. Flat 402, Lotus Heights, Sector 50"
-                  value={clientAddress}
-                  onChangeText={setClientAddress}
-                />
-
-                <Text style={styles.inputLabel}>
-                  Client GSTIN (If corporate)
-                </Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="e.g. 07AAAAA0000A1Z5"
-                  value={clientGstin}
-                  onChangeText={setClientGstin}
-                />
-
-                <Text style={[styles.formSectionTitle, { marginTop: 24 }]}>
-                  Project Parameters
-                </Text>
-                <Text style={styles.inputLabel}>Project Title</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="e.g. 3BHK Luxury Interior Execution"
-                  value={projectTitle}
-                  onChangeText={setProjectTitle}
-                />
-
-                <Text style={styles.inputLabel}>Project Type</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Residential Interior / Commercial / Villa"
-                  value={projectType}
-                  onChangeText={setProjectType}
-                />
-
-                <Text style={styles.inputLabel}>Site Location / City</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="e.g. Gurugram / Noida / Delhi"
-                  value={siteLocation}
-                  onChangeText={setSiteLocation}
-                />
-
+            {/* Steps Indicator */}
+            <View style={styles.stepTabs}>
+              {[
+                { num: 1, label: "Client" },
+                { num: 2, label: "Items & Rooms" },
+                { num: 3, label: "Pricing & GST" },
+                { num: 4, label: "Milestones" },
+              ].map((s) => (
                 <TouchableOpacity
-                  style={styles.nextStepBtn}
-                  onPress={() => setFormStep(2)}
+                  key={s.num}
+                  style={[
+                    styles.stepTab,
+                    formStep === s.num && styles.stepTabActive,
+                  ]}
+                  onPress={() => setFormStep(s.num as any)}
                 >
-                  <Text style={styles.nextStepBtnText}>
-                    Next: Add Rooms &amp; Work Items →
+                  <Text
+                    style={[
+                      styles.stepTabNum,
+                      formStep === s.num && styles.stepTabNumActive,
+                    ]}
+                  >
+                    {s.num}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.stepTabLabel,
+                      formStep === s.num && styles.stepTabLabelActive,
+                    ]}
+                  >
+                    {s.label}
                   </Text>
                 </TouchableOpacity>
-              </View>
-            )}
+              ))}
+            </View>
 
-            {/* STEP 2: ROOMS & WORK ITEMS */}
-            {formStep === 2 && (
-              <View>
-                <Text style={styles.formSectionTitle}>
-                  1. Select Room / Category
-                </Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={{ marginBottom: 12 }}
-                >
-                  {roomCategories.map((r) => {
-                    const isSpecial = r === "Custom" || r === "+ Add More";
-                    const isActive = selectedRoom === r;
-                    return (
-                      <TouchableOpacity
-                        key={r}
-                        style={[
-                          styles.roomPill,
-                          isActive && styles.roomPillActive,
-                          isSpecial &&
-                            !isActive && {
-                              borderColor: "#7A131A",
-                              backgroundColor: "#FFF5F5",
-                            },
-                        ]}
-                        onPress={() => handleSelectRoom(r)}
-                      >
-                        <Text
-                          style={[
-                            styles.roomPillText,
-                            isActive && styles.roomPillTextActive,
-                            isSpecial &&
-                              !isActive && {
-                                color: "#7A131A",
-                                fontWeight: "700",
-                              },
-                          ]}
-                        >
-                          {r}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-
-                {(showCustomRoomInput ||
-                  selectedRoom === "Custom" ||
-                  selectedRoom === "+ Add More") && (
-                  <View style={styles.customRoomInputCard}>
-                    <Text style={styles.inputLabel}>
-                      Enter Custom Category Name *
-                    </Text>
-                    <View
-                      style={{ flexDirection: "row", gap: 8, marginTop: 4 }}
-                    >
-                      <TextInput
-                        style={[styles.textInput, { flex: 1 }]}
-                        placeholder="Enter Custom Category Name"
-                        placeholderTextColor="#94A3B8"
-                        value={customRoomName}
-                        onChangeText={setCustomRoomName}
-                        autoFocus
-                      />
-                      <TouchableOpacity
-                        style={styles.addCustomBtn}
-                        onPress={handleConfirmCustomRoom}
-                      >
-                        <Ionicons name="add" size={16} color="#ffffff" />
-                        <Text style={styles.addCustomBtnText}>Add</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
-
-                {/* Sub-Item Pills Selection */}
-                <View
-                  style={{
-                    marginBottom: 14,
-                    backgroundColor: "#ffffff",
-                    padding: 12,
-                    borderRadius: 12,
-                    borderWidth: 1,
-                    borderColor: "#E2E8F0",
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.inputLabel,
-                      { color: "#0F172A", fontWeight: "800" },
-                    ]}
-                  >
-                    2. Select Item Name for{" "}
-                    <Text style={{ color: "#7A131A" }}>{selectedRoom}</Text>:
+            {/* Form Content */}
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ padding: 18, paddingBottom: 80 }}
+              keyboardShouldPersistTaps="handled"
+              automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
+              showsVerticalScrollIndicator={true}
+            >
+              {/* STEP 1: CLIENT & PROJECT */}
+              {formStep === 1 && (
+                <View>
+                  <Text style={styles.formSectionTitle}>
+                    Client Information
                   </Text>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={{ marginTop: 8 }}
-                  >
-                    {(
-                      subItemMap[selectedRoom] ||
-                      DEFAULT_CATEGORY_SUB_ITEMS[selectedRoom] || ["+ Add More"]
-                    ).map((sub) => {
-                      const isActive = itemName === sub;
-                      const isAddMore = sub === "+ Add More";
-                      return (
-                        <TouchableOpacity
-                          key={sub}
-                          style={[
-                            styles.roomPill,
-                            isActive && styles.roomPillActive,
-                            isAddMore &&
-                              !isActive && {
-                                borderColor: "#7A131A",
-                                backgroundColor: "#FFF5F5",
-                              },
-                          ]}
-                          onPress={() => handleSelectSubItem(sub)}
-                        >
-                          <Text
-                            style={[
-                              styles.roomPillText,
-                              isActive && styles.roomPillTextActive,
-                              isAddMore &&
-                                !isActive && {
-                                  color: "#7A131A",
-                                  fontWeight: "700",
-                                },
-                            ]}
-                          >
-                            {sub}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-
-                  {showCustomSubItemInput && (
-                    <View
-                      style={{ flexDirection: "row", gap: 8, marginTop: 10 }}
-                    >
-                      <TextInput
-                        style={[styles.textInput, { flex: 1 }]}
-                        placeholder={`Type custom item name for ${selectedRoom}...`}
-                        value={customSubItemName}
-                        onChangeText={(val) => {
-                          setCustomSubItemName(val);
-                          if (val.trim()) setItemName(val);
-                        }}
-                        autoFocus
-                      />
-                      <TouchableOpacity
-                        style={styles.addCustomBtn}
-                        onPress={() => handleConfirmCustomSubItem()}
-                      >
-                        <Text style={styles.addCustomBtnText}>
-                          + Add Option
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                </View>
-
-                {/* Item Composer Card */}
-                <View style={styles.itemComposerCard}>
-                  <Text style={styles.composerHeader}>
-                    Configure Details for {itemName || selectedRoom}
-                  </Text>
-
-                  <Text style={styles.inputLabel}>Item Name *</Text>
+                  <Text style={styles.inputLabel}>Client Name *</Text>
                   <TextInput
                     style={styles.textInput}
-                    placeholder="Type custom item name or select an option above..."
-                    value={itemName}
-                    onChangeText={setItemName}
-                    onBlur={() => {
-                      if (itemName.trim())
-                        autoAddSubItemOption(selectedRoom, itemName.trim());
-                    }}
+                    placeholder="e.g. Rahul Sharma"
+                    value={clientName}
+                    onChangeText={setClientName}
                   />
 
-                  <Text style={styles.inputLabel}>Detailed Description</Text>
+                  <Text style={styles.inputLabel}>Company Name (Optional)</Text>
                   <TextInput
-                    style={[styles.textInput, { height: 50 }]}
-                    placeholder="Type description or select a preset below..."
-                    multiline
-                    value={itemDesc}
-                    onChangeText={setItemDesc}
+                    style={styles.textInput}
+                    placeholder="e.g. Sharma Residences"
+                    value={clientCompany}
+                    onChangeText={setClientCompany}
                   />
 
-                  {/* Description Option Chips */}
-                  <Text
-                    style={[
-                      styles.inputLabel,
-                      { marginTop: 6, fontSize: 11, color: "#64748B" },
-                    ]}
-                  >
-                    Select Description Preset / Add Custom Option:
-                  </Text>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={{ marginBottom: 8 }}
-                  >
-                    {descriptionOptions.map((desc) => {
-                      const isActive = itemDesc === desc;
-                      const isAddMore = desc === "+ Add More";
-                      return (
-                        <TouchableOpacity
-                          key={desc}
-                          style={[
-                            styles.roomPill,
-                            isActive && styles.roomPillActive,
-                            isAddMore &&
-                              !isActive && {
-                                borderColor: "#7A131A",
-                                backgroundColor: "#FFF5F5",
-                              },
-                          ]}
-                          onPress={() => handleSelectDescription(desc)}
-                        >
-                          <Text
-                            style={[
-                              styles.roomPillText,
-                              isActive && styles.roomPillTextActive,
-                              isAddMore &&
-                                !isActive && {
-                                  color: "#7A131A",
-                                  fontWeight: "700",
-                                },
-                            ]}
-                          >
-                            {desc}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-
-                  {showCustomDescriptionInput && (
-                    <View
-                      style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}
-                    >
-                      <TextInput
-                        style={[styles.textInput, { flex: 1 }]}
-                        placeholder="Type custom description option..."
-                        value={customDescriptionText}
-                        onChangeText={(val) => {
-                          setCustomDescriptionText(val);
-                          if (val.trim()) setItemDesc(val);
-                        }}
-                        autoFocus
-                      />
-                      <TouchableOpacity
-                        style={styles.addCustomBtn}
-                        onPress={() => handleConfirmCustomDescription()}
-                      >
-                        <Text style={styles.addCustomBtnText}>+ Option</Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-
-                  {/* Unit Selection Pills */}
-                  <Text style={[styles.inputLabel, { marginTop: 10 }]}>
-                    Select Unit Type:
-                  </Text>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={{ marginBottom: 8 }}
-                  >
-                    {unitOptions.map((u) => {
-                      const isActive = itemUnit === u;
-                      const isAddMore = u === "+ Add More";
-                      return (
-                        <TouchableOpacity
-                          key={u}
-                          style={[
-                            styles.roomPill,
-                            isActive && styles.roomPillActive,
-                            isAddMore &&
-                              !isActive && {
-                                borderColor: "#7A131A",
-                                backgroundColor: "#FFF5F5",
-                              },
-                          ]}
-                          onPress={() => handleSelectUnit(u)}
-                        >
-                          <Text
-                            style={[
-                              styles.roomPillText,
-                              isActive && styles.roomPillTextActive,
-                              isAddMore &&
-                                !isActive && {
-                                  color: "#7A131A",
-                                  fontWeight: "700",
-                                },
-                            ]}
-                          >
-                            {u}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-
-                  {showCustomUnitInput && (
-                    <View
-                      style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}
-                    >
-                      <TextInput
-                        style={[styles.textInput, { flex: 1 }]}
-                        placeholder="Enter custom unit (e.g. Rft, Sets)..."
-                        value={customUnitName}
-                        onChangeText={(val) => {
-                          setCustomUnitName(val);
-                          if (val.trim()) setItemUnit(val);
-                        }}
-                        autoFocus
-                      />
-                      <TouchableOpacity
-                        style={styles.addCustomBtn}
-                        onPress={() => handleConfirmCustomUnit()}
-                      >
-                        <Text style={styles.addCustomBtnText}>+ Unit</Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-
-                  {/* Merged Size & Rate Inputs */}
-                  <View
-                    style={{ flexDirection: "row", gap: 12, marginBottom: 12 }}
-                  >
+                  <View style={{ flexDirection: "row", gap: 12 }}>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.inputLabel}>Size ({itemUnit}) *</Text>
+                      <Text style={styles.inputLabel}>Phone</Text>
                       <TextInput
                         style={styles.textInput}
-                        placeholder="e.g. 120"
-                        keyboardType="numeric"
-                        value={itemSize}
-                        onChangeText={setItemSize}
+                        placeholder="+91 98765 43210"
+                        keyboardType="phone-pad"
+                        value={clientPhone}
+                        onChangeText={setClientPhone}
                       />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.inputLabel}>Rate (₹) *</Text>
+                      <Text style={styles.inputLabel}>Email</Text>
                       <TextInput
                         style={styles.textInput}
-                        placeholder="e.g. 1550"
-                        keyboardType="numeric"
-                        value={itemRate}
-                        onChangeText={setItemRate}
+                        placeholder="client@example.com"
+                        keyboardType="email-address"
+                        value={clientEmail}
+                        onChangeText={setClientEmail}
                       />
                     </View>
                   </View>
-                  <Text
+
+                  <Text style={styles.inputLabel}>Site / Project Address</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. Flat 402, Lotus Heights, Sector 50"
+                    value={clientAddress}
+                    onChangeText={setClientAddress}
+                  />
+
+                  <Text style={styles.inputLabel}>
+                    Client GSTIN (If corporate)
+                  </Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. 06CFEPS8731P1Z0"
+                    value={clientGstin}
+                    onChangeText={setClientGstin}
+                  />
+
+                  <Text style={[styles.formSectionTitle, { marginTop: 24 }]}>
+                    Project Parameters
+                  </Text>
+                  <Text style={styles.inputLabel}>Project Title</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. 3BHK Luxury Interior Execution"
+                    value={projectTitle}
+                    onChangeText={setProjectTitle}
+                  />
+
+                  <Text style={styles.inputLabel}>Project Type</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="Residential Interior / Commercial / Villa"
+                    value={projectType}
+                    onChangeText={setProjectType}
+                  />
+
+                  <Text style={styles.inputLabel}>Site Location / City</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. Gurugram / Noida / Delhi"
+                    value={siteLocation}
+                    onChangeText={setSiteLocation}
+                  />
+
+                  <TouchableOpacity
+                    style={styles.nextStepBtn}
+                    onPress={() => setFormStep(2)}
+                  >
+                    <Text style={styles.nextStepBtnText}>
+                      Next: Add Rooms &amp; Work Items →
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* STEP 2: ROOMS & WORK ITEMS */}
+              {formStep === 2 && (
+                <View>
+                  <Text style={styles.formSectionTitle}>
+                    1. Select Room / Category
+                  </Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={{ marginBottom: 12 }}
+                  >
+                    {roomCategories.map((r) => {
+                      const isSpecial = r === "Custom" || r === "+ Add More";
+                      const isActive = selectedRoom === r;
+                      return (
+                        <TouchableOpacity
+                          key={r}
+                          style={[
+                            styles.roomPill,
+                            isActive && styles.roomPillActive,
+                            isSpecial &&
+                              !isActive && {
+                                borderColor: "#7A131A",
+                                backgroundColor: "#FFF5F5",
+                              },
+                          ]}
+                          onPress={() => handleSelectRoom(r)}
+                        >
+                          <Text
+                            style={[
+                              styles.roomPillText,
+                              isActive && styles.roomPillTextActive,
+                              isSpecial &&
+                                !isActive && {
+                                  color: "#7A131A",
+                                  fontWeight: "700",
+                                },
+                            ]}
+                          >
+                            {r}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+
+                  {(showCustomRoomInput ||
+                    selectedRoom === "Custom" ||
+                    selectedRoom === "+ Add More") && (
+                    <View style={styles.customRoomInputCard}>
+                      <Text style={styles.inputLabel}>
+                        Enter Custom Category Name *
+                      </Text>
+                      <View
+                        style={{ flexDirection: "row", gap: 8, marginTop: 4 }}
+                      >
+                        <TextInput
+                          style={[styles.textInput, { flex: 1 }]}
+                          placeholder="Enter Custom Category Name"
+                          placeholderTextColor="#94A3B8"
+                          value={customRoomName}
+                          onChangeText={setCustomRoomName}
+                          autoFocus
+                        />
+                        <TouchableOpacity
+                          style={styles.addCustomBtn}
+                          onPress={handleConfirmCustomRoom}
+                        >
+                          <Ionicons name="add" size={16} color="#ffffff" />
+                          <Text style={styles.addCustomBtnText}>Add</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Sub-Item Pills Selection */}
+                  <View
                     style={{
-                      textAlign: "right",
-                      fontWeight: "800",
-                      color: "#0F172A",
-                      fontSize: 13,
-                      marginBottom: 12,
+                      marginBottom: 14,
+                      backgroundColor: "#ffffff",
+                      padding: 12,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: "#E2E8F0",
                     }}
                   >
-                    Total Amt:{" "}
-                    {formatINR(
-                      (parseFloat(itemSize) || 0) * (parseFloat(itemRate) || 0),
+                    <Text
+                      style={[
+                        styles.inputLabel,
+                        { color: "#0F172A", fontWeight: "800" },
+                      ]}
+                    >
+                      2. Select Item Name for{" "}
+                      <Text style={{ color: "#7A131A" }}>{selectedRoom}</Text>:
+                    </Text>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      style={{ marginTop: 8 }}
+                    >
+                      {(
+                        subItemMap[selectedRoom] ||
+                        DEFAULT_CATEGORY_SUB_ITEMS[selectedRoom] || [
+                          "+ Add More",
+                        ]
+                      ).map((sub) => {
+                        const isActive = itemName === sub;
+                        const isAddMore = sub === "+ Add More";
+                        return (
+                          <TouchableOpacity
+                            key={sub}
+                            style={[
+                              styles.roomPill,
+                              isActive && styles.roomPillActive,
+                              isAddMore &&
+                                !isActive && {
+                                  borderColor: "#7A131A",
+                                  backgroundColor: "#FFF5F5",
+                                },
+                            ]}
+                            onPress={() => handleSelectSubItem(sub)}
+                          >
+                            <Text
+                              style={[
+                                styles.roomPillText,
+                                isActive && styles.roomPillTextActive,
+                                isAddMore &&
+                                  !isActive && {
+                                    color: "#7A131A",
+                                    fontWeight: "700",
+                                  },
+                              ]}
+                            >
+                              {sub}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+
+                    {showCustomSubItemInput && (
+                      <View
+                        style={{ flexDirection: "row", gap: 8, marginTop: 10 }}
+                      >
+                        <TextInput
+                          style={[styles.textInput, { flex: 1 }]}
+                          placeholder={`Type custom item name for ${selectedRoom}...`}
+                          value={customSubItemName}
+                          onChangeText={(val) => {
+                            setCustomSubItemName(val);
+                            if (val.trim()) setItemName(val);
+                          }}
+                          autoFocus
+                        />
+                        <TouchableOpacity
+                          style={styles.addCustomBtn}
+                          onPress={() => handleConfirmCustomSubItem()}
+                        >
+                          <Text style={styles.addCustomBtnText}>
+                            + Add Option
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
                     )}
-                  </Text>
-
-                  {/* Material Option Pills */}
-                  <Text style={[styles.inputLabel, { fontWeight: "700" }]}>
-                    Select Core Material:
-                  </Text>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={{ marginBottom: 8 }}
-                  >
-                    {materialOptions.map((m) => {
-                      const isActive = specCarcass === m;
-                      const isAddMore = m === "+ Add More";
-                      return (
-                        <TouchableOpacity
-                          key={m}
-                          style={[
-                            styles.roomPill,
-                            isActive && styles.roomPillActive,
-                            isAddMore &&
-                              !isActive && {
-                                borderColor: "#7A131A",
-                                backgroundColor: "#FFF5F5",
-                              },
-                          ]}
-                          onPress={() => handleSelectMaterial(m)}
-                        >
-                          <Text
-                            style={[
-                              styles.roomPillText,
-                              isActive && styles.roomPillTextActive,
-                              isAddMore &&
-                                !isActive && {
-                                  color: "#7A131A",
-                                  fontWeight: "700",
-                                },
-                            ]}
-                          >
-                            {m}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-
-                  {showCustomMaterialInput && (
-                    <View
-                      style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}
-                    >
-                      <TextInput
-                        style={[styles.textInput, { flex: 1 }]}
-                        placeholder="Type custom material..."
-                        value={customMaterialName}
-                        onChangeText={(val) => {
-                          setCustomMaterialName(val);
-                          if (val.trim()) setSpecCarcass(val);
-                        }}
-                        autoFocus
-                      />
-                      <TouchableOpacity
-                        style={styles.addCustomBtn}
-                        onPress={() => handleConfirmCustomMaterial()}
-                      >
-                        <Text style={styles.addCustomBtnText}>+ Material</Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-
-                  {/* Hardware Option Pills */}
-                  <Text
-                    style={[
-                      styles.inputLabel,
-                      { fontWeight: "700", marginTop: 6 },
-                    ]}
-                  >
-                    Select Hardware Option:
-                  </Text>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={{ marginBottom: 8 }}
-                  >
-                    {hardwareOptions.map((h) => {
-                      const isActive = specHardware === h;
-                      const isAddMore = h === "+ Add More";
-                      return (
-                        <TouchableOpacity
-                          key={h}
-                          style={[
-                            styles.roomPill,
-                            isActive && styles.roomPillActive,
-                            isAddMore &&
-                              !isActive && {
-                                borderColor: "#7A131A",
-                                backgroundColor: "#FFF5F5",
-                              },
-                          ]}
-                          onPress={() => handleSelectHardware(h)}
-                        >
-                          <Text
-                            style={[
-                              styles.roomPillText,
-                              isActive && styles.roomPillTextActive,
-                              isAddMore &&
-                                !isActive && {
-                                  color: "#7A131A",
-                                  fontWeight: "700",
-                                },
-                            ]}
-                          >
-                            {h}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-
-                  {showCustomHardwareInput && (
-                    <View
-                      style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}
-                    >
-                      <TextInput
-                        style={[styles.textInput, { flex: 1 }]}
-                        placeholder="Type custom hardware..."
-                        value={customHardwareName}
-                        onChangeText={(val) => {
-                          setCustomHardwareName(val);
-                          if (val.trim()) setSpecHardware(val);
-                        }}
-                        autoFocus
-                      />
-                      <TouchableOpacity
-                        style={styles.addCustomBtn}
-                        onPress={() => handleConfirmCustomHardware()}
-                      >
-                        <Text style={styles.addCustomBtnText}>+ Hardware</Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-
-                  {/* Accessories Specifications */}
-                  <Text
-                    style={[
-                      styles.inputLabel,
-                      { fontWeight: "700", marginTop: 6 },
-                    ]}
-                  >
-                    Add Accessories:
-                  </Text>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={{ marginBottom: 8 }}
-                  >
-                    {accessoryOptions.map((acc) => {
-                      const isActive = accName === acc;
-                      const isAddMore = acc === "+ Add More";
-                      return (
-                        <TouchableOpacity
-                          key={acc}
-                          style={[
-                            styles.roomPill,
-                            isActive && styles.roomPillActive,
-                            isAddMore &&
-                              !isActive && {
-                                borderColor: "#7A131A",
-                                backgroundColor: "#FFF5F5",
-                              },
-                          ]}
-                          onPress={() => handleSelectAccessory(acc)}
-                        >
-                          <Text
-                            style={[
-                              styles.roomPillText,
-                              isActive && styles.roomPillTextActive,
-                              isAddMore &&
-                                !isActive && {
-                                  color: "#7A131A",
-                                  fontWeight: "700",
-                                },
-                            ]}
-                          >
-                            {acc}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-
-                  {showCustomAccessoryInput && (
-                    <View
-                      style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}
-                    >
-                      <TextInput
-                        style={[styles.textInput, { flex: 1 }]}
-                        placeholder="Type custom accessory..."
-                        value={customAccessoryName}
-                        onChangeText={(val) => {
-                          setCustomAccessoryName(val);
-                          if (val.trim()) setAccName(val);
-                        }}
-                        autoFocus
-                      />
-                      <TouchableOpacity
-                        style={styles.addCustomBtn}
-                        onPress={() => handleConfirmCustomAccessory()}
-                      >
-                        <Text style={styles.addCustomBtnText}>+ Option</Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      gap: 8,
-                      marginBottom: 8,
-                      alignItems: "center",
-                    }}
-                  >
-                    <TextInput
-                      style={[styles.textInput, { flex: 2 }]}
-                      placeholder="Accessory name (e.g. Wicker basket)"
-                      value={accName}
-                      onChangeText={setAccName}
-                    />
-                    <TextInput
-                      style={[styles.textInput, { flex: 1 }]}
-                      placeholder="Qty"
-                      keyboardType="numeric"
-                      value={accQty}
-                      onChangeText={setAccQty}
-                    />
-                    <TouchableOpacity
-                      style={styles.addAccBtn}
-                      onPress={handleAddAccessory}
-                    >
-                      <Ionicons name="add" size={18} color="#ffffff" />
-                    </TouchableOpacity>
                   </View>
 
-                  {itemAccessories.length > 0 && (
+                  {/* Item Composer Card */}
+                  <View style={styles.itemComposerCard}>
+                    <Text style={styles.composerHeader}>
+                      Configure Details for {itemName || selectedRoom}
+                    </Text>
+
+                    <Text style={styles.inputLabel}>Item Name *</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="Type custom item name or select an option above..."
+                      value={itemName}
+                      onChangeText={setItemName}
+                      onBlur={() => {
+                        if (itemName.trim())
+                          autoAddSubItemOption(selectedRoom, itemName.trim());
+                      }}
+                    />
+
+                    <Text style={styles.inputLabel}>Detailed Description</Text>
+                    <TextInput
+                      style={[styles.textInput, { height: 50 }]}
+                      placeholder="Type description or select a preset below..."
+                      multiline
+                      value={itemDesc}
+                      onChangeText={setItemDesc}
+                    />
+
+                    {/* Description Option Chips */}
+                    <Text
+                      style={[
+                        styles.inputLabel,
+                        { marginTop: 6, fontSize: 11, color: "#64748B" },
+                      ]}
+                    >
+                      Select Description Preset / Add Custom Option:
+                    </Text>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      style={{ marginBottom: 8 }}
+                    >
+                      {descriptionOptions.map((desc) => {
+                        const isActive = itemDesc === desc;
+                        const isAddMore = desc === "+ Add More";
+                        return (
+                          <TouchableOpacity
+                            key={desc}
+                            style={[
+                              styles.roomPill,
+                              isActive && styles.roomPillActive,
+                              isAddMore &&
+                                !isActive && {
+                                  borderColor: "#7A131A",
+                                  backgroundColor: "#FFF5F5",
+                                },
+                            ]}
+                            onPress={() => handleSelectDescription(desc)}
+                          >
+                            <Text
+                              style={[
+                                styles.roomPillText,
+                                isActive && styles.roomPillTextActive,
+                                isAddMore &&
+                                  !isActive && {
+                                    color: "#7A131A",
+                                    fontWeight: "700",
+                                  },
+                              ]}
+                            >
+                              {desc}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+
+                    {showCustomDescriptionInput && (
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          gap: 8,
+                          marginBottom: 10,
+                        }}
+                      >
+                        <TextInput
+                          style={[styles.textInput, { flex: 1 }]}
+                          placeholder="Type custom description option..."
+                          value={customDescriptionText}
+                          onChangeText={(val) => {
+                            setCustomDescriptionText(val);
+                            if (val.trim()) setItemDesc(val);
+                          }}
+                          autoFocus
+                        />
+                        <TouchableOpacity
+                          style={styles.addCustomBtn}
+                          onPress={() => handleConfirmCustomDescription()}
+                        >
+                          <Text style={styles.addCustomBtnText}>+ Option</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+
+                    {/* Unit Selection Pills */}
+                    <Text style={[styles.inputLabel, { marginTop: 10 }]}>
+                      Select Unit Type:
+                    </Text>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      style={{ marginBottom: 8 }}
+                    >
+                      {unitOptions.map((u) => {
+                        const isActive = itemUnit === u;
+                        const isAddMore = u === "+ Add More";
+                        return (
+                          <TouchableOpacity
+                            key={u}
+                            style={[
+                              styles.roomPill,
+                              isActive && styles.roomPillActive,
+                              isAddMore &&
+                                !isActive && {
+                                  borderColor: "#7A131A",
+                                  backgroundColor: "#FFF5F5",
+                                },
+                            ]}
+                            onPress={() => handleSelectUnit(u)}
+                          >
+                            <Text
+                              style={[
+                                styles.roomPillText,
+                                isActive && styles.roomPillTextActive,
+                                isAddMore &&
+                                  !isActive && {
+                                    color: "#7A131A",
+                                    fontWeight: "700",
+                                  },
+                              ]}
+                            >
+                              {u}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+
+                    {showCustomUnitInput && (
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          gap: 8,
+                          marginBottom: 10,
+                        }}
+                      >
+                        <TextInput
+                          style={[styles.textInput, { flex: 1 }]}
+                          placeholder="Enter custom unit (e.g. Rft, Sets)..."
+                          value={customUnitName}
+                          onChangeText={(val) => {
+                            setCustomUnitName(val);
+                            if (val.trim()) setItemUnit(val);
+                          }}
+                          autoFocus
+                        />
+                        <TouchableOpacity
+                          style={styles.addCustomBtn}
+                          onPress={() => handleConfirmCustomUnit()}
+                        >
+                          <Text style={styles.addCustomBtnText}>+ Unit</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+
+                    {/* Merged Size & Rate Inputs */}
                     <View
                       style={{
                         flexDirection: "row",
-                        gap: 6,
-                        flexWrap: "wrap",
+                        gap: 12,
                         marginBottom: 12,
                       }}
                     >
-                      {itemAccessories.map((a, i) => (
-                        <TouchableOpacity
-                          key={i}
-                          style={{
-                            backgroundColor: "#FFF5F5",
-                            borderColor: "#FECDD3",
-                            borderWidth: 1,
-                            borderRadius: 14,
-                            paddingVertical: 3,
-                            paddingHorizontal: 8,
-                            flexDirection: "row",
-                            alignItems: "center",
-                            gap: 4,
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.inputLabel}>
+                          Size ({itemUnit}) *
+                        </Text>
+                        <TextInput
+                          style={styles.textInput}
+                          placeholder="e.g. 120"
+                          keyboardType="numeric"
+                          value={itemSize}
+                          onChangeText={setItemSize}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.inputLabel}>Rate (₹) *</Text>
+                        <TextInput
+                          style={styles.textInput}
+                          placeholder="e.g. 1550"
+                          keyboardType="numeric"
+                          value={itemRate}
+                          onChangeText={setItemRate}
+                        />
+                      </View>
+                    </View>
+                    <Text
+                      style={{
+                        textAlign: "right",
+                        fontWeight: "800",
+                        color: "#0F172A",
+                        fontSize: 13,
+                        marginBottom: 12,
+                      }}
+                    >
+                      Total Amt:{" "}
+                      {formatINR(
+                        Math.round(
+                          (parseFloat(itemSize) > 0
+                            ? parseFloat(itemSize)
+                            : itemRate
+                              ? 1
+                              : 0) * (parseFloat(itemRate) || 0),
+                        ) +
+                          itemAccessories.reduce(
+                            (sum, a) =>
+                              sum +
+                              (a.cost !== undefined
+                                ? Number(a.cost)
+                                : (Number(a.qty) || 1) *
+                                  (Number(a.unitPrice) || 0)),
+                            0,
+                          ),
+                      )}
+                    </Text>
+
+                    {/* Material Option Pills */}
+                    <Text style={[styles.inputLabel, { fontWeight: "700" }]}>
+                      Select Core Material:
+                    </Text>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      style={{ marginBottom: 8 }}
+                    >
+                      {materialOptions.map((m) => {
+                        const isActive = specCarcass === m;
+                        const isAddMore = m === "+ Add More";
+                        return (
+                          <TouchableOpacity
+                            key={m}
+                            style={[
+                              styles.roomPill,
+                              isActive && styles.roomPillActive,
+                              isAddMore &&
+                                !isActive && {
+                                  borderColor: "#7A131A",
+                                  backgroundColor: "#FFF5F5",
+                                },
+                            ]}
+                            onPress={() => handleSelectMaterial(m)}
+                          >
+                            <Text
+                              style={[
+                                styles.roomPillText,
+                                isActive && styles.roomPillTextActive,
+                                isAddMore &&
+                                  !isActive && {
+                                    color: "#7A131A",
+                                    fontWeight: "700",
+                                  },
+                              ]}
+                            >
+                              {m}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+
+                    {showCustomMaterialInput && (
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          gap: 8,
+                          marginBottom: 10,
+                        }}
+                      >
+                        <TextInput
+                          style={[styles.textInput, { flex: 1 }]}
+                          placeholder="Type custom material..."
+                          value={customMaterialName}
+                          onChangeText={(val) => {
+                            setCustomMaterialName(val);
+                            if (val.trim()) setSpecCarcass(val);
                           }}
-                          onPress={() =>
-                            setItemAccessories((prev) =>
-                              prev.filter((_, idx) => idx !== i),
-                            )
-                          }
+                          autoFocus
+                        />
+                        <TouchableOpacity
+                          style={styles.addCustomBtn}
+                          onPress={() => handleConfirmCustomMaterial()}
+                        >
+                          <Text style={styles.addCustomBtnText}>
+                            + Material
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+
+                    {/* Hardware Option Pills */}
+                    <Text
+                      style={[
+                        styles.inputLabel,
+                        { fontWeight: "700", marginTop: 6 },
+                      ]}
+                    >
+                      Select Hardware Option:
+                    </Text>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      style={{ marginBottom: 8 }}
+                    >
+                      {hardwareOptions.map((h) => {
+                        const isActive = specHardware === h;
+                        const isAddMore = h === "+ Add More";
+                        return (
+                          <TouchableOpacity
+                            key={h}
+                            style={[
+                              styles.roomPill,
+                              isActive && styles.roomPillActive,
+                              isAddMore &&
+                                !isActive && {
+                                  borderColor: "#7A131A",
+                                  backgroundColor: "#FFF5F5",
+                                },
+                            ]}
+                            onPress={() => handleSelectHardware(h)}
+                          >
+                            <Text
+                              style={[
+                                styles.roomPillText,
+                                isActive && styles.roomPillTextActive,
+                                isAddMore &&
+                                  !isActive && {
+                                    color: "#7A131A",
+                                    fontWeight: "700",
+                                  },
+                              ]}
+                            >
+                              {h}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+
+                    {showCustomHardwareInput && (
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          gap: 8,
+                          marginBottom: 10,
+                        }}
+                      >
+                        <TextInput
+                          style={[styles.textInput, { flex: 1 }]}
+                          placeholder="Type custom hardware..."
+                          value={customHardwareName}
+                          onChangeText={(val) => {
+                            setCustomHardwareName(val);
+                            if (val.trim()) setSpecHardware(val);
+                          }}
+                          autoFocus
+                        />
+                        <TouchableOpacity
+                          style={styles.addCustomBtn}
+                          onPress={() => handleConfirmCustomHardware()}
+                        >
+                          <Text style={styles.addCustomBtnText}>
+                            + Hardware
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+
+                    {/* Accessories Specifications */}
+                    <Text
+                      style={[
+                        styles.inputLabel,
+                        { fontWeight: "700", marginTop: 6 },
+                      ]}
+                    >
+                      Add Accessories:
+                    </Text>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      style={{ marginBottom: 8 }}
+                    >
+                      {accessoryOptions.map((acc) => {
+                        const isActive = accName === acc;
+                        const isAddMore = acc === "+ Add More";
+                        return (
+                          <TouchableOpacity
+                            key={acc}
+                            style={[
+                              styles.roomPill,
+                              isActive && styles.roomPillActive,
+                              isAddMore &&
+                                !isActive && {
+                                  borderColor: "#7A131A",
+                                  backgroundColor: "#FFF5F5",
+                                },
+                            ]}
+                            onPress={() => handleSelectAccessory(acc)}
+                          >
+                            <Text
+                              style={[
+                                styles.roomPillText,
+                                isActive && styles.roomPillTextActive,
+                                isAddMore &&
+                                  !isActive && {
+                                    color: "#7A131A",
+                                    fontWeight: "700",
+                                  },
+                              ]}
+                            >
+                              {acc}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+
+                    {showCustomAccessoryInput && (
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          gap: 8,
+                          marginBottom: 10,
+                        }}
+                      >
+                        <TextInput
+                          style={[styles.textInput, { flex: 1 }]}
+                          placeholder="Type custom accessory..."
+                          value={customAccessoryName}
+                          onChangeText={(val) => {
+                            setCustomAccessoryName(val);
+                            if (val.trim()) setAccName(val);
+                          }}
+                          autoFocus
+                        />
+                        <TouchableOpacity
+                          style={styles.addCustomBtn}
+                          onPress={() => handleConfirmCustomAccessory()}
+                        >
+                          <Text style={styles.addCustomBtnText}>+ Option</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+
+                    {/* Accessory Input Form with Price & Quantity */}
+                    <View style={{ marginBottom: 12 }}>
+                      <Text style={styles.inputLabel}>Accessory Name</Text>
+                      <TextInput
+                        style={styles.textInput}
+                        placeholder="Accessory name (e.g. Wicker Basket)"
+                        value={accName}
+                        onChangeText={setAccName}
+                      />
+                    </View>
+
+                    <View
+                      style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.inputLabel}>Unit Price (₹)</Text>
+                        <TextInput
+                          style={styles.textInput}
+                          placeholder="Unit Price"
+                          keyboardType="numeric"
+                          value={accUnitPrice}
+                          onChangeText={setAccUnitPrice}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.inputLabel}>Quantity</Text>
+                        <TextInput
+                          style={styles.textInput}
+                          placeholder="Qty"
+                          keyboardType="numeric"
+                          value={accQty}
+                          onChangeText={setAccQty}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.inputLabel}>Total Price (₹)</Text>
+                        <View
+                          style={[
+                            styles.textInput,
+                            {
+                              backgroundColor: "#F1F5F9",
+                              justifyContent: "center",
+                            },
+                          ]}
                         >
                           <Text
                             style={{
-                              fontSize: 11,
-                              color: "#7A131A",
-                              fontWeight: "700",
+                              fontWeight: "800",
+                              color: "#0F172A",
+                              fontSize: 13,
                             }}
                           >
-                            {a.name} (x{a.qty}) ✕
+                            {formatINR(
+                              Math.round(
+                                (parseFloat(accUnitPrice) || 0) *
+                                  (parseInt(accQty, 10) || 1),
+                              ),
+                            )}
                           </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
-
-                  <TouchableOpacity
-                    style={styles.addItemSubmitBtn}
-                    onPress={handleAddItemToRoom}
-                  >
-                    <Ionicons
-                      name="add-circle-outline"
-                      size={18}
-                      color="#ffffff"
-                    />
-                    <Text style={styles.addItemSubmitText}>
-                      Add Item to Scope
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* Items Added List */}
-                <Text style={[styles.formSectionTitle, { marginTop: 24 }]}>
-                  Items Added ({items.length})
-                </Text>
-                {items.length === 0 ? (
-                  <Text
-                    style={{
-                      color: "#94A3B8",
-                      fontStyle: "italic",
-                      marginBottom: 20,
-                    }}
-                  >
-                    No items added yet. Compose one above.
-                  </Text>
-                ) : (
-                  items.map((it, i) => (
-                    <View key={i} style={styles.addedItemRow}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.addedItemName}>
-                          {it.name}{" "}
-                          <Text style={{ color: "#7A131A" }}>[{it.room}]</Text>
-                        </Text>
-                        <Text style={styles.addedItemSub}>
-                          {it.quantity} {it.unit} × {formatINR(it.rate)} ={" "}
-                          <Text style={styles.boldText}>
-                            {formatINR(it.amount)}
-                          </Text>
-                        </Text>
+                        </View>
                       </View>
+                    </View>
+
+                    <View
+                      style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}
+                    >
                       <TouchableOpacity
-                        onPress={() =>
-                          setItems((prev) => prev.filter((_, idx) => idx !== i))
-                        }
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        style={[
+                          styles.addAccBtn,
+                          {
+                            flex: 1,
+                            height: 40,
+                            borderRadius: 8,
+                            backgroundColor: "#475569",
+                          },
+                        ]}
+                        onPress={handleAddAccessory}
                       >
                         <Ionicons
-                          name="trash-outline"
-                          size={18}
-                          color="#EF4444"
+                          name="attach-outline"
+                          size={16}
+                          color="#ffffff"
                         />
-                      </TouchableOpacity>
-                    </View>
-                  ))
-                )}
-
-                <TouchableOpacity
-                  style={styles.nextStepBtn}
-                  onPress={() => setFormStep(3)}
-                >
-                  <Text style={styles.nextStepBtnText}>
-                    Next: Charges, Tax &amp; GST →
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {/* STEP 3: CHARGES, GST & SUMMARY */}
-            {formStep === 3 && (
-              <View>
-                <Text style={styles.formSectionTitle}>
-                  Additional Fees &amp; Discounts
-                </Text>
-
-                <View style={{ flexDirection: "row", gap: 12 }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.inputLabel}>Handling Charges (%)</Text>
-                    <TextInput
-                      style={styles.textInput}
-                      keyboardType="numeric"
-                      value={handlingPercent}
-                      onChangeText={setHandlingPercent}
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.inputLabel}>Designing Fees (%)</Text>
-                    <TextInput
-                      style={styles.textInput}
-                      keyboardType="numeric"
-                      value={designPercent}
-                      onChangeText={setDesignPercent}
-                    />
-                  </View>
-                </View>
-
-                <View style={{ flexDirection: "row", gap: 12, marginTop: 8 }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.inputLabel}>Discount Type</Text>
-                    <View
-                      style={{ flexDirection: "row", gap: 6, marginTop: 4 }}
-                    >
-                      <TouchableOpacity
-                        style={[
-                          styles.smallPill,
-                          discountType === "PERCENT" && styles.smallPillActive,
-                        ]}
-                        onPress={() => setDiscountType("PERCENT")}
-                      >
                         <Text
-                          style={[
-                            styles.smallPillText,
-                            discountType === "PERCENT" &&
-                              styles.smallPillTextActive,
-                          ]}
+                          style={{
+                            color: "#ffffff",
+                            fontWeight: "700",
+                            fontSize: 12,
+                            marginLeft: 4,
+                          }}
                         >
-                          %
+                          + Attach Accessory
                         </Text>
                       </TouchableOpacity>
+
                       <TouchableOpacity
                         style={[
-                          styles.smallPill,
-                          discountType === "FIXED" && styles.smallPillActive,
+                          styles.addAccBtn,
+                          {
+                            flex: 1,
+                            height: 40,
+                            borderRadius: 8,
+                            backgroundColor: "#7A131A",
+                          },
                         ]}
-                        onPress={() => setDiscountType("FIXED")}
+                        onPress={handleAddAccessoryToScope}
                       >
+                        <Ionicons
+                          name="add-circle-outline"
+                          size={16}
+                          color="#ffffff"
+                        />
                         <Text
-                          style={[
-                            styles.smallPillText,
-                            discountType === "FIXED" &&
-                              styles.smallPillTextActive,
-                          ]}
+                          style={{
+                            color: "#ffffff",
+                            fontWeight: "700",
+                            fontSize: 12,
+                            marginLeft: 4,
+                          }}
                         >
-                          ₹ Fixed
+                          + Add to Scope
                         </Text>
                       </TouchableOpacity>
                     </View>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.inputLabel}>Discount Value</Text>
-                    <TextInput
-                      style={styles.textInput}
-                      keyboardType="numeric"
-                      value={discountValue}
-                      onChangeText={setDiscountValue}
-                    />
-                  </View>
-                </View>
 
-                {/* GST Configuration Toggle Pills */}
-                <Text style={[styles.formSectionTitle, { marginTop: 24 }]}>
-                  GST Configuration &amp; Options
-                </Text>
-                <Text style={styles.inputLabel}>
-                  Apply GST Tax on Proposal?
-                </Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={{ marginVertical: 8 }}
-                >
-                  <TouchableOpacity
-                    style={[
-                      styles.roomPill,
-                      gstType === "AS_PER_ACTUAL" && styles.roomPillActive,
-                    ]}
-                    onPress={() => {
-                      setGstPercent("18");
-                      setGstType("AS_PER_ACTUAL");
-                    }}
-                  >
-                    <Text
-                      style={[
-                        styles.roomPillText,
-                        gstType === "AS_PER_ACTUAL" && styles.roomPillTextActive,
-                      ]}
-                    >
-                      18% (As per actuals)
-                    </Text>
-                  </TouchableOpacity>
+                    {/* Attached Accessories List */}
+                    {itemAccessories.length > 0 && (
+                      <View
+                        style={{
+                          backgroundColor: "#FFF5F5",
+                          borderColor: "#FECDD3",
+                          borderWidth: 1,
+                          borderRadius: 8,
+                          padding: 10,
+                          marginBottom: 12,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            fontWeight: "700",
+                            color: "#881337",
+                            marginBottom: 6,
+                          }}
+                        >
+                          Attached Accessories ({itemAccessories.length}):
+                        </Text>
+                        {itemAccessories.map((a, i) => (
+                          <View
+                            key={i}
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              backgroundColor: "#FFFFFF",
+                              borderColor: "#FDA4AF",
+                              borderWidth: 1,
+                              borderRadius: 6,
+                              padding: 8,
+                              marginBottom: 4,
+                            }}
+                          >
+                            <View style={{ flex: 1 }}>
+                              <Text
+                                style={{
+                                  fontWeight: "700",
+                                  fontSize: 12,
+                                  color: "#0F172A",
+                                }}
+                              >
+                                {a.name}
+                              </Text>
+                              <Text style={{ fontSize: 11, color: "#475569" }}>
+                                Unit: {formatINR(a.unitPrice)} | Total:{" "}
+                                <Text
+                                  style={{
+                                    fontWeight: "700",
+                                    color: "#881337",
+                                  }}
+                                >
+                                  {formatINR(a.cost)}
+                                </Text>
+                              </Text>
+                            </View>
 
-                  <TouchableOpacity
-                    style={[
-                      styles.roomPill,
-                      gstType !== "AS_PER_ACTUAL" && parseFloat(gstPercent) === 18 && styles.roomPillActive,
-                    ]}
-                    onPress={() => {
-                      setGstPercent("18");
-                      setGstType("CGST_SGST");
-                    }}
-                  >
-                    <Text
-                      style={[
-                        styles.roomPillText,
-                        gstType !== "AS_PER_ACTUAL" && parseFloat(gstPercent) === 18 &&
-                          styles.roomPillTextActive,
-                      ]}
-                    >
-                      GST 18% (Calculated in total)
-                    </Text>
-                  </TouchableOpacity>
+                            <View
+                              style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                gap: 8,
+                              }}
+                            >
+                              <Text style={{ fontSize: 11, color: "#475569" }}>
+                                Qty:
+                              </Text>
+                              <TextInput
+                                style={{
+                                  width: 40,
+                                  height: 30,
+                                  borderBottomWidth: 1,
+                                  borderBottomColor: "#CBD5E1",
+                                  textAlign: "center",
+                                  fontSize: 12,
+                                  fontWeight: "700",
+                                }}
+                                keyboardType="numeric"
+                                value={String(a.qty)}
+                                onChangeText={(val) =>
+                                  handleUpdateAccessoryQty(i, val)
+                                }
+                              />
+                              <TouchableOpacity
+                                onPress={() =>
+                                  setItemAccessories((prev) =>
+                                    prev.filter((_, idx) => idx !== i),
+                                  )
+                                }
+                                hitSlop={{
+                                  top: 8,
+                                  bottom: 8,
+                                  left: 8,
+                                  right: 8,
+                                }}
+                              >
+                                <Ionicons
+                                  name="close-circle"
+                                  size={18}
+                                  color="#EF4444"
+                                />
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    )}
 
-                  {[5, 12, 28].map((rate) => (
                     <TouchableOpacity
-                      key={rate}
+                      style={styles.addItemSubmitBtn}
+                      onPress={handleAddItemToRoom}
+                    >
+                      <Ionicons
+                        name="add-circle-outline"
+                        size={18}
+                        color="#ffffff"
+                      />
+                      <Text style={styles.addItemSubmitText}>
+                        Add Item to Scope
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Items Added List */}
+                  <Text style={[styles.formSectionTitle, { marginTop: 24 }]}>
+                    Items Added ({items.length})
+                  </Text>
+                  {items.length === 0 ? (
+                    <Text
+                      style={{
+                        color: "#94A3B8",
+                        fontStyle: "italic",
+                        marginBottom: 20,
+                      }}
+                    >
+                      No items added yet. Compose one above.
+                    </Text>
+                  ) : (
+                    items.map((it, i) => (
+                      <View
+                        key={i}
+                        style={[
+                          styles.addedItemRow,
+                          { flexDirection: "column", alignItems: "stretch" },
+                        ]}
+                      >
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                          }}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.addedItemName}>
+                              {it.name}{" "}
+                              <Text style={{ color: "#7A131A" }}>
+                                [{it.room}]
+                              </Text>
+                            </Text>
+                            <View
+                              style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                gap: 4,
+                                marginTop: 4,
+                                flexWrap: "wrap",
+                              }}
+                            >
+                              <Text style={{ fontSize: 11, color: "#64748B" }}>
+                                Size/Qty ({it.unit || "Sq Ft"}):
+                              </Text>
+                              <TextInput
+                                style={{
+                                  width: 45,
+                                  height: 26,
+                                  borderBottomWidth: 1,
+                                  borderBottomColor: "#CBD5E1",
+                                  textAlign: "center",
+                                  fontSize: 11,
+                                  fontWeight: "700",
+                                }}
+                                keyboardType="numeric"
+                                value={String(it.quantity)}
+                                onChangeText={(val) =>
+                                  handleUpdateItemQty(i, val)
+                                }
+                              />
+                              <Text style={{ fontSize: 11, color: "#64748B" }}>
+                                × Rate (₹):
+                              </Text>
+                              <TextInput
+                                style={{
+                                  width: 55,
+                                  height: 26,
+                                  borderBottomWidth: 1,
+                                  borderBottomColor: "#CBD5E1",
+                                  textAlign: "center",
+                                  fontSize: 11,
+                                  fontWeight: "700",
+                                }}
+                                keyboardType="numeric"
+                                value={String(it.rate)}
+                                onChangeText={(val) =>
+                                  handleUpdateItemRate(i, val)
+                                }
+                              />
+                            </View>
+                          </View>
+
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: 10,
+                            }}
+                          >
+                            <Text
+                              style={[
+                                styles.boldText,
+                                { fontSize: 14, color: "#0F172A" },
+                              ]}
+                            >
+                              {formatINR(
+                                Math.round(
+                                  (it.quantity || 1) * (it.rate || 0),
+                                ) +
+                                  (it.accessories || []).reduce((sum, a) => {
+                                    if (
+                                      a.name &&
+                                      it.name &&
+                                      a.name.trim().toLowerCase() ===
+                                        it.name.trim().toLowerCase()
+                                    )
+                                      return sum;
+                                    return (
+                                      sum +
+                                      (a.cost !== undefined
+                                        ? Number(a.cost)
+                                        : (Number(a.qty) || 1) *
+                                          (Number(a.unitPrice) || 0))
+                                    );
+                                  }, 0),
+                              )}
+                            </Text>
+                            <TouchableOpacity
+                              onPress={() =>
+                                setItems((prev) =>
+                                  prev.filter((_, idx) => idx !== i),
+                                )
+                              }
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                              <Ionicons
+                                name="trash-outline"
+                                size={18}
+                                color="#EF4444"
+                              />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+
+                        {it.accessories && it.accessories.length > 0 && (
+                          <View
+                            style={{
+                              marginTop: 6,
+                              paddingLeft: 8,
+                              borderLeftWidth: 2,
+                              borderLeftColor: "#FDA4AF",
+                            }}
+                          >
+                            <Text
+                              style={{
+                                fontSize: 10,
+                                fontWeight: "700",
+                                color: "#881337",
+                              }}
+                            >
+                              Included Accessories:
+                            </Text>
+                            {it.accessories.map((acc, aIdx) => (
+                              <Text
+                                key={aIdx}
+                                style={{ fontSize: 10, color: "#475569" }}
+                              >
+                                •{" "}
+                                <Text style={{ fontWeight: "700" }}>
+                                  {acc.name}
+                                </Text>{" "}
+                                (Qty: {acc.qty}, Unit Price:{" "}
+                                {formatINR(acc.unitPrice)}, Total:{" "}
+                                {formatINR(acc.cost)})
+                              </Text>
+                            ))}
+                          </View>
+                        )}
+                      </View>
+                    ))
+                  )}
+
+                  {/* Items Subtotal Card for Step 2 */}
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      backgroundColor: "#FFF5F5",
+                      paddingVertical: 12,
+                      paddingHorizontal: 14,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: "#FECDD3",
+                      marginTop: 12,
+                      marginBottom: 16,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontWeight: "700",
+                        fontSize: 13,
+                        color: "#7A131A",
+                      }}
+                    >
+                      Items Subtotal ({items.length} items):
+                    </Text>
+                    <Text
+                      style={{
+                        fontWeight: "800",
+                        fontSize: 16,
+                        color: "#7A131A",
+                      }}
+                    >
+                      {formatINR(liveCalculation.rawSubtotal)}
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.nextStepBtn}
+                    onPress={() => setFormStep(3)}
+                  >
+                    <Text style={styles.nextStepBtnText}>
+                      Next: Charges, Tax &amp; GST →
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* STEP 3: CHARGES, GST & SUMMARY */}
+              {formStep === 3 && (
+                <View>
+                  <Text style={styles.formSectionTitle}>
+                    Additional Fees &amp; Discounts
+                  </Text>
+
+                  <View style={{ flexDirection: "row", gap: 12 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.inputLabel}>
+                        Handling Charges (%)
+                      </Text>
+                      <TextInput
+                        style={styles.textInput}
+                        keyboardType="numeric"
+                        value={handlingPercent}
+                        onChangeText={setHandlingPercent}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.inputLabel}>Designing Fees (%)</Text>
+                      <TextInput
+                        style={styles.textInput}
+                        keyboardType="numeric"
+                        value={designPercent}
+                        onChangeText={setDesignPercent}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={{ flexDirection: "row", gap: 12, marginTop: 8 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.inputLabel}>Discount Type</Text>
+                      <View
+                        style={{ flexDirection: "row", gap: 6, marginTop: 4 }}
+                      >
+                        <TouchableOpacity
+                          style={[
+                            styles.smallPill,
+                            discountType === "PERCENT" &&
+                              styles.smallPillActive,
+                          ]}
+                          onPress={() => setDiscountType("PERCENT")}
+                        >
+                          <Text
+                            style={[
+                              styles.smallPillText,
+                              discountType === "PERCENT" &&
+                                styles.smallPillTextActive,
+                            ]}
+                          >
+                            %
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[
+                            styles.smallPill,
+                            discountType === "FIXED" && styles.smallPillActive,
+                          ]}
+                          onPress={() => setDiscountType("FIXED")}
+                        >
+                          <Text
+                            style={[
+                              styles.smallPillText,
+                              discountType === "FIXED" &&
+                                styles.smallPillTextActive,
+                            ]}
+                          >
+                            ₹ Fixed
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.inputLabel}>Discount Value</Text>
+                      <TextInput
+                        style={styles.textInput}
+                        keyboardType="numeric"
+                        value={discountValue}
+                        onChangeText={setDiscountValue}
+                      />
+                    </View>
+                  </View>
+
+                  {/* GST Configuration Toggle Pills */}
+                  <Text style={[styles.formSectionTitle, { marginTop: 24 }]}>
+                    GST Configuration &amp; Options
+                  </Text>
+                  <Text style={styles.inputLabel}>
+                    Apply GST Tax on Proposal?
+                  </Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={{ marginVertical: 8 }}
+                  >
+                    <TouchableOpacity
                       style={[
                         styles.roomPill,
-                        gstType !== "AS_PER_ACTUAL" && parseFloat(gstPercent) === rate &&
-                          styles.roomPillActive,
+                        gstType === "AS_PER_ACTUAL" && styles.roomPillActive,
                       ]}
                       onPress={() => {
-                        setGstPercent(String(rate));
-                        if (gstType === "AS_PER_ACTUAL") setGstType("CGST_SGST");
+                        setGstPercent("18");
+                        setGstType("AS_PER_ACTUAL");
                       }}
                     >
                       <Text
                         style={[
                           styles.roomPillText,
-                          gstType !== "AS_PER_ACTUAL" && parseFloat(gstPercent) === rate &&
+                          gstType === "AS_PER_ACTUAL" &&
                             styles.roomPillTextActive,
                         ]}
                       >
-                        GST {rate}%
+                        18% (As per actuals)
                       </Text>
                     </TouchableOpacity>
-                  ))}
-                </ScrollView>
 
-                <View style={{ flexDirection: "row", gap: 12, marginTop: 4 }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.inputLabel}>GST Rate (%)</Text>
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="18"
-                      keyboardType="numeric"
-                      value={gstPercent}
-                      onChangeText={setGstPercent}
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.inputLabel}>GST Type</Text>
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      style={{ flexDirection: "row", marginTop: 4 }}
-                    >
-                      <TouchableOpacity
-                        style={[
-                          styles.smallPill,
-                          gstType === "AS_PER_ACTUAL" && styles.smallPillActive,
-                        ]}
-                        onPress={() => setGstType("AS_PER_ACTUAL")}
-                      >
-                        <Text
-                          style={[
-                            styles.smallPillText,
-                            gstType === "AS_PER_ACTUAL" &&
-                              styles.smallPillTextActive,
-                          ]}
-                        >
-                          As Actuals
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[
-                          styles.smallPill,
-                          gstType === "CGST_SGST" && styles.smallPillActive,
-                          { marginLeft: 4 },
-                        ]}
-                        onPress={() => setGstType("CGST_SGST")}
-                      >
-                        <Text
-                          style={[
-                            styles.smallPillText,
-                            gstType === "CGST_SGST" &&
-                              styles.smallPillTextActive,
-                          ]}
-                        >
-                          CGST+SGST
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[
-                          styles.smallPill,
-                          gstType === "IGST" && styles.smallPillActive,
-                          { marginLeft: 4 },
-                        ]}
-                        onPress={() => setGstType("IGST")}
-                      >
-                        <Text
-                          style={[
-                            styles.smallPillText,
-                            gstType === "IGST" && styles.smallPillTextActive,
-                          ]}
-                        >
-                          IGST
-                        </Text>
-                      </TouchableOpacity>
-                    </ScrollView>
-                  </View>
-                </View>
-
-                {gstType === "AS_PER_ACTUAL" ? (
-                  <View
-                    style={{
-                      backgroundColor: "#FFF5F5",
-                      padding: 10,
-                      borderRadius: 8,
-                      borderColor: "#FECDD3",
-                      borderWidth: 1,
-                      marginTop: 8,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 11,
-                        color: "#7A131A",
-                        fontWeight: "600",
+                    <TouchableOpacity
+                      style={[
+                        styles.roomPill,
+                        gstType !== "AS_PER_ACTUAL" &&
+                          parseFloat(gstPercent) === 18 &&
+                          styles.roomPillActive,
+                      ]}
+                      onPress={() => {
+                        setGstPercent("18");
+                        setGstType("CGST_SGST");
                       }}
                     >
-                      ℹ️ GST 18% will be charged as per actuals and is not included in the estimated total.
-                    </Text>
-                  </View>
-                ) : (
-                  <View
-                    style={{
-                      backgroundColor: "#ECFDF5",
-                      padding: 10,
-                      borderRadius: 8,
-                      borderColor: "#A7F3D0",
-                      borderWidth: 1,
-                      marginTop: 8,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 11,
-                        color: "#059669",
-                        fontWeight: "600",
-                      }}
-                    >
-                      ✓ GST {gstPercent}% is calculated and included in the estimated total.
-                    </Text>
-                  </View>
-                )}
-
-                {/* Live Computed Summary Box */}
-                <View
-                  style={[
-                    styles.sectionBox,
-                    {
-                      marginTop: 24,
-                      backgroundColor: "#FFF5F5",
-                      borderColor: "#FECDD3",
-                    },
-                  ]}
-                >
-                  <Text style={[styles.boxTitle, { color: "#7A131A" }]}>
-                    Live Calculation Summary
-                  </Text>
-                  <View style={styles.priceRow}>
-                    <Text style={styles.priceLabel}>Items Subtotal:</Text>
-                    <Text style={styles.priceVal}>
-                      {formatINR(liveCalculation.rawSubtotal)}
-                    </Text>
-                  </View>
-                  <View style={styles.priceRow}>
-                    <Text style={styles.priceLabel}>
-                      Handling Charges ({handlingPercent}%):
-                    </Text>
-                    <Text style={styles.priceVal}>
-                      {formatINR(liveCalculation.handlingFee)}
-                    </Text>
-                  </View>
-                  <View style={styles.priceRow}>
-                    <Text style={styles.priceLabel}>
-                      Designing Fees ({designPercent}%):
-                    </Text>
-                    <Text style={styles.priceVal}>
-                      {formatINR(liveCalculation.designFee)}
-                    </Text>
-                  </View>
-                  {liveCalculation.discountAmt > 0 && (
-                    <View style={styles.priceRow}>
-                      <Text style={[styles.priceLabel, { color: "#059669" }]}>
-                        Discount:
+                      <Text
+                        style={[
+                          styles.roomPillText,
+                          gstType !== "AS_PER_ACTUAL" &&
+                            parseFloat(gstPercent) === 18 &&
+                            styles.roomPillTextActive,
+                        ]}
+                      >
+                        GST 18% (Calculated in total)
                       </Text>
-                      <Text style={[styles.priceVal, { color: "#059669" }]}>
-                        -{formatINR(liveCalculation.discountAmt)}
+                    </TouchableOpacity>
+
+                    {[5, 12, 28].map((rate) => (
+                      <TouchableOpacity
+                        key={rate}
+                        style={[
+                          styles.roomPill,
+                          gstType !== "AS_PER_ACTUAL" &&
+                            parseFloat(gstPercent) === rate &&
+                            styles.roomPillActive,
+                        ]}
+                        onPress={() => {
+                          setGstPercent(String(rate));
+                          if (gstType === "AS_PER_ACTUAL")
+                            setGstType("CGST_SGST");
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.roomPillText,
+                            gstType !== "AS_PER_ACTUAL" &&
+                              parseFloat(gstPercent) === rate &&
+                              styles.roomPillTextActive,
+                          ]}
+                        >
+                          GST {rate}%
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+
+                  <View style={{ flexDirection: "row", gap: 12, marginTop: 4 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.inputLabel}>GST Rate (%)</Text>
+                      <TextInput
+                        style={styles.textInput}
+                        placeholder="18"
+                        keyboardType="numeric"
+                        value={gstPercent}
+                        onChangeText={setGstPercent}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.inputLabel}>GST Type</Text>
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={{ flexDirection: "row", marginTop: 4 }}
+                      >
+                        <TouchableOpacity
+                          style={[
+                            styles.smallPill,
+                            gstType === "AS_PER_ACTUAL" &&
+                              styles.smallPillActive,
+                          ]}
+                          onPress={() => setGstType("AS_PER_ACTUAL")}
+                        >
+                          <Text
+                            style={[
+                              styles.smallPillText,
+                              gstType === "AS_PER_ACTUAL" &&
+                                styles.smallPillTextActive,
+                            ]}
+                          >
+                            As Actuals
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[
+                            styles.smallPill,
+                            gstType === "CGST_SGST" && styles.smallPillActive,
+                            { marginLeft: 4 },
+                          ]}
+                          onPress={() => setGstType("CGST_SGST")}
+                        >
+                          <Text
+                            style={[
+                              styles.smallPillText,
+                              gstType === "CGST_SGST" &&
+                                styles.smallPillTextActive,
+                            ]}
+                          >
+                            CGST+SGST
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[
+                            styles.smallPill,
+                            gstType === "IGST" && styles.smallPillActive,
+                            { marginLeft: 4 },
+                          ]}
+                          onPress={() => setGstType("IGST")}
+                        >
+                          <Text
+                            style={[
+                              styles.smallPillText,
+                              gstType === "IGST" && styles.smallPillTextActive,
+                            ]}
+                          >
+                            IGST
+                          </Text>
+                        </TouchableOpacity>
+                      </ScrollView>
+                    </View>
+                  </View>
+
+                  {gstType === "AS_PER_ACTUAL" ? (
+                    <View
+                      style={{
+                        backgroundColor: "#FFF5F5",
+                        padding: 10,
+                        borderRadius: 8,
+                        borderColor: "#FECDD3",
+                        borderWidth: 1,
+                        marginTop: 8,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          color: "#7A131A",
+                          fontWeight: "600",
+                        }}
+                      >
+                        ℹ️ GST 18% will be charged as per actuals and is not
+                        included in the estimated total.
+                      </Text>
+                    </View>
+                  ) : (
+                    <View
+                      style={{
+                        backgroundColor: "#ECFDF5",
+                        padding: 10,
+                        borderRadius: 8,
+                        borderColor: "#A7F3D0",
+                        borderWidth: 1,
+                        marginTop: 8,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          color: "#059669",
+                          fontWeight: "600",
+                        }}
+                      >
+                        ✓ GST {gstPercent}% is calculated and included in the
+                        estimated total.
                       </Text>
                     </View>
                   )}
-                  <View style={styles.priceRow}>
-                    <Text style={styles.priceLabel}>Taxable Total:</Text>
-                    <Text style={styles.priceVal}>
-                      {formatINR(liveCalculation.taxable)}
-                    </Text>
-                  </View>
-                  <View style={styles.priceRow}>
-                    <Text style={styles.priceLabel}>
-                      GST ({gstPercent}%{gstType === "AS_PER_ACTUAL" ? " – As per Actuals" : ""}):
-                    </Text>
-                    <Text style={styles.priceVal}>
-                      {gstType === "AS_PER_ACTUAL"
-                        ? "18% – As per Actuals (Not included)"
-                        : formatINR(liveCalculation.gstAmt)}
-                    </Text>
-                  </View>
+
+                  {/* Live Computed Summary Box */}
                   <View
                     style={[
-                      styles.priceRow,
-                      styles.grandTotalRow,
-                      { marginTop: 8 },
-                    ]}
-                  >
-                    <Text style={styles.grandTotalLabel}>
-                      Estimated Grand Total:
-                    </Text>
-                    <Text style={styles.grandTotalVal}>
-                      {formatINR(liveCalculation.grandTotal)}
-                    </Text>
-                  </View>
-                </View>
-
-                <TouchableOpacity
-                  style={styles.nextStepBtn}
-                  onPress={() => setFormStep(4)}
-                >
-                  <Text style={styles.nextStepBtnText}>
-                    Next: Milestones &amp; Notes →
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {/* STEP 4: MILESTONES & FINALIZE */}
-            {formStep === 4 && (
-              <View>
-                <Text style={styles.formSectionTitle}>
-                  Payment Milestones Schedule
-                </Text>
-                <View
-                  style={[
-                    styles.msSumBanner,
-                    liveCalculation.isMilestonesValid
-                      ? styles.msValid
-                      : styles.msInvalid,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.msBannerText,
+                      styles.sectionBox,
                       {
-                        color: liveCalculation.isMilestonesValid
-                          ? "#065F46"
-                          : "#991B1B",
+                        marginTop: 24,
+                        backgroundColor: "#FFF5F5",
+                        borderColor: "#FECDD3",
                       },
                     ]}
                   >
-                    Total Share: {liveCalculation.totalMilestonePct}%{" "}
-                    {liveCalculation.isMilestonesValid
-                      ? "✓ Valid (100%)"
-                      : "⚠️ Must equal 100%"}
-                  </Text>
-                </View>
-
-                {milestones.map((m, idx) => (
-                  <View key={idx} style={styles.milestoneInputCard}>
+                    <Text style={[styles.boxTitle, { color: "#7A131A" }]}>
+                      Live Calculation Summary
+                    </Text>
+                    <View style={styles.priceRow}>
+                      <Text style={styles.priceLabel}>Items Subtotal:</Text>
+                      <Text style={styles.priceVal}>
+                        {formatINR(liveCalculation.rawSubtotal)}
+                      </Text>
+                    </View>
+                    <View style={styles.priceRow}>
+                      <Text style={styles.priceLabel}>
+                        Handling Charges ({handlingPercent}%):
+                      </Text>
+                      <Text style={styles.priceVal}>
+                        {formatINR(liveCalculation.handlingFee)}
+                      </Text>
+                    </View>
+                    <View style={styles.priceRow}>
+                      <Text style={styles.priceLabel}>
+                        Designing Fees ({designPercent}%):
+                      </Text>
+                      <Text style={styles.priceVal}>
+                        {formatINR(liveCalculation.designFee)}
+                      </Text>
+                    </View>
+                    {liveCalculation.discountAmt > 0 && (
+                      <View style={styles.priceRow}>
+                        <Text style={[styles.priceLabel, { color: "#059669" }]}>
+                          Discount:
+                        </Text>
+                        <Text style={[styles.priceVal, { color: "#059669" }]}>
+                          -{formatINR(liveCalculation.discountAmt)}
+                        </Text>
+                      </View>
+                    )}
+                    <View style={styles.priceRow}>
+                      <Text style={styles.priceLabel}>Taxable Total:</Text>
+                      <Text style={styles.priceVal}>
+                        {formatINR(liveCalculation.taxable)}
+                      </Text>
+                    </View>
+                    <View style={styles.priceRow}>
+                      <Text style={styles.priceLabel}>
+                        GST ({gstPercent}%
+                        {gstType === "AS_PER_ACTUAL" ? " – As per Actuals" : ""}
+                        ):
+                      </Text>
+                      <Text style={styles.priceVal}>
+                        {gstType === "AS_PER_ACTUAL"
+                          ? "18% – As per Actuals (Not included)"
+                          : formatINR(liveCalculation.gstAmt)}
+                      </Text>
+                    </View>
                     <View
-                      style={{
-                        flexDirection: "row",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      }}
+                      style={[
+                        styles.priceRow,
+                        styles.grandTotalRow,
+                        { marginTop: 8 },
+                      ]}
                     >
-                      <TextInput
-                        style={[
-                          styles.textInput,
-                          { flex: 2, marginRight: 8, fontWeight: "700" },
-                        ]}
-                        value={m.milestoneName}
-                        onChangeText={(name) => {
-                          const updated = [...milestones];
-                          updated[idx].milestoneName = name;
-                          setMilestones(updated);
-                        }}
-                      />
+                      <Text style={styles.grandTotalLabel}>
+                        Estimated Grand Total:
+                      </Text>
+                      <Text style={styles.grandTotalVal}>
+                        {formatINR(liveCalculation.grandTotal)}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.nextStepBtn}
+                    onPress={() => setFormStep(4)}
+                  >
+                    <Text style={styles.nextStepBtnText}>
+                      Next: Milestones &amp; Notes →
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* STEP 4: MILESTONES & FINALIZE */}
+              {formStep === 4 && (
+                <View>
+                  <Text style={styles.formSectionTitle}>
+                    Payment Milestones Schedule
+                  </Text>
+                  <View
+                    style={[
+                      styles.msSumBanner,
+                      liveCalculation.isMilestonesValid
+                        ? styles.msValid
+                        : styles.msInvalid,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.msBannerText,
+                        {
+                          color: liveCalculation.isMilestonesValid
+                            ? "#065F46"
+                            : "#991B1B",
+                        },
+                      ]}
+                    >
+                      Total Share: {liveCalculation.totalMilestonePct}%{" "}
+                      {liveCalculation.isMilestonesValid
+                        ? "✓ Valid (100%)"
+                        : "⚠️ Must equal 100%"}
+                    </Text>
+                  </View>
+
+                  {milestones.map((m, idx) => (
+                    <View key={idx} style={styles.milestoneInputCard}>
                       <View
                         style={{
                           flexDirection: "row",
+                          justifyContent: "space-between",
                           alignItems: "center",
-                          flex: 1,
                         }}
                       >
                         <TextInput
                           style={[
                             styles.textInput,
-                            {
-                              width: 50,
-                              textAlign: "center",
-                              fontWeight: "800",
-                            },
+                            { flex: 2, marginRight: 8, fontWeight: "700" },
                           ]}
-                          keyboardType="numeric"
-                          value={String(m.percentage)}
-                          onChangeText={(val) => {
+                          value={m.milestoneName}
+                          onChangeText={(name) => {
                             const updated = [...milestones];
-                            updated[idx].percentage = parseFloat(val) || 0;
+                            updated[idx].milestoneName = name;
                             setMilestones(updated);
                           }}
                         />
-                        <Text style={{ marginLeft: 4, fontWeight: "700" }}>
-                          %
-                        </Text>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            flex: 1,
+                          }}
+                        >
+                          <TextInput
+                            style={[
+                              styles.textInput,
+                              {
+                                width: 50,
+                                textAlign: "center",
+                                fontWeight: "800",
+                              },
+                            ]}
+                            keyboardType="numeric"
+                            value={String(m.percentage)}
+                            onChangeText={(val) => {
+                              const updated = [...milestones];
+                              updated[idx].percentage = parseFloat(val) || 0;
+                              setMilestones(updated);
+                            }}
+                          />
+                          <Text style={{ marginLeft: 4, fontWeight: "700" }}>
+                            %
+                          </Text>
+                        </View>
                       </View>
+                      <TextInput
+                        style={[
+                          styles.textInput,
+                          { marginTop: 6, fontSize: 11 },
+                        ]}
+                        placeholder="Stage description"
+                        value={m.stage}
+                        onChangeText={(st) => {
+                          const updated = [...milestones];
+                          updated[idx].stage = st;
+                          setMilestones(updated);
+                        }}
+                      />
                     </View>
-                    <TextInput
-                      style={[styles.textInput, { marginTop: 6, fontSize: 11 }]}
-                      placeholder="Stage description"
-                      value={m.stage}
-                      onChangeText={(st) => {
-                        const updated = [...milestones];
-                        updated[idx].stage = st;
-                        setMilestones(updated);
-                      }}
-                    />
-                  </View>
-                ))}
+                  ))}
 
-                <Text style={[styles.formSectionTitle, { marginTop: 24 }]}>
-                  Internal Notes (Optional)
-                </Text>
-                <TextInput
-                  style={[styles.textInput, { height: 70 }]}
-                  placeholder="Additional customer requirements or architectural notes..."
-                  multiline
-                  value={quotationNotes}
-                  onChangeText={setQuotationNotes}
-                />
+                  <Text style={[styles.formSectionTitle, { marginTop: 24 }]}>
+                    Internal Notes (Optional)
+                  </Text>
+                  <TextInput
+                    style={[styles.textInput, { height: 70 }]}
+                    placeholder="Additional customer requirements or architectural notes..."
+                    multiline
+                    value={quotationNotes}
+                    onChangeText={setQuotationNotes}
+                  />
 
-                <TouchableOpacity
-                  style={[
-                    styles.nextStepBtn,
-                    { backgroundColor: "#7A131A", marginTop: 24 },
-                  ]}
-                  onPress={handleSaveQuotation}
-                  disabled={isActionLoading}
-                >
-                  {isActionLoading ? (
-                    <ActivityIndicator size="small" color="#ffffff" />
-                  ) : (
-                    <Text style={styles.nextStepBtnText}>
-                      ✓ Save &amp; Generate Quotation
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            )}
-          </ScrollView>
+                  <TouchableOpacity
+                    style={[
+                      styles.nextStepBtn,
+                      { backgroundColor: "#7A131A", marginTop: 24 },
+                    ]}
+                    onPress={handleSaveQuotation}
+                    disabled={isActionLoading}
+                  >
+                    {isActionLoading ? (
+                      <ActivityIndicator size="small" color="#ffffff" />
+                    ) : (
+                      <Text style={styles.nextStepBtnText}>
+                        ✓ Save &amp; Generate Quotation
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              )}
+            </ScrollView>
+          </KeyboardAvoidingView>
         </SafeAreaView>
       </Modal>
 
@@ -3120,78 +4018,87 @@ export default function QuotationScreen() {
         transparent
         onRequestClose={() => setIsEmailModalOpen(false)}
       >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.emailCardModal}>
-            <View style={styles.modalHead}>
-              <Text style={styles.modalTitle}>Email Quotation PDF</Text>
-              <TouchableOpacity
-                onPress={() => setIsEmailModalOpen(false)}
-                style={styles.closeBtn}
-              >
-                <Ionicons name="close" size={20} color="#64748B" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={{ padding: 18 }}>
-              <Text style={styles.inputLabel}>Recipient Email *</Text>
-              <TextInput
-                style={styles.textInput}
-                keyboardType="email-address"
-                value={emailRecipient}
-                onChangeText={setEmailRecipient}
-              />
-
-              <Text style={styles.inputLabel}>CC Email (Optional)</Text>
-              <TextInput
-                style={styles.textInput}
-                keyboardType="email-address"
-                placeholder="e.g. architect@example.com"
-                value={emailCc}
-                onChangeText={setEmailCc}
-              />
-
-              <Text style={styles.inputLabel}>Subject</Text>
-              <TextInput
-                style={styles.textInput}
-                value={emailSubject}
-                onChangeText={setEmailSubject}
-              />
-
-              <Text style={styles.inputLabel}>Message</Text>
-              <TextInput
-                style={[styles.textInput, { height: 90 }]}
-                multiline
-                value={emailMessage}
-                onChangeText={setEmailMessage}
-              />
-
-              <View style={styles.attachBox}>
-                <Ionicons name="attach" size={18} color="#7A131A" />
-                <Text style={styles.attachText}>
-                  Attachment: Quotation_{selectedQuotation?.quotationNumber}.pdf
-                  (Automatically generated)
-                </Text>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={styles.emailCardModal}>
+              <View style={styles.modalHead}>
+                <Text style={styles.modalTitle}>Email Quotation PDF</Text>
+                <TouchableOpacity
+                  onPress={() => setIsEmailModalOpen(false)}
+                  style={styles.closeBtn}
+                >
+                  <Ionicons name="close" size={20} color="#64748B" />
+                </TouchableOpacity>
               </View>
 
-              <TouchableOpacity
-                style={[styles.primaryActionBtn, { marginTop: 16 }]}
-                onPress={handleSendEmail}
-                disabled={isSendingEmail}
+              <ScrollView
+                style={{ padding: 18 }}
+                keyboardShouldPersistTaps="handled"
+                automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
               >
-                {isSendingEmail ? (
-                  <ActivityIndicator size="small" color="#ffffff" />
-                ) : (
-                  <>
-                    <Ionicons name="send" size={16} color="#ffffff" />
-                    <Text style={styles.primaryActionBtnText}>
-                      Dispatch Email to Client
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </ScrollView>
+                <Text style={styles.inputLabel}>Recipient Email *</Text>
+                <TextInput
+                  style={styles.textInput}
+                  keyboardType="email-address"
+                  value={emailRecipient}
+                  onChangeText={setEmailRecipient}
+                />
+
+                <Text style={styles.inputLabel}>CC Email (Optional)</Text>
+                <TextInput
+                  style={styles.textInput}
+                  keyboardType="email-address"
+                  placeholder="e.g. architect@example.com"
+                  value={emailCc}
+                  onChangeText={setEmailCc}
+                />
+
+                <Text style={styles.inputLabel}>Subject</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={emailSubject}
+                  onChangeText={setEmailSubject}
+                />
+
+                <Text style={styles.inputLabel}>Message</Text>
+                <TextInput
+                  style={[styles.textInput, { height: 90 }]}
+                  multiline
+                  value={emailMessage}
+                  onChangeText={setEmailMessage}
+                />
+
+                <View style={styles.attachBox}>
+                  <Ionicons name="attach" size={18} color="#7A131A" />
+                  <Text style={styles.attachText}>
+                    Attachment: Quotation_{selectedQuotation?.quotationNumber}
+                    .pdf (Automatically generated)
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.primaryActionBtn, { marginTop: 16 }]}
+                  onPress={handleSendEmail}
+                  disabled={isSendingEmail}
+                >
+                  {isSendingEmail ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <>
+                      <Ionicons name="send" size={16} color="#ffffff" />
+                      <Text style={styles.primaryActionBtnText}>
+                        Dispatch Email to Client
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* ── ADD TRANSACTION MODAL ──────────────────────────────────────────────── */}
@@ -3201,100 +4108,171 @@ export default function QuotationScreen() {
         transparent
         onRequestClose={() => setIsAddTxnModalOpen(false)}
       >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.emailCardModal}>
-            <View style={styles.modalHead}>
-              <Text style={styles.modalTitle}>Record Quotation Payment</Text>
-              <TouchableOpacity
-                onPress={() => setIsAddTxnModalOpen(false)}
-                style={styles.closeBtn}
-              >
-                <Ionicons name="close" size={20} color="#64748B" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={{ padding: 18 }}>
-              <Text style={{ fontSize: 12, color: "#64748B", marginBottom: 12 }}>
-                Quotation: <Text style={{ fontWeight: "700", color: "#0F172A" }}>#{selectedQuotation?.quotationNumber}</Text> ({selectedQuotation?.client?.name})
-              </Text>
-
-              {selectedQuotation?.paymentSummary && (
-                <View style={{ backgroundColor: "#F8FAFC", padding: 10, borderRadius: 8, marginBottom: 14, borderWidth: 1, borderColor: "#E2E8F0" }}>
-                  <Text style={{ fontSize: 11, color: "#64748B" }}>
-                    Grand Total: <Text style={{ fontWeight: "700", color: "#0F172A" }}>{formatINR(selectedQuotation.paymentSummary.totalAmount)}</Text>
-                  </Text>
-                  <Text style={{ fontSize: 11, color: "#059669", marginTop: 2 }}>
-                    Paid So Far: <Text style={{ fontWeight: "700" }}>{formatINR(selectedQuotation.paymentSummary.paidAmount)}</Text>
-                  </Text>
-                  <Text style={{ fontSize: 11, color: "#DC2626", marginTop: 2 }}>
-                    Remaining Balance: <Text style={{ fontWeight: "700" }}>{formatINR(selectedQuotation.paymentSummary.remainingAmount)}</Text>
-                  </Text>
-                </View>
-              )}
-
-              <Text style={styles.inputLabel}>Payment Amount (₹) *</Text>
-              <TextInput
-                style={styles.textInput}
-                keyboardType="numeric"
-                placeholder="e.g. 50000"
-                value={txnAmount}
-                onChangeText={setTxnAmount}
-              />
-
-              <Text style={[styles.inputLabel, { marginTop: 10 }]}>Payment Method *</Text>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginVertical: 6 }}>
-                {["UPI", "Bank Transfer", "Cash", "Cheque", "Card"].map((method) => {
-                  const isActive = txnPaymentMethod === method;
-                  return (
-                    <TouchableOpacity
-                      key={method}
-                      style={[styles.smallPill, isActive && styles.smallPillActive]}
-                      onPress={() => setTxnPaymentMethod(method)}
-                    >
-                      <Text style={[styles.smallPillText, isActive && styles.smallPillTextActive]}>
-                        {method}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={styles.emailCardModal}>
+              <View style={styles.modalHead}>
+                <Text style={styles.modalTitle}>Record Quotation Payment</Text>
+                <TouchableOpacity
+                  onPress={() => setIsAddTxnModalOpen(false)}
+                  style={styles.closeBtn}
+                >
+                  <Ionicons name="close" size={20} color="#64748B" />
+                </TouchableOpacity>
               </View>
 
-              <Text style={styles.inputLabel}>Reference / Transaction ID (Optional)</Text>
-              <TextInput
-                style={styles.textInput}
-                placeholder="e.g. UTR / Cheque No / Txn Ref"
-                value={txnReferenceId}
-                onChangeText={setTxnReferenceId}
-              />
-
-              <Text style={styles.inputLabel}>Notes / Remarks (Optional)</Text>
-              <TextInput
-                style={[styles.textInput, { height: 60 }]}
-                multiline
-                placeholder="e.g. Advance 10% token payment received"
-                value={txnNotes}
-                onChangeText={setTxnNotes}
-              />
-
-              <TouchableOpacity
-                style={[styles.primaryActionBtn, { marginTop: 16, backgroundColor: "#059669" }]}
-                onPress={handleAddTxnSubmit}
-                disabled={isSubmittingTxn}
+              <ScrollView
+                style={{ padding: 18 }}
+                keyboardShouldPersistTaps="handled"
+                automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
               >
-                {isSubmittingTxn ? (
-                  <ActivityIndicator size="small" color="#ffffff" />
-                ) : (
-                  <>
-                    <Ionicons name="checkmark-circle" size={18} color="#ffffff" />
-                    <Text style={styles.primaryActionBtnText}>
-                      Save & Sync Transaction
+                <Text
+                  style={{ fontSize: 12, color: "#64748B", marginBottom: 12 }}
+                >
+                  Quotation:{" "}
+                  <Text style={{ fontWeight: "700", color: "#0F172A" }}>
+                    #{selectedQuotation?.quotationNumber}
+                  </Text>{" "}
+                  ({selectedQuotation?.client?.name})
+                </Text>
+
+                {selectedQuotation?.paymentSummary && (
+                  <View
+                    style={{
+                      backgroundColor: "#F8FAFC",
+                      padding: 10,
+                      borderRadius: 8,
+                      marginBottom: 14,
+                      borderWidth: 1,
+                      borderColor: "#E2E8F0",
+                    }}
+                  >
+                    <Text style={{ fontSize: 11, color: "#64748B" }}>
+                      Grand Total:{" "}
+                      <Text style={{ fontWeight: "700", color: "#0F172A" }}>
+                        {formatINR(
+                          selectedQuotation.paymentSummary.totalAmount,
+                        )}
+                      </Text>
                     </Text>
-                  </>
+                    <Text
+                      style={{ fontSize: 11, color: "#059669", marginTop: 2 }}
+                    >
+                      Paid So Far:{" "}
+                      <Text style={{ fontWeight: "700" }}>
+                        {formatINR(selectedQuotation.paymentSummary.paidAmount)}
+                      </Text>
+                    </Text>
+                    <Text
+                      style={{ fontSize: 11, color: "#DC2626", marginTop: 2 }}
+                    >
+                      Remaining Balance:{" "}
+                      <Text style={{ fontWeight: "700" }}>
+                        {formatINR(
+                          selectedQuotation.paymentSummary.remainingAmount,
+                        )}
+                      </Text>
+                    </Text>
+                  </View>
                 )}
-              </TouchableOpacity>
-            </ScrollView>
+
+                <Text style={styles.inputLabel}>Payment Amount (₹) *</Text>
+                <TextInput
+                  style={styles.textInput}
+                  keyboardType="numeric"
+                  placeholder="e.g. 50000"
+                  value={txnAmount}
+                  onChangeText={setTxnAmount}
+                />
+
+                <Text style={[styles.inputLabel, { marginTop: 10 }]}>
+                  Payment Method *
+                </Text>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    flexWrap: "wrap",
+                    gap: 6,
+                    marginVertical: 6,
+                  }}
+                >
+                  {["UPI", "Bank Transfer", "Cash", "Cheque", "Card"].map(
+                    (method) => {
+                      const isActive = txnPaymentMethod === method;
+                      return (
+                        <TouchableOpacity
+                          key={method}
+                          style={[
+                            styles.smallPill,
+                            isActive && styles.smallPillActive,
+                          ]}
+                          onPress={() => setTxnPaymentMethod(method)}
+                        >
+                          <Text
+                            style={[
+                              styles.smallPillText,
+                              isActive && styles.smallPillTextActive,
+                            ]}
+                          >
+                            {method}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    },
+                  )}
+                </View>
+
+                <Text style={styles.inputLabel}>
+                  Reference / Transaction ID (Optional)
+                </Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="e.g. UTR / Cheque No / Txn Ref"
+                  value={txnReferenceId}
+                  onChangeText={setTxnReferenceId}
+                />
+
+                <Text style={styles.inputLabel}>
+                  Notes / Remarks (Optional)
+                </Text>
+                <TextInput
+                  style={[styles.textInput, { height: 60 }]}
+                  multiline
+                  placeholder="e.g. Advance 10% token payment received"
+                  value={txnNotes}
+                  onChangeText={setTxnNotes}
+                />
+
+                <TouchableOpacity
+                  style={[
+                    styles.primaryActionBtn,
+                    { marginTop: 16, backgroundColor: "#059669" },
+                  ]}
+                  onPress={handleAddTxnSubmit}
+                  disabled={isSubmittingTxn}
+                >
+                  {isSubmittingTxn ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <>
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={18}
+                        color="#ffffff"
+                      />
+                      <Text style={styles.primaryActionBtnText}>
+                        Save & Sync Transaction
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
