@@ -131,7 +131,7 @@ export default function LoginPage() {
 const s = {
   page: {
     minHeight: '100vh',
-    background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)',
+    background: '#FFFFFF',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',

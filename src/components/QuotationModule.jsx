@@ -1,152 +1,203 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
-import { buildQuotationHtml, formatDate, formatINR, printQuotation, utf8ToBase64 } from '../services/quotationWebPdf';
-import LoadingSpinner from './LoadingSpinner';
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import api from "../services/api";
+import {
+  buildQuotationHtml,
+  formatDate,
+  formatINR,
+  printQuotation,
+  utf8ToBase64,
+} from "../services/quotationWebPdf";
+import LoadingSpinner from "./LoadingSpinner";
 
 const DEFAULT_ROOMS = [
-  'Modular Kitchen',
-  'Modular Wardrobes',
-  'Furniture',
-  'Vanity',
-  'Study Table',
-  'Modular Doors',
-  'Crockery Unit',
-  'TV Unit',
-  'Others',
-  'Custom',
-  '+ Add More',
+  "Modular Kitchen",
+  "Modular Wardrobes",
+  "Furniture",
+  "Vanity",
+  "Study Table",
+  "Modular Doors",
+  "Crockery Unit",
+  "TV Unit",
+  "Others",
+  "Custom",
+  "+ Add More",
 ];
 
 const DEFAULT_CATEGORY_SUB_ITEMS = {
-  'Modular Kitchen': [
-    'Acrylic Finish Kitchen',
-    'PU Finish Kitchen',
-    'Laminate Finish Kitchen',
-    'Veneer Finish Kitchen',
-    'Glass Shutter Kitchen',
-    'Handleless Profile Kitchen',
-    '+ Add More',
+  "Modular Kitchen": [
+    "Acrylic Finish Kitchen",
+    "PU Finish Kitchen",
+    "Laminate Finish Kitchen",
+    "Veneer Finish Kitchen",
+    "Glass Shutter Kitchen",
+    "Handleless Profile Kitchen",
+    "+ Add More",
   ],
-  'Modular Wardrobes': [
-    'Laminated Wardrobes',
-    'Lacquered Glass Wardrobes',
-    'Italian Wardrobes',
-    'PU Wardrobes',
-    'PU European Wardrobes',
-    'Veneer Wardrobes',
-    '+ Add More',
+  "Modular Wardrobes": [
+    "Laminated Wardrobes",
+    "Lacquered Glass Wardrobes",
+    "Italian Wardrobes",
+    "PU Wardrobes",
+    "PU European Wardrobes",
+    "Veneer Wardrobes",
+    "+ Add More",
   ],
-  'Furniture': [
-    'Modular Bed',
-    'Modular Bed with Back Panel',
-    'Modular Dresser',
-    'Modern Dining Table with Chair',
-    '+ Add More',
+  Furniture: [
+    "Modular Bed",
+    "Modular Bed with Back Panel",
+    "Modular Dresser",
+    "Modern Dining Table with Chair",
+    "+ Add More",
   ],
-  'Vanity': [
-    'Double Vanity',
-    'Floating Vanity',
-    'Modern Vanity',
-    'Traditional Vanity',
-    '+ Add More',
+  Vanity: [
+    "Double Vanity",
+    "Floating Vanity",
+    "Modern Vanity",
+    "Traditional Vanity",
+    "+ Add More",
   ],
-  'Study Table': [
-    'Classic Modern Study Table',
-    'Classic Veneer Study Table',
-    'Contemporary Study Table',
-    'Modern Study Table',
-    '+ Add More',
+  "Study Table": [
+    "Classic Modern Study Table",
+    "Classic Veneer Study Table",
+    "Contemporary Study Table",
+    "Modern Study Table",
+    "+ Add More",
   ],
-  'Modular Doors': [
-    'Classic Modern Door',
-    'Classic Veneer Door',
-    'Modular Contemporary Door',
-    'Modular Metallic Door',
-    'Modern Door',
-    '+ Add More',
+  "Modular Doors": [
+    "Classic Modern Door",
+    "Classic Veneer Door",
+    "Modular Contemporary Door",
+    "Modular Metallic Door",
+    "Modern Door",
+    "+ Add More",
   ],
-  'Crockery Unit': [
-    'Classic Modern Bar and Unit',
-    'Classic Modern Crockery Unit',
-    'Classic Veneer Bar Unit',
-    'Classic Veneer Crockery Unit',
-    'Modern Bar Unit',
-    'Modern Crockery Unit',
-    '+ Add More',
+  "Crockery Unit": [
+    "Classic Modern Bar and Unit",
+    "Classic Modern Crockery Unit",
+    "Classic Veneer Bar Unit",
+    "Classic Veneer Crockery Unit",
+    "Modern Bar Unit",
+    "Modern Crockery Unit",
+    "+ Add More",
   ],
-  'TV Unit': [
-    'Classic TV Unit',
-    'Contemporary TV Unit',
-    'European TV Unit',
-    'Modern TV Unit',
-    '+ Add More',
+  "TV Unit": [
+    "Classic TV Unit",
+    "Contemporary TV Unit",
+    "European TV Unit",
+    "Modern TV Unit",
+    "+ Add More",
   ],
-  'Others': [
-    'Pooja Unit',
-    'Shoe Rack',
-    'Foyer Console',
-    'Partition Screen',
-    '+ Add More',
+  Others: [
+    "Pooja Unit",
+    "Shoe Rack",
+    "Foyer Console",
+    "Partition Screen",
+    "+ Add More",
   ],
 };
 
 const DEFAULT_MATERIAL_OPTIONS = [
-  'HDHMR Board – Action Tesa',
-  'BWP Plywood – Century / Greenply',
-  'MDF Board',
-  'Particle Board',
-  'Blockboard',
-  'Veneer',
-  'Laminate – Merino / Royale Touche',
-  'Acrylic Sheet',
-  'PVC / WPC Board',
-  '+ Add More',
+  "HDHMR Board – Action Tesa",
+  "BWP Plywood – Century / Greenply",
+  "MDF Board",
+  "Particle Board",
+  "Blockboard",
+  "Veneer",
+  "Laminate – Merino / Royale Touche",
+  "Acrylic Sheet",
+  "PVC / WPC Board",
+  "+ Add More",
 ];
 
 const DEFAULT_HARDWARE_OPTIONS = [
-  'Hettich Soft Close',
-  'Hafele Soft Close',
-  'Ebco Soft Close',
-  'Blum Soft Close',
-  'Standard Hardware',
-  '+ Add More',
+  "Hettich Soft Close",
+  "Hafele Soft Close",
+  "Ebco Soft Close",
+  "Blum Soft Close",
+  "Standard Hardware",
+  "+ Add More",
 ];
 
 const DEFAULT_ACCESSORY_OPTIONS = [
-  'Wicker Basket',
-  'BPO (Bottle Pull Out)',
-  'Innotech Drawers',
-  'Tandem Box',
-  'Corner Carousel',
-  'Cutlery Tray',
-  '+ Add More',
+  "Wicker Basket",
+  "BPO (Bottle Pull Out)",
+  "Innotech Drawers",
+  "Tandem Box",
+  "Corner Carousel",
+  "Cutlery Tray",
+  "+ Add More",
 ];
 
+const DEFAULT_ACCESSORY_PRICES = {
+  "Wicker Basket": 1500,
+  "BPO (Bottle Pull Out)": 2500,
+  "Innotech Drawers": 4500,
+  "Tandem Box": 3800,
+  "Corner Carousel": 6500,
+  "Cutlery Tray": 1200,
+};
+
 const DEFAULT_DESCRIPTION_OPTIONS = [
-  'HDHMR Carcass with High Gloss Acrylic',
-  'BWP Ply Carcass with PU Finish',
-  'Laminate Finish with Soft-Close Fittings',
-  'Modular Factory Finish with Hardware',
-  'Standard Factory Specifications',
-  '+ Add More',
+  "HDHMR Carcass with High Gloss Acrylic",
+  "BWP Ply Carcass with PU Finish",
+  "Laminate Finish with Soft-Close Fittings",
+  "Modular Factory Finish with Hardware",
+  "Standard Factory Specifications",
+  "+ Add More",
 ];
 
 const DEFAULT_MILESTONES = [
-  { milestoneName: 'Booking Token', percentage: 10, amount: 0, stage: 'Initial layout & survey' },
-  { milestoneName: 'Design & 3D Finalization', percentage: 20, amount: 0, stage: '3D renders & material approval' },
-  { milestoneName: 'Civil & Material Procurement', percentage: 25, amount: 0, stage: 'Civil work & raw materials' },
-  { milestoneName: 'Modular Factory Production', percentage: 20, amount: 0, stage: 'Factory fabrication of carcasses' },
-  { milestoneName: 'Installation & Finishing', percentage: 20, amount: 0, stage: 'Onsite assembly & hardware fit' },
-  { milestoneName: 'Final Handover & Snagging', percentage: 5, amount: 0, stage: 'Quality audit & handover' },
+  {
+    milestoneName: "Booking Token",
+    percentage: 10,
+    amount: 0,
+    stage: "Initial layout & survey",
+  },
+  {
+    milestoneName: "Design & 3D Finalization",
+    percentage: 20,
+    amount: 0,
+    stage: "3D renders & material approval",
+  },
+  {
+    milestoneName: "Civil & Material Procurement",
+    percentage: 25,
+    amount: 0,
+    stage: "Civil work & raw materials",
+  },
+  {
+    milestoneName: "Modular Factory Production",
+    percentage: 20,
+    amount: 0,
+    stage: "Factory fabrication of carcasses",
+  },
+  {
+    milestoneName: "Installation & Finishing",
+    percentage: 20,
+    amount: 0,
+    stage: "Onsite assembly & hardware fit",
+  },
+  {
+    milestoneName: "Final Handover & Snagging",
+    percentage: 5,
+    amount: 0,
+    stage: "Quality audit & handover",
+  },
 ];
 
-export default function QuotationModule({ LayoutComponent, title = 'Quotations & Proposals', subRoute = 'list', quotationId = null, basePath = '/quotations' }) {
+export default function QuotationModule({
+  LayoutComponent,
+  title = "Quotations & Proposals",
+  subRoute = "list",
+  quotationId = null,
+  basePath = "/quotations",
+}) {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('quotations'); // 'quotations', 'revisions', 'invoices'
+  const [activeTab, setActiveTab] = useState("quotations"); // 'quotations', 'revisions', 'invoices'
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   // Data
   const [quotations, setQuotations] = useState([]);
@@ -154,8 +205,8 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
   const [summary, setSummary] = useState(null);
 
   // Filters & Search
-  const [statusFilter, setStatusFilter] = useState('ALL');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -163,16 +214,17 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [showQuotationPaymentModal, setShowQuotationPaymentModal] = useState(false);
+  const [showQuotationPaymentModal, setShowQuotationPaymentModal] =
+    useState(false);
   const [selectedQuotation, setSelectedQuotation] = useState(null);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [isActionLoading, setIsActionLoading] = useState(false);
 
   const [quotationPaymentForm, setQuotationPaymentForm] = useState({
-    amount: '',
-    paymentMethod: 'UPI',
-    referenceId: '',
-    notes: '',
+    amount: "",
+    paymentMethod: "UPI",
+    referenceId: "",
+    notes: "",
   });
 
   // Form Step in Creator (1: Client/Project, 2: Rooms/Items, 3: Pricing/GST, 4: Milestones/Save)
@@ -180,93 +232,104 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
   const [editingQuotationId, setEditingQuotationId] = useState(null);
 
   // Step 1 Form
-  const [clientName, setClientName] = useState('');
-  const [clientCompany, setClientCompany] = useState('');
-  const [clientPhone, setClientPhone] = useState('');
-  const [clientEmail, setClientEmail] = useState('');
-  const [clientAddress, setClientAddress] = useState('');
-  const [clientGstin, setClientGstin] = useState('');
-  const [projectTitle, setProjectTitle] = useState('');
-  const [projectType, setProjectType] = useState('Residential Interior');
-  const [siteLocation, setSiteLocation] = useState('');
+  const [clientName, setClientName] = useState("");
+  const [clientCompany, setClientCompany] = useState("");
+  const [clientPhone, setClientPhone] = useState("");
+  const [clientEmail, setClientEmail] = useState("");
+  const [clientAddress, setClientAddress] = useState("");
+  const [clientGstin, setClientGstin] = useState("");
+  const [projectTitle, setProjectTitle] = useState("");
+  const [projectType, setProjectType] = useState("Residential Interior");
+  const [siteLocation, setSiteLocation] = useState("");
 
   // Step 2 Form
   const [roomCategories, setRoomCategories] = useState(DEFAULT_ROOMS);
   const [subItemMap, setSubItemMap] = useState(DEFAULT_CATEGORY_SUB_ITEMS);
-  const [selectedRoom, setSelectedRoom] = useState('Modular Kitchen');
+  const [selectedRoom, setSelectedRoom] = useState("Modular Kitchen");
   const [showCustomCategoryInput, setShowCustomCategoryInput] = useState(false);
-  const [customCategoryName, setCustomCategoryName] = useState('');
+  const [customCategoryName, setCustomCategoryName] = useState("");
   const [showCustomSubItemInput, setShowCustomSubItemInput] = useState(false);
-  const [customSubItemName, setCustomSubItemName] = useState('');
+  const [customSubItemName, setCustomSubItemName] = useState("");
   const [items, setItems] = useState([]);
   // Item Sub-form
-  const DEFAULT_UNITS = ['Sq Ft', 'Lumpsum', 'Pieces', '+ Add More'];
+  const DEFAULT_UNITS = ["Sq Ft", "Lumpsum", "Pieces", "+ Add More"];
   const [unitOptions, setUnitOptions] = useState(DEFAULT_UNITS);
   const [showCustomUnitInput, setShowCustomUnitInput] = useState(false);
-  const [customUnitName, setCustomUnitName] = useState('');
-  const [itemName, setItemName] = useState('');
-  const [itemDesc, setItemDesc] = useState('');
-  const [descriptionOptions, setDescriptionOptions] = useState(DEFAULT_DESCRIPTION_OPTIONS);
-  const [showCustomDescriptionInput, setShowCustomDescriptionInput] = useState(false);
-  const [customDescriptionText, setCustomDescriptionText] = useState('');
-  const [itemUnit, setItemUnit] = useState('Sq Ft');
-  const [itemSize, setItemSize] = useState('1');
-  const [itemRate, setItemRate] = useState('');
-  const [materialOptions, setMaterialOptions] = useState(DEFAULT_MATERIAL_OPTIONS);
+  const [customUnitName, setCustomUnitName] = useState("");
+  const [itemName, setItemName] = useState("");
+  const [itemDesc, setItemDesc] = useState("");
+  const [descriptionOptions, setDescriptionOptions] = useState(
+    DEFAULT_DESCRIPTION_OPTIONS,
+  );
+  const [showCustomDescriptionInput, setShowCustomDescriptionInput] =
+    useState(false);
+  const [customDescriptionText, setCustomDescriptionText] = useState("");
+  const [itemUnit, setItemUnit] = useState("Sq Ft");
+  const [itemSize, setItemSize] = useState("1");
+  const [itemRate, setItemRate] = useState("");
+  const [materialOptions, setMaterialOptions] = useState(
+    DEFAULT_MATERIAL_OPTIONS,
+  );
   const [showCustomMaterialInput, setShowCustomMaterialInput] = useState(false);
-  const [customMaterialName, setCustomMaterialName] = useState('');
+  const [customMaterialName, setCustomMaterialName] = useState("");
 
-  const [hardwareOptions, setHardwareOptions] = useState(DEFAULT_HARDWARE_OPTIONS);
+  const [hardwareOptions, setHardwareOptions] = useState(
+    DEFAULT_HARDWARE_OPTIONS,
+  );
   const [showCustomHardwareInput, setShowCustomHardwareInput] = useState(false);
-  const [customHardwareName, setCustomHardwareName] = useState('');
+  const [customHardwareName, setCustomHardwareName] = useState("");
 
-  const [accessoryOptions, setAccessoryOptions] = useState(DEFAULT_ACCESSORY_OPTIONS);
-  const [showCustomAccessoryInput, setShowCustomAccessoryInput] = useState(false);
-  const [customAccessoryName, setCustomAccessoryName] = useState('');
+  const [accessoryOptions, setAccessoryOptions] = useState(
+    DEFAULT_ACCESSORY_OPTIONS,
+  );
+  const [showCustomAccessoryInput, setShowCustomAccessoryInput] =
+    useState(false);
+  const [customAccessoryName, setCustomAccessoryName] = useState("");
 
-  const [specCarcass, setSpecCarcass] = useState('HDHMR Board – Action Tesa');
-  const [specShutter, setSpecShutter] = useState('Acrylic Finish');
-  const [specFinish, setSpecFinish] = useState('High Gloss Acrylic');
-  const [specBrand, setSpecBrand] = useState('Action TESA / Merino');
-  const [specHardware, setSpecHardware] = useState('Hettich Soft Close');
-  const [specThickness, setSpecThickness] = useState('18mm');
-  const [accName, setAccName] = useState('');
-  const [accQty, setAccQty] = useState('1');
+  const [specCarcass, setSpecCarcass] = useState("HDHMR Board – Action Tesa");
+  const [specShutter, setSpecShutter] = useState("Acrylic Finish");
+  const [specFinish, setSpecFinish] = useState("High Gloss Acrylic");
+  const [specBrand, setSpecBrand] = useState("Action TESA / Merino");
+  const [specHardware, setSpecHardware] = useState("Hettich Soft Close");
+  const [specThickness, setSpecThickness] = useState("18mm");
+  const [accName, setAccName] = useState("");
+  const [accUnitPrice, setAccUnitPrice] = useState("1500");
+  const [accQty, setAccQty] = useState("1");
   const [itemAccessories, setItemAccessories] = useState([]);
-  const [itemRemarks, setItemRemarks] = useState('');
+  const [itemRemarks, setItemRemarks] = useState("");
 
   // Step 3 Form
-  const [handlingPercent, setHandlingPercent] = useState('2');
-  const [designPercent, setDesignPercent] = useState('2');
-  const [discountType, setDiscountType] = useState('PERCENT');
-  const [discountValue, setDiscountValue] = useState('0');
-  const [gstPercent, setGstPercent] = useState('18');
-  const [gstType, setGstType] = useState('AS_PER_ACTUAL');
+  const [handlingPercent, setHandlingPercent] = useState("2");
+  const [designPercent, setDesignPercent] = useState("2");
+  const [discountType, setDiscountType] = useState("PERCENT");
+  const [discountValue, setDiscountValue] = useState("0");
+  const [gstPercent, setGstPercent] = useState("18");
+  const [gstType, setGstType] = useState("AS_PER_ACTUAL");
 
   // Step 4 Form
   const [milestones, setMilestones] = useState(DEFAULT_MILESTONES);
-  const [quotationNotes, setQuotationNotes] = useState('');
+  const [quotationNotes, setQuotationNotes] = useState("");
 
   // Email Modal Form
-  const [emailRecipient, setEmailRecipient] = useState('');
-  const [emailCc, setEmailCc] = useState('');
-  const [emailSubject, setEmailSubject] = useState('');
-  const [emailMessage, setEmailMessage] = useState('');
+  const [emailRecipient, setEmailRecipient] = useState("");
+  const [emailCc, setEmailCc] = useState("");
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailMessage, setEmailMessage] = useState("");
 
   // Invoice Form & Payment Form for Invoices tab
   const [invoiceForm, setInvoiceForm] = useState({
-    clientName: '',
-    projectName: '',
-    description: 'Milestone 1: Civil & Modular Advance',
+    clientName: "",
+    projectName: "",
+    description: "Milestone 1: Civil & Modular Advance",
     amount: 250000,
     gstRate: 18,
-    dueDate: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
+    dueDate: new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0],
   });
   const [paymentForm, setPaymentForm] = useState({
     amount: 100000,
-    method: 'Bank Transfer (NEFT/RTGS)',
-    transactionRef: '',
-    notes: '',
+    method: "Bank Transfer (NEFT/RTGS)",
+    transactionRef: "",
+    notes: "",
   });
 
   useEffect(() => {
@@ -274,9 +337,9 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
   }, [activeTab, statusFilter]);
 
   useEffect(() => {
-    if (subRoute === 'create') {
+    if (subRoute === "create") {
       handleOpenCreateModal();
-    } else if ((subRoute === 'edit' || subRoute === 'view') && quotationId) {
+    } else if ((subRoute === "edit" || subRoute === "view") && quotationId) {
       fetchSingleQuotation(quotationId, subRoute);
     }
   }, [subRoute, quotationId]);
@@ -286,30 +349,30 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
       const res = await api.get(`/quotations/${id}`);
       const doc = res.data?.quotation || res.data?.data || res.data;
       if (doc) {
-        if (mode === 'edit') {
+        if (mode === "edit") {
           handleOpenCreateModal(doc);
-        } else if (mode === 'view') {
+        } else if (mode === "view") {
           setSelectedQuotation(doc);
           setShowDetailModal(true);
         }
       }
     } catch (err) {
-      console.error('Error fetching single quotation:', err);
+      console.error("Error fetching single quotation:", err);
     }
   };
 
   const fetchData = async () => {
     setLoading(true);
-    setError('');
+    setError("");
     try {
-      if (activeTab === 'quotations' || activeTab === 'revisions') {
+      if (activeTab === "quotations" || activeTab === "revisions") {
         const params = {};
-        if (statusFilter !== 'ALL') params.status = statusFilter;
+        if (statusFilter !== "ALL") params.status = statusFilter;
         if (searchQuery.trim()) params.search = searchQuery.trim();
 
         const [resList, resSum] = await Promise.all([
-          api.get('/quotations', { params }),
-          api.get('/quotations/summary').catch(() => null),
+          api.get("/quotations", { params }),
+          api.get("/quotations/summary").catch(() => null),
         ]);
 
         const list = resList.data?.quotations || resList.data?.data || [];
@@ -317,12 +380,12 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
         if (resSum?.data?.summary) {
           setSummary(resSum.data.summary);
         }
-      } else if (activeTab === 'invoices') {
-        const res = await api.get('/finance/invoices');
+      } else if (activeTab === "invoices") {
+        const res = await api.get("/finance/invoices");
         setInvoices(res.data.data || []);
       }
     } catch (err) {
-      setError('Failed to fetch data from backend server.');
+      setError("Failed to fetch data from backend server.");
     } finally {
       setLoading(false);
     }
@@ -334,35 +397,109 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
     const q = searchQuery.toLowerCase();
     return quotations.filter(
       (item) =>
-        (item.quotationNumber && item.quotationNumber.toLowerCase().includes(q)) ||
+        (item.quotationNumber &&
+          item.quotationNumber.toLowerCase().includes(q)) ||
         (item.client?.name && item.client.name.toLowerCase().includes(q)) ||
         (item.projectTitle && item.projectTitle.toLowerCase().includes(q)) ||
-        (item.client?.phone && item.client.phone.includes(q))
+        (item.client?.phone && item.client.phone.includes(q)),
     );
   }, [quotations, searchQuery]);
 
   // Live Pricing Calculation for Modal
   const liveCalc = useMemo(() => {
-    const sub = items.reduce((acc, it) => acc + (it.amount || (it.quantity || 1) * (it.rate || 0)), 0);
-    const handlingFee = Math.round(sub * ((parseFloat(handlingPercent) || 0) / 100));
-    const designFee = Math.round(sub * ((parseFloat(designPercent) || 0) / 100));
+    const addedSub = items.reduce((acc, it) => {
+      const baseAmt = Math.round((it.quantity || 1) * (it.rate || 0));
+      const accTotal = (it.accessories || []).reduce((sum, a) => {
+        if (
+          a.name &&
+          it.name &&
+          a.name.trim().toLowerCase() === it.name.trim().toLowerCase()
+        )
+          return sum;
+        return (
+          sum +
+          (a.cost !== undefined
+            ? Number(a.cost)
+            : (Number(a.qty) || 1) * (Number(a.unitPrice) || 0))
+        );
+      }, 0);
+      const expected = baseAmt + accTotal;
+      const effectiveItemAmt =
+        it.amount !== undefined && Number(it.amount) > expected
+          ? Number(it.amount)
+          : expected;
+      return acc + effectiveItemAmt;
+    }, 0);
+
+    const sizeNum =
+      parseFloat(itemSize) > 0 ? parseFloat(itemSize) : itemRate ? 1 : 0;
+    const rateNum = parseFloat(itemRate) || 0;
+    const draftBaseAmt = Math.round(sizeNum * rateNum);
+    const draftAccAmt = (itemAccessories || []).reduce(
+      (sum, a) =>
+        sum +
+        (a.cost !== undefined
+          ? Number(a.cost)
+          : (Number(a.qty) || 1) * (Number(a.unitPrice) || 0)),
+      0,
+    );
+    const currentDraftAmt = draftBaseAmt + draftAccAmt;
+
+    const sub = addedSub + currentDraftAmt;
+    const handlingFee = Math.round(
+      sub * ((parseFloat(handlingPercent) || 0) / 100),
+    );
+    const designFee = Math.round(
+      sub * ((parseFloat(designPercent) || 0) / 100),
+    );
     const discVal = parseFloat(discountValue) || 0;
-    const discountAmt = discountType === 'PERCENT' ? Math.round(sub * (discVal / 100)) : Math.min(sub, discVal);
+    const discountAmt =
+      discountType === "PERCENT"
+        ? Math.round(sub * (discVal / 100))
+        : Math.min(sub, discVal);
     const taxable = Math.max(0, sub + handlingFee + designFee - discountAmt);
     const gstPct = parseFloat(gstPercent) || 0;
-    const gstAmt = gstType === 'AS_PER_ACTUAL' ? 0 : Math.round(taxable * (gstPct / 100));
+    const gstAmt =
+      gstType === "AS_PER_ACTUAL" ? 0 : Math.round(taxable * (gstPct / 100));
     const grandTotal = taxable + gstAmt;
 
-    const totalMilestonePct = milestones.reduce((acc, m) => acc + (Number(m.percentage) || 0), 0);
+    const totalMilestonePct = milestones.reduce(
+      (acc, m) => acc + (Number(m.percentage) || 0),
+      0,
+    );
     const isMilestoneValid = Math.abs(totalMilestonePct - 100) < 0.5;
 
-    return { sub, handlingFee, designFee, discountAmt, taxable, gstAmt, grandTotal, totalMilestonePct, isMilestoneValid };
-  }, [items, handlingPercent, designPercent, discountType, discountValue, gstPercent, gstType, milestones]);
+    return {
+      sub,
+      addedSub,
+      currentDraftAmt,
+      handlingFee,
+      designFee,
+      discountAmt,
+      taxable,
+      gstAmt,
+      grandTotal,
+      totalMilestonePct,
+      isMilestoneValid,
+    };
+  }, [
+    items,
+    itemSize,
+    itemRate,
+    itemAccessories,
+    handlingPercent,
+    designPercent,
+    discountType,
+    discountValue,
+    gstPercent,
+    gstType,
+    milestones,
+  ]);
 
   // ── HANDLERS ───────────────────────────────────────────────────────────────
 
   const handleSelectRoom = (r) => {
-    if (r === 'Custom' || r === '+ Add More') {
+    if (r === "Custom" || r === "+ Add More") {
       setShowCustomCategoryInput(true);
       return;
     }
@@ -370,8 +507,11 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
     setShowCustomCategoryInput(false);
     setShowCustomSubItemInput(false);
 
-    const availableSubItems = subItemMap[r] || DEFAULT_CATEGORY_SUB_ITEMS[r] || [];
-    const firstSubItem = availableSubItems.find((item) => item !== '+ Add More');
+    const availableSubItems =
+      subItemMap[r] || DEFAULT_CATEGORY_SUB_ITEMS[r] || [];
+    const firstSubItem = availableSubItems.find(
+      (item) => item !== "+ Add More",
+    );
     if (firstSubItem) {
       setItemName(firstSubItem);
     }
@@ -383,7 +523,9 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
 
     if (!roomCategories.includes(trimmed)) {
       const updatedCategories = [...roomCategories];
-      const addMoreIdx = updatedCategories.findIndex((c) => c === '+ Add More' || c === 'Custom');
+      const addMoreIdx = updatedCategories.findIndex(
+        (c) => c === "+ Add More" || c === "Custom",
+      );
       if (addMoreIdx !== -1) {
         updatedCategories.splice(addMoreIdx, 0, trimmed);
       } else {
@@ -395,23 +537,24 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
     if (!subItemMap[trimmed]) {
       setSubItemMap((prev) => ({
         ...prev,
-        [trimmed]: ['Standard Item', '+ Add More'],
+        [trimmed]: ["Standard Item", "+ Add More"],
       }));
     }
 
     setSelectedRoom(trimmed);
-    setItemName('Standard Item');
-    setCustomCategoryName('');
+    setItemName("Standard Item");
+    setCustomCategoryName("");
     setShowCustomCategoryInput(false);
   };
 
   const autoAddSubItemOption = (room, name) => {
     const trimmed = name?.trim();
-    if (!trimmed || trimmed === '+ Add More') return;
-    const currentSubItems = subItemMap[room] || DEFAULT_CATEGORY_SUB_ITEMS[room] || ['+ Add More'];
+    if (!trimmed || trimmed === "+ Add More") return;
+    const currentSubItems = subItemMap[room] ||
+      DEFAULT_CATEGORY_SUB_ITEMS[room] || ["+ Add More"];
     if (!currentSubItems.includes(trimmed)) {
       const updated = [...currentSubItems];
-      const addMoreIdx = updated.indexOf('+ Add More');
+      const addMoreIdx = updated.indexOf("+ Add More");
       if (addMoreIdx !== -1) {
         updated.splice(addMoreIdx, 0, trimmed);
       } else {
@@ -425,7 +568,7 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
   };
 
   const handleSelectSubItem = (subItem) => {
-    if (subItem === '+ Add More') {
+    if (subItem === "+ Add More") {
       setShowCustomSubItemInput(true);
       return;
     }
@@ -439,12 +582,12 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
 
     autoAddSubItemOption(selectedRoom, trimmed);
     setItemName(trimmed);
-    setCustomSubItemName('');
+    setCustomSubItemName("");
     setShowCustomSubItemInput(false);
   };
 
   const handleSelectUnit = (u) => {
-    if (u === '+ Add More') {
+    if (u === "+ Add More") {
       setShowCustomUnitInput(true);
       return;
     }
@@ -453,7 +596,7 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
   };
 
   const handleSelectDescription = (desc) => {
-    if (desc === '+ Add More') {
+    if (desc === "+ Add More") {
       setShowCustomDescriptionInput(true);
       return;
     }
@@ -467,7 +610,7 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
 
     if (!descriptionOptions.includes(trimmed)) {
       const updated = [...descriptionOptions];
-      const addMoreIdx = updated.indexOf('+ Add More');
+      const addMoreIdx = updated.indexOf("+ Add More");
       if (addMoreIdx !== -1) {
         updated.splice(addMoreIdx, 0, trimmed);
       } else {
@@ -477,7 +620,7 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
     }
 
     setItemDesc(trimmed);
-    setCustomDescriptionText('');
+    setCustomDescriptionText("");
     setShowCustomDescriptionInput(false);
   };
 
@@ -487,7 +630,7 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
 
     if (!unitOptions.includes(trimmed)) {
       const updated = [...unitOptions];
-      const addMoreIdx = updated.indexOf('+ Add More');
+      const addMoreIdx = updated.indexOf("+ Add More");
       if (addMoreIdx !== -1) {
         updated.splice(addMoreIdx, 0, trimmed);
       } else {
@@ -497,12 +640,12 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
     }
 
     setItemUnit(trimmed);
-    setCustomUnitName('');
+    setCustomUnitName("");
     setShowCustomUnitInput(false);
   };
 
   const handleSelectMaterial = (m) => {
-    if (m === '+ Add More') {
+    if (m === "+ Add More") {
       setShowCustomMaterialInput(true);
       return;
     }
@@ -516,7 +659,7 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
 
     if (!materialOptions.includes(trimmed)) {
       const updated = [...materialOptions];
-      const addMoreIdx = updated.indexOf('+ Add More');
+      const addMoreIdx = updated.indexOf("+ Add More");
       if (addMoreIdx !== -1) {
         updated.splice(addMoreIdx, 0, trimmed);
       } else {
@@ -526,12 +669,12 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
     }
 
     setSpecCarcass(trimmed);
-    setCustomMaterialName('');
+    setCustomMaterialName("");
     setShowCustomMaterialInput(false);
   };
 
   const handleSelectHardware = (h) => {
-    if (h === '+ Add More') {
+    if (h === "+ Add More") {
       setShowCustomHardwareInput(true);
       return;
     }
@@ -545,7 +688,7 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
 
     if (!hardwareOptions.includes(trimmed)) {
       const updated = [...hardwareOptions];
-      const addMoreIdx = updated.indexOf('+ Add More');
+      const addMoreIdx = updated.indexOf("+ Add More");
       if (addMoreIdx !== -1) {
         updated.splice(addMoreIdx, 0, trimmed);
       } else {
@@ -555,16 +698,19 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
     }
 
     setSpecHardware(trimmed);
-    setCustomHardwareName('');
+    setCustomHardwareName("");
     setShowCustomHardwareInput(false);
   };
 
   const handleSelectAccessory = (acc) => {
-    if (acc === '+ Add More') {
+    if (acc === "+ Add More") {
       setShowCustomAccessoryInput(true);
       return;
     }
     setAccName(acc);
+    const price = DEFAULT_ACCESSORY_PRICES[acc] || 1500;
+    setAccUnitPrice(String(price));
+    setAccQty("1");
     setShowCustomAccessoryInput(false);
   };
 
@@ -574,7 +720,7 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
 
     if (!accessoryOptions.includes(trimmed)) {
       const updated = [...accessoryOptions];
-      const addMoreIdx = updated.indexOf('+ Add More');
+      const addMoreIdx = updated.indexOf("+ Add More");
       if (addMoreIdx !== -1) {
         updated.splice(addMoreIdx, 0, trimmed);
       } else {
@@ -584,23 +730,128 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
     }
 
     setAccName(trimmed);
-    setCustomAccessoryName('');
+    setAccUnitPrice("1500");
+    setAccQty("1");
+    setCustomAccessoryName("");
     setShowCustomAccessoryInput(false);
   };
 
   const handleAddAccessory = () => {
     const trimmed = accName.trim();
     if (!trimmed) return;
-    const qty = parseInt(accQty, 10) || 1;
-    setItemAccessories([...itemAccessories, { name: trimmed, qty, inclusionType: 'INCLUDED', cost: 0 }]);
-    setAccName('');
-    setAccQty('1');
+    const qty = Math.max(1, parseInt(accQty, 10) || 1);
+    const unitPrice = Math.max(0, parseFloat(accUnitPrice) || 0);
+    const cost = Math.round(qty * unitPrice);
+
+    setItemAccessories([
+      ...itemAccessories,
+      { name: trimmed, qty, unitPrice, cost, inclusionType: "INCLUDED" },
+    ]);
+    setAccName("");
+    setAccUnitPrice("1500");
+    setAccQty("1");
+  };
+
+  const handleAddAccessoryToScope = () => {
+    const trimmed = accName.trim();
+    if (!trimmed) {
+      alert("Please select or enter an accessory name.");
+      return;
+    }
+    const qty = Math.max(1, parseInt(accQty, 10) || 1);
+    const unitPrice = Math.max(0, parseFloat(accUnitPrice) || 0);
+    const cost = Math.round(qty * unitPrice);
+
+    const newItem = {
+      itemNumber: items.length + 1,
+      room: selectedRoom || "Modular Kitchen",
+      name: trimmed,
+      description: `Accessory (${trimmed})`,
+      unit: "Pieces",
+      quantity: qty,
+      rate: unitPrice,
+      amount: cost,
+      specifications: {
+        carcass: specCarcass,
+        shutter: specShutter,
+        finish: specFinish,
+        brand: specBrand,
+        hardware: specHardware,
+        thickness: specThickness,
+      },
+      accessories: [],
+      remarks: itemRemarks.trim(),
+      scope: "COMPANY_SCOPE",
+      costVariationNote: "Cost may vary as per site measurements.",
+    };
+
+    setItems([...items, newItem]);
+    setAccName("");
+    setAccUnitPrice("1500");
+    setAccQty("1");
+  };
+
+  const handleUpdateAccessoryQty = (index, newQty) => {
+    const qty = Math.max(1, parseInt(newQty, 10) || 1);
+    const updated = [...itemAccessories];
+    const acc = updated[index];
+    acc.qty = qty;
+    acc.cost = Math.round(qty * (acc.unitPrice || 0));
+    setItemAccessories(updated);
+  };
+
+  const handleUpdateItemQty = (index, newQty) => {
+    const qty = Math.max(0.01, parseFloat(newQty) || 0);
+    const updated = [...items];
+    const it = updated[index];
+    it.quantity = qty;
+    const baseAmt = Math.round(qty * (it.rate || 0));
+    const accTotal = (it.accessories || []).reduce((sum, a) => {
+      if (
+        a.name &&
+        it.name &&
+        a.name.trim().toLowerCase() === it.name.trim().toLowerCase()
+      )
+        return sum;
+      return (
+        sum +
+        (a.cost !== undefined
+          ? Number(a.cost)
+          : (Number(a.qty) || 1) * (Number(a.unitPrice) || 0))
+      );
+    }, 0);
+    it.amount = baseAmt + accTotal;
+    setItems(updated);
+  };
+
+  const handleUpdateItemRate = (index, newRate) => {
+    const rate = Math.max(0, parseFloat(newRate) || 0);
+    const updated = [...items];
+    const it = updated[index];
+    it.rate = rate;
+    const baseAmt = Math.round((it.quantity || 1) * rate);
+    const accTotal = (it.accessories || []).reduce((sum, a) => {
+      if (
+        a.name &&
+        it.name &&
+        a.name.trim().toLowerCase() === it.name.trim().toLowerCase()
+      )
+        return sum;
+      return (
+        sum +
+        (a.cost !== undefined
+          ? Number(a.cost)
+          : (Number(a.qty) || 1) * (Number(a.unitPrice) || 0))
+      );
+    }, 0);
+    it.amount = baseAmt + accTotal;
+    setItems(updated);
   };
 
   const handleAddItem = () => {
     const trimmedName = itemName.trim();
     if (!trimmedName) {
-      alert('Please enter an item name.');
+      alert("Please enter an item name.");
       return;
     }
 
@@ -609,46 +860,62 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
     const rateNum = parseFloat(itemRate) || 0;
     const sizeNum = parseFloat(itemSize) || 0;
     const qtyNum = sizeNum > 0 ? sizeNum : 1;
-    const itemAmt = Math.round(qtyNum * rateNum);
+    const baseAmt = Math.round(qtyNum * rateNum);
+    const accTotalAmt = itemAccessories.reduce(
+      (sum, acc) =>
+        sum +
+        (acc.cost !== undefined
+          ? acc.cost
+          : (acc.qty || 1) * (acc.unitPrice || 0)),
+      0,
+    );
+    const itemAmt = baseAmt + accTotalAmt;
 
     const newItem = {
       itemNumber: items.length + 1,
       room: selectedRoom,
       name: trimmedName,
       description: itemDesc.trim(),
-      unit: itemUnit || 'Sq Ft',
+      unit: itemUnit || "Sq Ft",
       measurements: { length: 0, width: 0, height: 0, calculatedArea: sizeNum },
       quantity: qtyNum,
       rate: rateNum,
       amount: itemAmt,
-      specifications: { carcass: specCarcass, shutter: specShutter, finish: specFinish, brand: specBrand, hardware: specHardware, thickness: specThickness },
+      specifications: {
+        carcass: specCarcass,
+        shutter: specShutter,
+        finish: specFinish,
+        brand: specBrand,
+        hardware: specHardware,
+        thickness: specThickness,
+      },
       accessories: itemAccessories,
       remarks: itemRemarks.trim(),
-      scope: 'COMPANY_SCOPE',
-      costVariationNote: 'Cost may vary as per site measurements.',
+      scope: "COMPANY_SCOPE",
+      costVariationNote: "Cost may vary as per site measurements.",
     };
 
     setItems([...items, newItem]);
-    setItemName('');
-    setItemDesc('');
-    setItemSize('1');
-    setItemRate('');
+    setItemName("");
+    setItemDesc("");
+    setItemSize("1");
+    setItemRate("");
     setItemAccessories([]);
-    setItemRemarks('');
+    setItemRemarks("");
   };
 
   const handleOpenCreateModal = (existing = null) => {
     if (existing) {
       setEditingQuotationId(existing._id);
-      setClientName(existing.client?.name || '');
-      setClientCompany(existing.client?.company || '');
-      setClientPhone(existing.client?.phone || '');
-      setClientEmail(existing.client?.email || '');
-      setClientAddress(existing.client?.address || '');
-      setClientGstin(existing.client?.gstin || '');
-      setProjectTitle(existing.projectTitle || '');
-      setProjectType(existing.projectType || 'Residential Interior');
-      setSiteLocation(existing.siteLocation || '');
+      setClientName(existing.client?.name || "");
+      setClientCompany(existing.client?.company || "");
+      setClientPhone(existing.client?.phone || "");
+      setClientEmail(existing.client?.email || "");
+      setClientAddress(existing.client?.address || "");
+      setClientGstin(existing.client?.gstin || "");
+      setProjectTitle(existing.projectTitle || "");
+      setProjectType(existing.projectType || "Residential Interior");
+      setSiteLocation(existing.siteLocation || "");
       const existingItems = existing.items || [];
       setItems(existingItems);
 
@@ -657,7 +924,9 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
 
       existingItems.forEach((it) => {
         if (it.room && !updatedCategories.includes(it.room)) {
-          const addMoreIdx = updatedCategories.findIndex((c) => c === '+ Add More' || c === 'Custom');
+          const addMoreIdx = updatedCategories.findIndex(
+            (c) => c === "+ Add More" || c === "Custom",
+          );
           if (addMoreIdx !== -1) {
             updatedCategories.splice(addMoreIdx, 0, it.room);
           } else {
@@ -665,10 +934,10 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
           }
         }
         if (it.room && it.name) {
-          const currentList = updatedSubMap[it.room] || ['+ Add More'];
+          const currentList = updatedSubMap[it.room] || ["+ Add More"];
           if (!currentList.includes(it.name)) {
             const newList = [...currentList];
-            const addMoreIdx = newList.indexOf('+ Add More');
+            const addMoreIdx = newList.indexOf("+ Add More");
             if (addMoreIdx !== -1) {
               newList.splice(addMoreIdx, 0, it.name);
             } else {
@@ -681,40 +950,49 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
       setRoomCategories(updatedCategories);
       setSubItemMap(updatedSubMap);
 
-      const firstRoom = existingItems[0]?.room || 'Modular Kitchen';
+      const firstRoom = existingItems[0]?.room || "Modular Kitchen";
       setSelectedRoom(firstRoom);
-      setItemName(existingItems[0]?.name || (updatedSubMap[firstRoom]?.[0] !== '+ Add More' ? updatedSubMap[firstRoom]?.[0] : ''));
+      setItemName(
+        existingItems[0]?.name ||
+          (updatedSubMap[firstRoom]?.[0] !== "+ Add More"
+            ? updatedSubMap[firstRoom]?.[0]
+            : ""),
+      );
 
       setHandlingPercent(String(existing.pricing?.handlingFeePercent || 2));
       setDesignPercent(String(existing.pricing?.designFeePercent || 2));
-      setDiscountType(existing.pricing?.discountType || 'PERCENT');
+      setDiscountType(existing.pricing?.discountType || "PERCENT");
       setDiscountValue(String(existing.pricing?.discountValue || 0));
       setGstPercent(String(existing.pricing?.gstPercent || 18));
-      setGstType(existing.pricing?.gstType || 'AS_PER_ACTUAL');
-      setMilestones(existing.paymentMilestones && existing.paymentMilestones.length > 0 ? existing.paymentMilestones : DEFAULT_MILESTONES);
-      setQuotationNotes(existing.notes || '');
+      setGstType(existing.pricing?.gstType || "AS_PER_ACTUAL");
+      setMilestones(
+        existing.paymentMilestones && existing.paymentMilestones.length > 0
+          ? existing.paymentMilestones
+          : DEFAULT_MILESTONES,
+      );
+      setQuotationNotes(existing.notes || "");
     } else {
       setEditingQuotationId(null);
-      setClientName('');
-      setClientCompany('');
-      setClientPhone('');
-      setClientEmail('');
-      setClientAddress('');
-      setClientGstin('');
-      setProjectTitle('');
-      setProjectType('Residential Interior');
-      setSiteLocation('');
+      setClientName("");
+      setClientCompany("");
+      setClientPhone("");
+      setClientEmail("");
+      setClientAddress("");
+      setClientGstin("");
+      setProjectTitle("");
+      setProjectType("Residential Interior");
+      setSiteLocation("");
       setItems([]);
-      setSelectedRoom('Modular Kitchen');
-      setItemName(DEFAULT_CATEGORY_SUB_ITEMS['Modular Kitchen']?.[0] || '');
-      setHandlingPercent('2');
-      setDesignPercent('2');
-      setDiscountType('PERCENT');
-      setDiscountValue('0');
-      setGstPercent('18');
-      setGstType('AS_PER_ACTUAL');
+      setSelectedRoom("Modular Kitchen");
+      setItemName(DEFAULT_CATEGORY_SUB_ITEMS["Modular Kitchen"]?.[0] || "");
+      setHandlingPercent("2");
+      setDesignPercent("2");
+      setDiscountType("PERCENT");
+      setDiscountValue("0");
+      setGstPercent("18");
+      setGstType("AS_PER_ACTUAL");
       setMilestones(DEFAULT_MILESTONES);
-      setQuotationNotes('');
+      setQuotationNotes("");
     }
     setShowCustomCategoryInput(false);
     setShowCustomSubItemInput(false);
@@ -725,17 +1003,59 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
   const handleSaveQuotation = async (e) => {
     if (e) e.preventDefault();
     if (!clientName.trim()) {
-      alert('Client Name is required.');
+      alert("Client Name is required.");
       setFormStep(1);
       return;
     }
-    if (items.length === 0) {
-      alert('Please add at least one item to the quotation scope.');
+    let currentItems = [...items];
+    if (currentItems.length === 0 && liveCalc.currentDraftAmt > 0) {
+      const sizeNum =
+        parseFloat(itemSize) > 0 ? parseFloat(itemSize) : itemRate ? 1 : 0;
+      const rateNum = parseFloat(itemRate) || 0;
+      const baseAmt = Math.round(sizeNum * rateNum);
+      const accTotalAmt = (itemAccessories || []).reduce(
+        (sum, a) =>
+          sum +
+          (a.cost !== undefined
+            ? Number(a.cost)
+            : (Number(a.qty) || 1) * (Number(a.unitPrice) || 0)),
+        0,
+      );
+      const autoItem = {
+        itemNumber: 1,
+        room: selectedRoom || "Modular Kitchen",
+        name: itemName.trim() || selectedRoom || "Modular Kitchen",
+        description: itemDesc.trim(),
+        unit: itemUnit || "Sq Ft",
+        measurements: { length: 0, width: 0, height: 0, calculatedArea: sizeNum },
+        quantity: sizeNum || 1,
+        rate: rateNum,
+        amount: baseAmt + accTotalAmt,
+        specifications: {
+          carcass: specCarcass,
+          shutter: specShutter,
+          finish: specFinish,
+          brand: specBrand,
+          hardware: specHardware,
+          thickness: specThickness,
+        },
+        accessories: itemAccessories,
+        remarks: itemRemarks.trim(),
+        scope: "COMPANY_SCOPE",
+        costVariationNote: "Cost may vary as per site measurements.",
+      };
+      currentItems = [autoItem];
+      setItems(currentItems);
+    }
+    if (currentItems.length === 0) {
+      alert("Please add at least one item to the quotation scope.");
       setFormStep(2);
       return;
     }
     if (!liveCalc.isMilestoneValid) {
-      alert(`Milestone percentages must equal 100%. Currently: ${liveCalc.totalMilestonePct}%`);
+      alert(
+        `Milestone percentages must equal 100%. Currently: ${liveCalc.totalMilestonePct}%`,
+      );
       setFormStep(4);
       return;
     }
@@ -751,10 +1071,11 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
           address: clientAddress.trim(),
           gstin: clientGstin.trim(),
         },
-        projectTitle: projectTitle.trim() || `${clientName.trim()} Interior Proposal`,
+        projectTitle:
+          projectTitle.trim() || `${clientName.trim()} Interior Proposal`,
         projectType,
         siteLocation: siteLocation.trim() || clientAddress.trim(),
-        items,
+        items: currentItems,
         pricing: {
           handlingFeePercent: parseFloat(handlingPercent) || 0,
           designFeePercent: parseFloat(designPercent) || 0,
@@ -769,42 +1090,45 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
 
       if (editingQuotationId) {
         await api.put(`/quotations/${editingQuotationId}`, payload);
-        setSuccess('Quotation updated successfully!');
+        setSuccess("Quotation updated successfully!");
       } else {
-        await api.post('/quotations', payload);
-        setSuccess('Quotation generated successfully!');
+        await api.post("/quotations", payload);
+        setSuccess("Quotation generated successfully!");
       }
 
       setShowCreateModal(false);
       fetchData();
-      if (subRoute !== 'list') {
+      if (subRoute !== "list") {
         navigate(basePath);
       }
     } catch (err) {
-      setError(err?.response?.data?.message || 'Failed to save quotation.');
+      setError(err?.response?.data?.message || "Failed to save quotation.");
     } finally {
       setIsActionLoading(false);
     }
   };
 
   const handleDeleteQuotation = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this quotation?')) return;
+    if (!window.confirm("Are you sure you want to delete this quotation?"))
+      return;
     try {
       await api.delete(`/quotations/${id}`);
-      setSuccess('Quotation deleted successfully.');
+      setSuccess("Quotation deleted successfully.");
       fetchData();
     } catch (err) {
-      setError('Failed to delete quotation.');
+      setError("Failed to delete quotation.");
     }
   };
 
   const handleOpenEmailModal = (q) => {
     setSelectedQuotation(q);
-    setEmailRecipient(q.client?.email || '');
-    setEmailCc('');
-    setEmailSubject(`[Altera Interior] Quotation Proposal ${q.quotationNumber} - ${q.projectTitle}`);
+    setEmailRecipient(q.client?.email || "");
+    setEmailCc("");
+    setEmailSubject(
+      `[Altera Interior] Quotation Proposal ${q.quotationNumber} - ${q.projectTitle}`,
+    );
     setEmailMessage(
-      `Dear ${q.client?.name || 'Client'},\n\nPlease find attached the official interior quotation proposal for ${q.projectTitle || 'your project'}.\n\nEstimated Grand Total: ${formatINR(q.pricing?.grandTotal || q.grandTotal)}.\n\nLooking forward to working with you!\n\nWarm regards,\nAltera Interior Team`
+      `Dear ${q.client?.name || "Client"},\n\nPlease find attached the official interior quotation proposal for ${q.projectTitle || "your project"}.\n\nEstimated Grand Total: ${formatINR(q.pricing?.grandTotal || q.grandTotal)}.\n\nLooking forward to working with you!\n\nWarm regards,\nAltera Interior Team`,
     );
     setShowEmailModal(true);
   };
@@ -812,7 +1136,7 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
   const handleSendEmail = async (e) => {
     if (e) e.preventDefault();
     if (!selectedQuotation || !emailRecipient.trim()) {
-      alert('Recipient email address is required.');
+      alert("Recipient email address is required.");
       return;
     }
     setIsActionLoading(true);
@@ -828,11 +1152,16 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
         pdfBase64: base64Pdf,
       });
 
-      setSuccess(`Proposal email successfully dispatched to ${emailRecipient}!`);
+      setSuccess(
+        `Proposal email successfully dispatched to ${emailRecipient}!`,
+      );
       setShowEmailModal(false);
       fetchData();
     } catch (err) {
-      const msg = err?.response?.data?.message || err?.message || 'Failed to send email. Check recipient email or server connection.';
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to send email. Check recipient email or server connection.";
       setError(`Server Error (400): ${msg}`);
       alert(`Email Failed: ${msg}`);
     } finally {
@@ -841,15 +1170,22 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
   };
 
   const handleConvertToProject = async (q) => {
-    if (!window.confirm(`Convert Quotation ${q.quotationNumber} (${formatINR(q.pricing?.grandTotal || q.grandTotal)}) into an active project?`)) return;
+    if (
+      !window.confirm(
+        `Convert Quotation ${q.quotationNumber} (${formatINR(q.pricing?.grandTotal || q.grandTotal)}) into an active project?`,
+      )
+    )
+      return;
     setIsActionLoading(true);
     try {
       const res = await api.post(`/quotations/${q._id}/convert-to-project`);
-      setSuccess(`Successfully converted to Project ${res.data.project?.projectId || 'CRM'}!`);
+      setSuccess(
+        `Successfully converted to Project ${res.data.project?.projectId || "CRM"}!`,
+      );
       setShowDetailModal(false);
       fetchData();
     } catch (err) {
-      setError(err?.response?.data?.message || 'Could not convert to project.');
+      setError(err?.response?.data?.message || "Could not convert to project.");
     } finally {
       setIsActionLoading(false);
     }
@@ -865,21 +1201,28 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
       const payload = {
         clientName: invoiceForm.clientName,
         projectName: invoiceForm.projectName,
-        items: [{ description: invoiceForm.description, quantity: 1, rate: amt, amount: amt }],
+        items: [
+          {
+            description: invoiceForm.description,
+            quantity: 1,
+            rate: amt,
+            amount: amt,
+          },
+        ],
         subtotal: amt,
         gstRate: invoiceForm.gstRate,
         gstAmount: gstAmt,
         totalAmount: total,
         dueDate: invoiceForm.dueDate,
-        paymentStatus: 'Issued',
+        paymentStatus: "Issued",
       };
 
-      await api.post('/finance/invoices', payload);
-      setSuccess('Invoice created successfully!');
+      await api.post("/finance/invoices", payload);
+      setSuccess("Invoice created successfully!");
       setShowInvoiceModal(false);
       fetchData();
     } catch (err) {
-      setError('Failed to create invoice.');
+      setError("Failed to create invoice.");
     }
   };
 
@@ -887,12 +1230,15 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
     e.preventDefault();
     if (!selectedInvoice) return;
     try {
-      await api.post(`/finance/invoices/${selectedInvoice._id}/payments`, paymentForm);
+      await api.post(
+        `/finance/invoices/${selectedInvoice._id}/payments`,
+        paymentForm,
+      );
       setSuccess(`Payment recorded for ${selectedInvoice.invoiceNumber}!`);
       setShowPaymentModal(false);
       setSelectedInvoice(null);
     } catch (err) {
-      setError('Failed to record payment.');
+      setError("Failed to record payment.");
     }
   };
 
@@ -901,31 +1247,46 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
     if (!selectedQuotation?._id) return;
     const amt = Number(quotationPaymentForm.amount) || 0;
     if (amt <= 0) {
-      alert('Please enter a valid amount.');
+      alert("Please enter a valid amount.");
       return;
     }
     setIsActionLoading(true);
     try {
-      const res = await api.post(`/quotations/${selectedQuotation._id}/transactions`, {
-        amount: amt,
-        paymentMethod: quotationPaymentForm.paymentMethod,
-        referenceId: quotationPaymentForm.referenceId.trim() || undefined,
-        notes: quotationPaymentForm.notes.trim() || undefined,
-        status: 'Completed',
-      });
-      setSuccess(res.data?.message || 'Quotation payment recorded & synced successfully!');
+      const res = await api.post(
+        `/quotations/${selectedQuotation._id}/transactions`,
+        {
+          amount: amt,
+          paymentMethod: quotationPaymentForm.paymentMethod,
+          referenceId: quotationPaymentForm.referenceId.trim() || undefined,
+          notes: quotationPaymentForm.notes.trim() || undefined,
+          status: "Completed",
+        },
+      );
+      setSuccess(
+        res.data?.message ||
+          "Quotation payment recorded & synced successfully!",
+      );
       setShowQuotationPaymentModal(false);
-      setQuotationPaymentForm({ amount: '', paymentMethod: 'UPI', referenceId: '', notes: '' });
+      setQuotationPaymentForm({
+        amount: "",
+        paymentMethod: "UPI",
+        referenceId: "",
+        notes: "",
+      });
 
       const updatedQuotation = {
         ...selectedQuotation,
-        paymentSummary: res.data?.paymentSummary || selectedQuotation.paymentSummary,
+        paymentSummary:
+          res.data?.paymentSummary || selectedQuotation.paymentSummary,
         transactions: res.data?.transactions || selectedQuotation.transactions,
       };
       setSelectedQuotation(updatedQuotation);
       fetchData();
     } catch (err) {
-      const msg = err?.response?.data?.message || err?.message || 'Failed to record quotation payment.';
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to record quotation payment.";
       setError(msg);
       alert(`Error: ${msg}`);
     } finally {
@@ -938,42 +1299,70 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
       {/* Top Tabs */}
       <div style={styles.tabBar}>
         <button
-          style={activeTab === 'quotations' ? styles.tabBtnActive : styles.tabBtn}
-          onClick={() => setActiveTab('quotations')}
+          style={
+            activeTab === "quotations" ? styles.tabBtnActive : styles.tabBtn
+          }
+          onClick={() => setActiveTab("quotations")}
         >
           📋 Quotations ({quotations.length})
         </button>
         <button
-          style={activeTab === 'revisions' ? styles.tabBtnActive : styles.tabBtn}
-          onClick={() => setActiveTab('revisions')}
+          style={
+            activeTab === "revisions" ? styles.tabBtnActive : styles.tabBtn
+          }
+          onClick={() => setActiveTab("revisions")}
         >
           🔄 Revision History
         </button>
         <button
-          style={activeTab === 'invoices' ? styles.tabBtnActive : styles.tabBtn}
-          onClick={() => setActiveTab('invoices')}
+          style={activeTab === "invoices" ? styles.tabBtnActive : styles.tabBtn}
+          onClick={() => setActiveTab("invoices")}
         >
           🧾 Invoices &amp; Payments ({invoices.length})
         </button>
       </div>
 
-      {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>}
-      {success && <div className="alert alert-success" style={{ marginBottom: 16 }}>{success}</div>}
+      {error && (
+        <div className="alert alert-error" style={{ marginBottom: 16 }}>
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="alert alert-success" style={{ marginBottom: 16 }}>
+          {success}
+        </div>
+      )}
 
       {/* TAB 1: QUOTATIONS */}
-      {activeTab === 'quotations' && (
+      {activeTab === "quotations" && (
         <div>
           {summary && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 20 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                gap: 12,
+                marginBottom: 20,
+              }}
+            >
               <div className="card" style={styles.kpiCard}>
                 <div style={styles.kpiLabel}>Total Pipeline Value</div>
-                <div style={styles.kpiVal}>{formatINR(summary.totalPipelineValue)}</div>
-                <div style={styles.kpiSub}>{summary.totalQuotations} Total Proposals</div>
+                <div style={styles.kpiVal}>
+                  {formatINR(summary.totalPipelineValue)}
+                </div>
+                <div style={styles.kpiSub}>
+                  {summary.totalQuotations} Total Proposals
+                </div>
               </div>
               <div className="card" style={styles.kpiCard}>
                 <div style={styles.kpiLabel}>Approved / Converted</div>
-                <div style={styles.kpiVal}>{formatINR(summary.approvedValue)}</div>
-                <div style={styles.kpiSub}>{summary.approvedCount + (summary.convertedCount || 0)} Projects</div>
+                <div style={styles.kpiVal}>
+                  {formatINR(summary.approvedValue)}
+                </div>
+                <div style={styles.kpiSub}>
+                  {summary.approvedCount + (summary.convertedCount || 0)}{" "}
+                  Projects
+                </div>
               </div>
               <div className="card" style={styles.kpiCard}>
                 <div style={styles.kpiLabel}>Pending Review</div>
@@ -989,8 +1378,23 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
           )}
 
           <div className="card" style={{ padding: 16, marginBottom: 20 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: 12,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                }}
+              >
                 <input
                   type="text"
                   placeholder="Search quotation #, client, project..."
@@ -1008,13 +1412,19 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                   <option value="Sent">Sent</option>
                   <option value="Under Discussion">Under Discussion</option>
                   <option value="Approved">Approved</option>
-                  <option value="Converted to Project">Converted to Project</option>
+                  <option value="Converted to Project">
+                    Converted to Project
+                  </option>
                   <option value="Rejected">Rejected</option>
                   <option value="Expired">Expired</option>
                 </select>
               </div>
 
-              <button className="btn btn-primary" onClick={() => handleOpenCreateModal()} style={{ fontSize: 13, fontWeight: 700 }}>
+              <button
+                className="btn btn-primary"
+                onClick={() => handleOpenCreateModal()}
+                style={{ fontSize: 13, fontWeight: 700 }}
+              >
                 ➕ Create Quotation
               </button>
             </div>
@@ -1023,11 +1433,15 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
           {loading ? (
             <LoadingSpinner />
           ) : filteredQuotations.length === 0 ? (
-            <div className="card" style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>
-              No quotations found. Click <strong>+ Create Quotation</strong> to generate an interior proposal.
+            <div
+              className="card"
+              style={{ padding: 40, textAlign: "center", color: "#64748b" }}
+            >
+              No quotations found. Click <strong>+ Create Quotation</strong> to
+              generate an interior proposal.
             </div>
           ) : (
-            <div className="card" style={{ overflowX: 'auto' }}>
+            <div className="card" style={{ overflowX: "auto" }}>
               <table style={styles.table}>
                 <thead>
                   <tr style={styles.thRow}>
@@ -1038,36 +1452,59 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                     <th>Grand Total (Inc GST)</th>
                     <th>Status</th>
                     <th>Date</th>
-                    <th style={{ textAlign: 'right' }}>Actions</th>
+                    <th style={{ textAlign: "right" }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredQuotations.map((q) => {
-                    const grandTotal = q.pricing?.grandTotal || q.grandTotal || 0;
+                    const grandTotal =
+                      q.pricing?.grandTotal || q.grandTotal || 0;
                     return (
                       <tr key={q._id} style={styles.trRow}>
-                        <td style={{ fontWeight: 700, color: '#0f172a' }}>
+                        <td style={{ fontWeight: 700, color: "#0f172a" }}>
                           {q.quotationNumber}
-                          {q.revision > 0 && <span style={styles.revBadge}>v{q.revision}</span>}
+                          {q.revision > 0 && (
+                            <span style={styles.revBadge}>v{q.revision}</span>
+                          )}
                         </td>
                         <td>
-                          <div style={{ fontWeight: 600, color: '#0f172a' }}>{q.client?.name || 'Homeowner'}</div>
-                          <div style={{ fontSize: 11, color: '#64748b' }}>📞 {q.client?.phone || '—'}</div>
+                          <div style={{ fontWeight: 600, color: "#0f172a" }}>
+                            {q.client?.name || "Homeowner"}
+                          </div>
+                          <div style={{ fontSize: 11, color: "#64748b" }}>
+                            📞 {q.client?.phone || "—"}
+                          </div>
                         </td>
                         <td>
-                          <div style={{ fontWeight: 600, color: '#0f172a' }}>{q.projectTitle || 'Interior Works'}</div>
-                          <div style={{ fontSize: 11, color: '#64748b' }}>📍 {q.siteLocation || q.client?.address || '—'}</div>
+                          <div style={{ fontWeight: 600, color: "#0f172a" }}>
+                            {q.projectTitle || "Interior Works"}
+                          </div>
+                          <div style={{ fontSize: 11, color: "#64748b" }}>
+                            📍 {q.siteLocation || q.client?.address || "—"}
+                          </div>
                         </td>
-                        <td style={{ color: '#334155' }}>{q.items?.length || 0} items</td>
-                        <td style={{ fontWeight: 700, color: '#0f172a' }}>{formatINR(grandTotal)}</td>
+                        <td style={{ color: "#334155" }}>
+                          {q.items?.length || 0} items
+                        </td>
+                        <td style={{ fontWeight: 700, color: "#0f172a" }}>
+                          {formatINR(grandTotal)}
+                        </td>
                         <td>
                           <span style={styles.badgeStatus}>
-                            {q.status || 'Draft'}
+                            {q.status || "Draft"}
                           </span>
                         </td>
-                        <td style={{ fontSize: 12, color: '#475569' }}>{formatDate(q.quotationDate || q.createdAt)}</td>
-                        <td style={{ textAlign: 'right' }}>
-                          <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                        <td style={{ fontSize: 12, color: "#475569" }}>
+                          {formatDate(q.quotationDate || q.createdAt)}
+                        </td>
+                        <td style={{ textAlign: "right" }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: 6,
+                              justifyContent: "flex-end",
+                            }}
+                          >
                             <button
                               title="View Details"
                               className="btn btn-secondary"
@@ -1106,7 +1543,7 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                             <button
                               title="Delete Quotation"
                               className="btn btn-secondary"
-                              style={{ ...styles.iconBtn, color: '#dc2626' }}
+                              style={{ ...styles.iconBtn, color: "#dc2626" }}
                               onClick={() => handleDeleteQuotation(q._id)}
                             >
                               🗑️
@@ -1124,33 +1561,88 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
       )}
 
       {/* TAB 2: REVISION HISTORY */}
-      {activeTab === 'revisions' && (
+      {activeTab === "revisions" && (
         <div>
           <div className="card" style={{ padding: 20, marginBottom: 20 }}>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>
+            <h3
+              style={{
+                margin: 0,
+                fontSize: 16,
+                fontWeight: 700,
+                color: "#0f172a",
+                marginBottom: 6,
+              }}
+            >
               Quotation Revision Audit Trail
             </h3>
-            <p style={{ margin: 0, color: '#64748b', fontSize: 13 }}>
-              Audit version history and scope modifications across all customer proposals.
+            <p style={{ margin: 0, color: "#64748b", fontSize: 13 }}>
+              Audit version history and scope modifications across all customer
+              proposals.
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+              gap: 16,
+            }}
+          >
             {quotations.map((q) => (
-              <div key={q._id} className="card" style={{ padding: 18, border: '1px solid #cbd5e1', borderRadius: 10 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 700, fontSize: 15, color: '#0f172a' }}>{q.quotationNumber}</span>
+              <div
+                key={q._id}
+                className="card"
+                style={{
+                  padding: 18,
+                  border: "1px solid #cbd5e1",
+                  borderRadius: 10,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <span
+                    style={{ fontWeight: 700, fontSize: 15, color: "#0f172a" }}
+                  >
+                    {q.quotationNumber}
+                  </span>
                   <span style={styles.revBadge}>Rev {q.revision || 0}</span>
                 </div>
-                <div style={{ fontSize: 13, color: '#334155', marginTop: 4 }}><strong>Client:</strong> {q.client?.name}</div>
-                <div style={{ fontSize: 13, color: '#0f172a', fontWeight: 700, marginTop: 4 }}>
+                <div style={{ fontSize: 13, color: "#334155", marginTop: 4 }}>
+                  <strong>Client:</strong> {q.client?.name}
+                </div>
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: "#0f172a",
+                    fontWeight: 700,
+                    marginTop: 4,
+                  }}
+                >
                   Total: {formatINR(q.pricing?.grandTotal || q.grandTotal)}
                 </div>
-                <div style={{ fontSize: 12, color: '#64748b', marginTop: 6 }}>
+                <div style={{ fontSize: 12, color: "#64748b", marginTop: 6 }}>
                   Generated: {formatDate(q.quotationDate || q.createdAt)}
                 </div>
-                <div style={{ marginTop: 10, background: '#f8fafc', padding: 8, borderRadius: 6, fontSize: 12, color: '#475569', border: '1px solid #e2e8f0' }}>
-                  Scope: {Array.from(new Set((q.items || []).map((i) => i.room))).join(', ') || 'General Interior'}
+                <div
+                  style={{
+                    marginTop: 10,
+                    background: "#f8fafc",
+                    padding: 8,
+                    borderRadius: 6,
+                    fontSize: 12,
+                    color: "#475569",
+                    border: "1px solid #e2e8f0",
+                  }}
+                >
+                  Scope:{" "}
+                  {Array.from(new Set((q.items || []).map((i) => i.room))).join(
+                    ", ",
+                  ) || "General Interior"}
                 </div>
               </div>
             ))}
@@ -1159,11 +1651,23 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
       )}
 
       {/* TAB 3: INVOICES & PAYMENTS */}
-      {activeTab === 'invoices' && (
+      {activeTab === "invoices" && (
         <div>
           <div style={styles.actionHeader}>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#0f172a' }}>Client Invoices &amp; Receivables</h3>
-            <button className="btn btn-primary" onClick={() => setShowInvoiceModal(true)}>
+            <h3
+              style={{
+                margin: 0,
+                fontSize: 16,
+                fontWeight: 700,
+                color: "#0f172a",
+              }}
+            >
+              Client Invoices &amp; Receivables
+            </h3>
+            <button
+              className="btn btn-primary"
+              onClick={() => setShowInvoiceModal(true)}
+            >
               ➕ New Invoice
             </button>
           </div>
@@ -1171,11 +1675,14 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
           {loading ? (
             <LoadingSpinner />
           ) : invoices.length === 0 ? (
-            <div className="card" style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>
+            <div
+              className="card"
+              style={{ padding: 40, textAlign: "center", color: "#64748b" }}
+            >
               No invoices generated yet.
             </div>
           ) : (
-            <div className="card" style={{ overflowX: 'auto' }}>
+            <div className="card" style={{ overflowX: "auto" }}>
               <table style={styles.table}>
                 <thead>
                   <tr style={styles.thRow}>
@@ -1192,26 +1699,45 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                 <tbody>
                   {invoices.map((inv) => (
                     <tr key={inv._id} style={styles.trRow}>
-                      <td style={{ fontWeight: 700, color: '#0f172a' }}>{inv.invoiceNumber}</td>
-                      <td>
-                        <div style={{ fontWeight: 600, color: '#0f172a' }}>{inv.clientName}</div>
-                        <div style={{ fontSize: 12, color: '#64748b' }}>{inv.projectName || 'Interior Works'}</div>
-                      </td>
-                      <td style={{ color: '#334155' }}>{formatDate(inv.dueDate)}</td>
-                      <td style={{ fontWeight: 700, color: '#0f172a' }}>{formatINR(inv.totalAmount)}</td>
-                      <td style={{ fontWeight: 700, color: '#0f172a' }}>{formatINR(inv.paidAmount)}</td>
-                      <td style={{ fontWeight: 700, color: '#0f172a' }}>{formatINR(inv.balanceAmount)}</td>
-                      <td>
-                        <span style={styles.badgeStatus}>{inv.paymentStatus}</span>
+                      <td style={{ fontWeight: 700, color: "#0f172a" }}>
+                        {inv.invoiceNumber}
                       </td>
                       <td>
-                        {inv.paymentStatus !== 'Paid' && (
+                        <div style={{ fontWeight: 600, color: "#0f172a" }}>
+                          {inv.clientName}
+                        </div>
+                        <div style={{ fontSize: 12, color: "#64748b" }}>
+                          {inv.projectName || "Interior Works"}
+                        </div>
+                      </td>
+                      <td style={{ color: "#334155" }}>
+                        {formatDate(inv.dueDate)}
+                      </td>
+                      <td style={{ fontWeight: 700, color: "#0f172a" }}>
+                        {formatINR(inv.totalAmount)}
+                      </td>
+                      <td style={{ fontWeight: 700, color: "#0f172a" }}>
+                        {formatINR(inv.paidAmount)}
+                      </td>
+                      <td style={{ fontWeight: 700, color: "#0f172a" }}>
+                        {formatINR(inv.balanceAmount)}
+                      </td>
+                      <td>
+                        <span style={styles.badgeStatus}>
+                          {inv.paymentStatus}
+                        </span>
+                      </td>
+                      <td>
+                        {inv.paymentStatus !== "Paid" && (
                           <button
                             className="btn btn-primary"
-                            style={{ padding: '4px 10px', fontSize: 12 }}
+                            style={{ padding: "4px 10px", fontSize: 12 }}
                             onClick={() => {
                               setSelectedInvoice(inv);
-                              setPaymentForm({ ...paymentForm, amount: inv.balanceAmount });
+                              setPaymentForm({
+                                ...paymentForm,
+                                amount: inv.balanceAmount,
+                              });
                               setShowPaymentModal(true);
                             }}
                           >
@@ -1233,22 +1759,43 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
         <div style={styles.modalBackdrop}>
           <div style={{ ...styles.modalCard, maxWidth: 850 }}>
             <div style={styles.modalHeader}>
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#0f172a' }}>
-                {editingQuotationId ? 'Revise Interior Quotation' : 'Create Interior Quotation Proposal'}
+              <h3
+                style={{
+                  margin: 0,
+                  fontSize: 18,
+                  fontWeight: 700,
+                  color: "#0f172a",
+                }}
+              >
+                {editingQuotationId
+                  ? "Revise Interior Quotation"
+                  : "Create Interior Quotation Proposal"}
               </h3>
-              <button onClick={() => { setShowCreateModal(false); if (subRoute !== 'list') navigate(basePath); }} style={styles.closeBtn}>✕</button>
+              <button
+                onClick={() => {
+                  setShowCreateModal(false);
+                  if (subRoute !== "list") navigate(basePath);
+                }}
+                style={styles.closeBtn}
+              >
+                ✕
+              </button>
             </div>
 
             <div style={styles.wizardTabs}>
               {[
-                { num: 1, label: '1. Client & Project' },
-                { num: 2, label: '2. Scope & Room Items' },
-                { num: 3, label: '3. Pricing & Taxes' },
-                { num: 4, label: '4. Milestones & Save' },
+                { num: 1, label: "1. Client & Project" },
+                { num: 2, label: "2. Scope & Room Items" },
+                { num: 3, label: "3. Pricing & Taxes" },
+                { num: 4, label: "4. Milestones & Save" },
               ].map((s) => (
                 <button
                   key={s.num}
-                  style={formStep === s.num ? styles.wizardTabActive : styles.wizardTab}
+                  style={
+                    formStep === s.num
+                      ? styles.wizardTabActive
+                      : styles.wizardTab
+                  }
                   onClick={() => setFormStep(s.num)}
                 >
                   {s.label}
@@ -1260,8 +1807,24 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
               {/* STEP 1: CLIENT & PROJECT */}
               {formStep === 1 && (
                 <div>
-                  <h4 style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 10 }}>Client Details</h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+                  <h4
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 700,
+                      color: "#0f172a",
+                      marginBottom: 10,
+                    }}
+                  >
+                    Client Details
+                  </h4>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr 1fr",
+                      gap: 12,
+                      marginBottom: 12,
+                    }}
+                  >
                     <div>
                       <label style={styles.label}>Client Name *</label>
                       <input
@@ -1274,7 +1837,9 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                       />
                     </div>
                     <div>
-                      <label style={styles.label}>Company Name (Optional)</label>
+                      <label style={styles.label}>
+                        Company Name (Optional)
+                      </label>
                       <input
                         type="text"
                         value={clientCompany}
@@ -1295,7 +1860,14 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr 1fr",
+                      gap: 12,
+                      marginBottom: 16,
+                    }}
+                  >
                     <div>
                       <label style={styles.label}>Email Address</label>
                       <input
@@ -1317,7 +1889,9 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                       />
                     </div>
                     <div>
-                      <label style={styles.label}>Client GSTIN (Optional)</label>
+                      <label style={styles.label}>
+                        Client GSTIN (Optional)
+                      </label>
                       <input
                         type="text"
                         value={clientGstin}
@@ -1328,8 +1902,24 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                     </div>
                   </div>
 
-                  <h4 style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 10, marginTop: 16 }}>Project Parameters</h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                  <h4
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 700,
+                      color: "#0f172a",
+                      marginBottom: 10,
+                      marginTop: 16,
+                    }}
+                  >
+                    Project Parameters
+                  </h4>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr 1fr",
+                      gap: 12,
+                    }}
+                  >
                     <div>
                       <label style={styles.label}>Project Title</label>
                       <input
@@ -1362,8 +1952,18 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
-                    <button type="button" className="btn btn-primary" onClick={() => setFormStep(2)}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "flex-end",
+                      marginTop: 20,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={() => setFormStep(2)}
+                    >
                       Next: Add Scope Items →
                     </button>
                   </div>
@@ -1374,14 +1974,27 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
               {formStep === 2 && (
                 <div>
                   <div style={{ marginBottom: 12 }}>
-                    <label style={styles.label}>1. Select Room / Category:</label>
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+                    <label style={styles.label}>
+                      1. Select Room / Category:
+                    </label>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 6,
+                        flexWrap: "wrap",
+                        marginTop: 4,
+                      }}
+                    >
                       {roomCategories.map((r) => (
                         <button
                           key={r}
                           type="button"
                           onClick={() => handleSelectRoom(r)}
-                          style={selectedRoom === r ? styles.roomBtnActive : styles.roomBtn}
+                          style={
+                            selectedRoom === r
+                              ? styles.roomBtnActive
+                              : styles.roomBtn
+                          }
                         >
                           {r}
                         </button>
@@ -1389,16 +2002,34 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                     </div>
 
                     {showCustomCategoryInput && (
-                      <div style={{ display: 'flex', gap: 8, marginTop: 8, maxWidth: 400 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 8,
+                          marginTop: 8,
+                          maxWidth: 400,
+                        }}
+                      >
                         <input
                           type="text"
                           placeholder="Enter Custom Category Name"
                           value={customCategoryName}
-                          onChange={(e) => setCustomCategoryName(e.target.value)}
+                          onChange={(e) =>
+                            setCustomCategoryName(e.target.value)
+                          }
                           style={styles.formInput}
                           autoFocus
                         />
-                        <button type="button" className="btn btn-primary" onClick={handleConfirmCustomRoom} style={{ padding: '4px 12px', fontSize: 12, whiteSpace: 'nowrap' }}>
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={handleConfirmCustomRoom}
+                          style={{
+                            padding: "4px 12px",
+                            fontSize: 12,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
                           Add Category
                         </button>
                       </div>
@@ -1406,17 +2037,50 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                   </div>
 
                   {/* SUB-ITEM / ITEM NAME SELECTION */}
-                  <div style={{ marginBottom: 14, background: '#ffffff', padding: 12, borderRadius: 8, border: '1px solid #cbd5e1' }}>
-                    <label style={{ ...styles.label, color: '#0f172a', fontWeight: 700 }}>
-                      2. Select Item Name for <span style={{ color: '#2563eb' }}>{selectedRoom}</span>:
+                  <div
+                    style={{
+                      marginBottom: 14,
+                      background: "#ffffff",
+                      padding: 12,
+                      borderRadius: 8,
+                      border: "1px solid #cbd5e1",
+                    }}
+                  >
+                    <label
+                      style={{
+                        ...styles.label,
+                        color: "#0f172a",
+                        fontWeight: 700,
+                      }}
+                    >
+                      2. Select Item Name for{" "}
+                      <span style={{ color: "#2563eb" }}>{selectedRoom}</span>:
                     </label>
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
-                      {(subItemMap[selectedRoom] || DEFAULT_CATEGORY_SUB_ITEMS[selectedRoom] || ['+ Add More']).map((sub) => (
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 6,
+                        flexWrap: "wrap",
+                        marginTop: 6,
+                      }}
+                    >
+                      {(
+                        subItemMap[selectedRoom] ||
+                        DEFAULT_CATEGORY_SUB_ITEMS[selectedRoom] || [
+                          "+ Add More",
+                        ]
+                      ).map((sub) => (
                         <button
                           key={sub}
                           type="button"
                           onClick={() => handleSelectSubItem(sub)}
-                          style={itemName === sub ? styles.subItemBtnActive : sub === '+ Add More' ? styles.subItemAddMoreBtn : styles.subItemBtn}
+                          style={
+                            itemName === sub
+                              ? styles.subItemBtnActive
+                              : sub === "+ Add More"
+                                ? styles.subItemAddMoreBtn
+                                : styles.subItemBtn
+                          }
                         >
                           {sub}
                         </button>
@@ -1424,7 +2088,14 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                     </div>
 
                     {showCustomSubItemInput && (
-                      <div style={{ display: 'flex', gap: 8, marginTop: 10, maxWidth: 500 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 8,
+                          marginTop: 10,
+                          maxWidth: 500,
+                        }}
+                      >
                         <input
                           type="text"
                           placeholder={`Type custom item name for ${selectedRoom}...`}
@@ -1436,7 +2107,7 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                             }
                           }}
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
+                            if (e.key === "Enter") {
                               e.preventDefault();
                               handleConfirmCustomSubItem();
                             }
@@ -1444,7 +2115,16 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                           style={styles.formInput}
                           autoFocus
                         />
-                        <button type="button" className="btn btn-primary" onClick={() => handleConfirmCustomSubItem()} style={{ padding: '4px 14px', fontSize: 12, whiteSpace: 'nowrap' }}>
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={() => handleConfirmCustomSubItem()}
+                          style={{
+                            padding: "4px 14px",
+                            fontSize: 12,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
                           + Add Option
                         </button>
                       </div>
@@ -1452,12 +2132,38 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                   </div>
 
                   {/* Composer Card */}
-                  <div style={{ background: '#f8fafc', padding: 14, borderRadius: 8, border: '1px solid #cbd5e1', marginBottom: 16 }}>
-                    <h4 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>
-                      Configure Details for <span style={{ color: '#2563eb' }}>{itemName || selectedRoom}</span>
+                  <div
+                    style={{
+                      background: "#f8fafc",
+                      padding: 14,
+                      borderRadius: 8,
+                      border: "1px solid #cbd5e1",
+                      marginBottom: 16,
+                    }}
+                  >
+                    <h4
+                      style={{
+                        margin: 0,
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: "#0f172a",
+                        marginBottom: 8,
+                      }}
+                    >
+                      Configure Details for{" "}
+                      <span style={{ color: "#2563eb" }}>
+                        {itemName || selectedRoom}
+                      </span>
                     </h4>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 8 }}>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: 10,
+                        marginBottom: 8,
+                      }}
+                    >
                       <div>
                         <label style={styles.label}>Item Name *</label>
                         <input
@@ -1466,7 +2172,10 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                           onChange={(e) => setItemName(e.target.value)}
                           onBlur={(e) => {
                             if (e.target.value.trim()) {
-                              autoAddSubItemOption(selectedRoom, e.target.value.trim());
+                              autoAddSubItemOption(
+                                selectedRoom,
+                                e.target.value.trim(),
+                              );
                             }
                           }}
                           style={styles.formInput}
@@ -1487,14 +2196,35 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
 
                     {/* Description Option Chips */}
                     <div style={{ marginBottom: 10 }}>
-                      <label style={{ ...styles.label, fontSize: 11, color: '#64748b' }}>Select Description Preset / Add Custom Option:</label>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
+                      <label
+                        style={{
+                          ...styles.label,
+                          fontSize: 11,
+                          color: "#64748b",
+                        }}
+                      >
+                        Select Description Preset / Add Custom Option:
+                      </label>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 6,
+                          flexWrap: "wrap",
+                          marginTop: 2,
+                        }}
+                      >
                         {descriptionOptions.map((desc) => (
                           <button
                             key={desc}
                             type="button"
                             onClick={() => handleSelectDescription(desc)}
-                            style={itemDesc === desc ? styles.subItemBtnActive : desc === '+ Add More' ? styles.subItemAddMoreBtn : styles.subItemBtn}
+                            style={
+                              itemDesc === desc
+                                ? styles.subItemBtnActive
+                                : desc === "+ Add More"
+                                  ? styles.subItemAddMoreBtn
+                                  : styles.subItemBtn
+                            }
                           >
                             {desc}
                           </button>
@@ -1502,7 +2232,14 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                       </div>
 
                       {showCustomDescriptionInput && (
-                        <div style={{ display: 'flex', gap: 8, marginTop: 8, maxWidth: 450 }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 8,
+                            marginTop: 8,
+                            maxWidth: 450,
+                          }}
+                        >
                           <input
                             type="text"
                             placeholder="Type custom description option..."
@@ -1514,7 +2251,7 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                               }
                             }}
                             onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
+                              if (e.key === "Enter") {
                                 e.preventDefault();
                                 handleConfirmCustomDescription();
                               }
@@ -1526,7 +2263,11 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                             type="button"
                             className="btn btn-primary"
                             onClick={() => handleConfirmCustomDescription()}
-                            style={{ padding: '4px 12px', fontSize: 12, whiteSpace: 'nowrap' }}
+                            style={{
+                              padding: "4px 12px",
+                              fontSize: 12,
+                              whiteSpace: "nowrap",
+                            }}
                           >
                             + Add Option
                           </button>
@@ -1536,14 +2277,29 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
 
                     {/* Unit Pills Selection */}
                     <div style={{ marginBottom: 10 }}>
-                      <label style={styles.label}>Select Unit / Measurement Type:</label>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
+                      <label style={styles.label}>
+                        Select Unit / Measurement Type:
+                      </label>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 6,
+                          flexWrap: "wrap",
+                          marginTop: 2,
+                        }}
+                      >
                         {unitOptions.map((u) => (
                           <button
                             key={u}
                             type="button"
                             onClick={() => handleSelectUnit(u)}
-                            style={itemUnit === u ? styles.subItemBtnActive : u === '+ Add More' ? styles.subItemAddMoreBtn : styles.subItemBtn}
+                            style={
+                              itemUnit === u
+                                ? styles.subItemBtnActive
+                                : u === "+ Add More"
+                                  ? styles.subItemAddMoreBtn
+                                  : styles.subItemBtn
+                            }
                           >
                             {u}
                           </button>
@@ -1551,7 +2307,14 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                       </div>
 
                       {showCustomUnitInput && (
-                        <div style={{ display: 'flex', gap: 8, marginTop: 8, maxWidth: 350 }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 8,
+                            marginTop: 8,
+                            maxWidth: 350,
+                          }}
+                        >
                           <input
                             type="text"
                             placeholder="Enter custom unit (e.g. Rft, Sets, Meter)..."
@@ -1563,7 +2326,7 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                               }
                             }}
                             onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
+                              if (e.key === "Enter") {
                                 e.preventDefault();
                                 handleConfirmCustomUnit();
                               }
@@ -1575,7 +2338,11 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                             type="button"
                             className="btn btn-primary"
                             onClick={() => handleConfirmCustomUnit()}
-                            style={{ padding: '4px 12px', fontSize: 12, whiteSpace: 'nowrap' }}
+                            style={{
+                              padding: "4px 12px",
+                              fontSize: 12,
+                              whiteSpace: "nowrap",
+                            }}
                           >
                             + Add Unit
                           </button>
@@ -1584,9 +2351,19 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                     </div>
 
                     {/* Merged Size & Rate Inputs */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10, alignItems: 'center' }}>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr 1fr",
+                        gap: 10,
+                        marginBottom: 10,
+                        alignItems: "center",
+                      }}
+                    >
                       <div>
-                        <label style={styles.label}>Size ({itemUnit || 'Sq Ft'}) *</label>
+                        <label style={styles.label}>
+                          Size ({itemUnit || "Sq Ft"}) *
+                        </label>
                         <input
                           type="number"
                           value={itemSize}
@@ -1605,23 +2382,76 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                           placeholder="e.g. 1550"
                         />
                       </div>
-                      <div style={{ textAlign: 'right', fontWeight: 700, fontSize: 13, color: '#0f172a', paddingTop: 16 }}>
-                        Amt: {formatINR((parseFloat(itemSize) || 0) * (parseFloat(itemRate) || 0))}
+                      <div
+                        style={{
+                          textAlign: "right",
+                          fontWeight: 700,
+                          fontSize: 13,
+                          color: "#0f172a",
+                          paddingTop: 16,
+                        }}
+                      >
+                        Amt:{" "}
+                        {formatINR(
+                          Math.round(
+                            (parseFloat(itemSize) > 0
+                              ? parseFloat(itemSize)
+                              : itemRate
+                                ? 1
+                                : 0) * (parseFloat(itemRate) || 0),
+                          ) +
+                            itemAccessories.reduce(
+                              (sum, a) =>
+                                sum +
+                                (a.cost !== undefined
+                                  ? Number(a.cost)
+                                  : (Number(a.qty) || 1) *
+                                    (Number(a.unitPrice) || 0)),
+                              0,
+                            ),
+                        )}
                       </div>
                     </div>
 
                     {/* Material Specifications */}
-                    <div style={{ marginBottom: 12, background: '#ffffff', padding: 10, borderRadius: 6, border: '1px solid #cbd5e1' }}>
-                      <label style={{ ...styles.label, fontWeight: 700, color: '#0f172a' }}>
+                    <div
+                      style={{
+                        marginBottom: 12,
+                        background: "#ffffff",
+                        padding: 10,
+                        borderRadius: 6,
+                        border: "1px solid #cbd5e1",
+                      }}
+                    >
+                      <label
+                        style={{
+                          ...styles.label,
+                          fontWeight: 700,
+                          color: "#0f172a",
+                        }}
+                      >
                         Select Core Material:
                       </label>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 6,
+                          flexWrap: "wrap",
+                          marginTop: 4,
+                        }}
+                      >
                         {materialOptions.map((m) => (
                           <button
                             key={m}
                             type="button"
                             onClick={() => handleSelectMaterial(m)}
-                            style={specCarcass === m ? styles.subItemBtnActive : m === '+ Add More' ? styles.subItemAddMoreBtn : styles.subItemBtn}
+                            style={
+                              specCarcass === m
+                                ? styles.subItemBtnActive
+                                : m === "+ Add More"
+                                  ? styles.subItemAddMoreBtn
+                                  : styles.subItemBtn
+                            }
                           >
                             {m}
                           </button>
@@ -1629,7 +2459,14 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                       </div>
 
                       {showCustomMaterialInput && (
-                        <div style={{ display: 'flex', gap: 8, marginTop: 8, maxWidth: 450 }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 8,
+                            marginTop: 8,
+                            maxWidth: 450,
+                          }}
+                        >
                           <input
                             type="text"
                             placeholder="Type custom material (e.g. Commercial Ply)..."
@@ -1641,7 +2478,7 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                               }
                             }}
                             onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
+                              if (e.key === "Enter") {
                                 e.preventDefault();
                                 handleConfirmCustomMaterial();
                               }
@@ -1653,7 +2490,11 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                             type="button"
                             className="btn btn-primary"
                             onClick={() => handleConfirmCustomMaterial()}
-                            style={{ padding: '4px 12px', fontSize: 12, whiteSpace: 'nowrap' }}
+                            style={{
+                              padding: "4px 12px",
+                              fontSize: 12,
+                              whiteSpace: "nowrap",
+                            }}
                           >
                             + Add Material
                           </button>
@@ -1662,17 +2503,44 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                     </div>
 
                     {/* Hardware Specifications */}
-                    <div style={{ marginBottom: 12, background: '#ffffff', padding: 10, borderRadius: 6, border: '1px solid #cbd5e1' }}>
-                      <label style={{ ...styles.label, fontWeight: 700, color: '#0f172a' }}>
+                    <div
+                      style={{
+                        marginBottom: 12,
+                        background: "#ffffff",
+                        padding: 10,
+                        borderRadius: 6,
+                        border: "1px solid #cbd5e1",
+                      }}
+                    >
+                      <label
+                        style={{
+                          ...styles.label,
+                          fontWeight: 700,
+                          color: "#0f172a",
+                        }}
+                      >
                         Select Hardware Option:
                       </label>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 6,
+                          flexWrap: "wrap",
+                          marginTop: 4,
+                        }}
+                      >
                         {hardwareOptions.map((h) => (
                           <button
                             key={h}
                             type="button"
                             onClick={() => handleSelectHardware(h)}
-                            style={specHardware === h ? styles.subItemBtnActive : h === '+ Add More' ? styles.subItemAddMoreBtn : styles.subItemBtn}
+                            style={
+                              specHardware === h
+                                ? styles.subItemBtnActive
+                                : h === "+ Add More"
+                                  ? styles.subItemAddMoreBtn
+                                  : styles.subItemBtn
+                            }
                           >
                             {h}
                           </button>
@@ -1680,7 +2548,14 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                       </div>
 
                       {showCustomHardwareInput && (
-                        <div style={{ display: 'flex', gap: 8, marginTop: 8, maxWidth: 450 }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 8,
+                            marginTop: 8,
+                            maxWidth: 450,
+                          }}
+                        >
                           <input
                             type="text"
                             placeholder="Type custom hardware (e.g. Ebco Hydraulic)..."
@@ -1692,7 +2567,7 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                               }
                             }}
                             onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
+                              if (e.key === "Enter") {
                                 e.preventDefault();
                                 handleConfirmCustomHardware();
                               }
@@ -1704,7 +2579,11 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                             type="button"
                             className="btn btn-primary"
                             onClick={() => handleConfirmCustomHardware()}
-                            style={{ padding: '4px 12px', fontSize: 12, whiteSpace: 'nowrap' }}
+                            style={{
+                              padding: "4px 12px",
+                              fontSize: 12,
+                              whiteSpace: "nowrap",
+                            }}
                           >
                             + Add Hardware
                           </button>
@@ -1713,17 +2592,44 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                     </div>
 
                     {/* Accessories Specifications */}
-                    <div style={{ marginBottom: 12, background: '#ffffff', padding: 10, borderRadius: 6, border: '1px solid #cbd5e1' }}>
-                      <label style={{ ...styles.label, fontWeight: 700, color: '#0f172a' }}>
+                    <div
+                      style={{
+                        marginBottom: 12,
+                        background: "#ffffff",
+                        padding: 10,
+                        borderRadius: 6,
+                        border: "1px solid #cbd5e1",
+                      }}
+                    >
+                      <label
+                        style={{
+                          ...styles.label,
+                          fontWeight: 700,
+                          color: "#0f172a",
+                        }}
+                      >
                         Add Accessories:
                       </label>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 6,
+                          flexWrap: "wrap",
+                          marginTop: 4,
+                        }}
+                      >
                         {accessoryOptions.map((acc) => (
                           <button
                             key={acc}
                             type="button"
                             onClick={() => handleSelectAccessory(acc)}
-                            style={accName === acc ? styles.subItemBtnActive : acc === '+ Add More' ? styles.subItemAddMoreBtn : styles.subItemBtn}
+                            style={
+                              accName === acc
+                                ? styles.subItemBtnActive
+                                : acc === "+ Add More"
+                                  ? styles.subItemAddMoreBtn
+                                  : styles.subItemBtn
+                            }
                           >
                             {acc}
                           </button>
@@ -1731,7 +2637,14 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                       </div>
 
                       {showCustomAccessoryInput && (
-                        <div style={{ display: 'flex', gap: 8, marginTop: 8, maxWidth: 450 }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 8,
+                            marginTop: 8,
+                            maxWidth: 450,
+                          }}
+                        >
                           <input
                             type="text"
                             placeholder="Type custom accessory name..."
@@ -1743,7 +2656,7 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                               }
                             }}
                             onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
+                              if (e.key === "Enter") {
                                 e.preventDefault();
                                 handleConfirmCustomAccessory();
                               }
@@ -1755,136 +2668,667 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                             type="button"
                             className="btn btn-primary"
                             onClick={() => handleConfirmCustomAccessory()}
-                            style={{ padding: '4px 12px', fontSize: 12, whiteSpace: 'nowrap' }}
+                            style={{
+                              padding: "4px 12px",
+                              fontSize: 12,
+                              whiteSpace: "nowrap",
+                            }}
                           >
                             + Add Option
                           </button>
                         </div>
                       )}
 
-                      <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center' }}>
-                        <input
-                          type="text"
-                          placeholder="Accessory name (e.g. Wicker basket)"
-                          value={accName}
-                          onChange={(e) => setAccName(e.target.value)}
-                          style={{ ...styles.formInput, flex: 2 }}
-                        />
-                        <input
-                          type="number"
-                          placeholder="Qty"
-                          value={accQty}
-                          onChange={(e) => setAccQty(e.target.value)}
-                          style={{ ...styles.formInput, width: 70 }}
-                        />
-                        <button
-                          type="button"
-                          className="btn btn-secondary"
-                          onClick={handleAddAccessory}
-                          style={{ padding: '6px 12px', fontSize: 12, whiteSpace: 'nowrap' }}
-                        >
-                          + Add Accessory
-                        </button>
+                      {/* Accessory Input Form with Price & Quantity */}
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "2fr 1fr 1fr 1fr auto auto",
+                          gap: 8,
+                          marginTop: 10,
+                          alignItems: "center",
+                        }}
+                      >
+                        <div>
+                          <label
+                            style={{
+                              fontSize: 10,
+                              color: "#475569",
+                              fontWeight: 600,
+                            }}
+                          >
+                            Accessory Name
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Accessory name (e.g. Wicker Basket)"
+                            value={accName}
+                            onChange={(e) => setAccName(e.target.value)}
+                            style={{
+                              ...styles.formInput,
+                              padding: "6px 8px",
+                              fontSize: 12,
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label
+                            style={{
+                              fontSize: 10,
+                              color: "#475569",
+                              fontWeight: 600,
+                            }}
+                          >
+                            Unit Price (₹)
+                          </label>
+                          <input
+                            type="number"
+                            placeholder="Unit Price"
+                            value={accUnitPrice}
+                            onChange={(e) => setAccUnitPrice(e.target.value)}
+                            style={{
+                              ...styles.formInput,
+                              padding: "6px 8px",
+                              fontSize: 12,
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label
+                            style={{
+                              fontSize: 10,
+                              color: "#475569",
+                              fontWeight: 600,
+                            }}
+                          >
+                            Quantity
+                          </label>
+                          <input
+                            type="number"
+                            placeholder="Qty"
+                            value={accQty}
+                            onChange={(e) => setAccQty(e.target.value)}
+                            style={{
+                              ...styles.formInput,
+                              padding: "6px 8px",
+                              fontSize: 12,
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label
+                            style={{
+                              fontSize: 10,
+                              color: "#475569",
+                              fontWeight: 600,
+                            }}
+                          >
+                            Total Price (₹)
+                          </label>
+                          <div
+                            style={{
+                              padding: "6px 8px",
+                              background: "#f1f5f9",
+                              border: "1px solid #cbd5e1",
+                              borderRadius: 6,
+                              fontWeight: 700,
+                              fontSize: 12,
+                              color: "#0f172a",
+                            }}
+                          >
+                            {formatINR(
+                              Math.round(
+                                (parseFloat(accUnitPrice) || 0) *
+                                  (parseInt(accQty, 10) || 1),
+                              ),
+                            )}
+                          </div>
+                        </div>
+                        <div style={{ marginTop: 16 }}>
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={handleAddAccessory}
+                            style={{
+                              padding: "6px 10px",
+                              fontSize: 11,
+                              whiteSpace: "nowrap",
+                            }}
+                            title="Attach to current item"
+                          >
+                            + Attach Accessory
+                          </button>
+                        </div>
+                        <div style={{ marginTop: 16 }}>
+                          <button
+                            type="button"
+                            className="btn btn-primary"
+                            onClick={handleAddAccessoryToScope}
+                            style={{
+                              padding: "6px 10px",
+                              fontSize: 11,
+                              whiteSpace: "nowrap",
+                            }}
+                            title="Add accessory directly to scope items"
+                          >
+                            + Add to Scope
+                          </button>
+                        </div>
                       </div>
 
+                      {/* Attached Accessories List */}
                       {itemAccessories.length > 0 && (
-                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-                          {itemAccessories.map((a, i) => (
-                            <span
-                              key={i}
-                              style={{
-                                background: '#fff5f5',
-                                border: '1px solid #fecdd3',
-                                color: '#7a131a',
-                                borderRadius: 14,
-                                padding: '2px 8px',
-                                fontSize: 11,
-                                fontWeight: 600,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 4,
-                              }}
-                            >
-                              {a.name} (x{a.qty})
-                              <button
-                                type="button"
-                                style={{ border: 'none', background: 'none', color: '#dc2626', cursor: 'pointer', fontSize: 12, padding: 0 }}
-                                onClick={() => setItemAccessories(itemAccessories.filter((_, idx) => idx !== i))}
+                        <div
+                          style={{
+                            marginTop: 10,
+                            background: "#fff5f5",
+                            border: "1px solid #fecdd3",
+                            borderRadius: 6,
+                            padding: 8,
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 700,
+                              color: "#881337",
+                              marginBottom: 4,
+                            }}
+                          >
+                            Attached Accessories ({itemAccessories.length}):
+                          </div>
+                          <div
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 4,
+                            }}
+                          >
+                            {itemAccessories.map((a, i) => (
+                              <div
+                                key={i}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "space-between",
+                                  background: "#ffffff",
+                                  border: "1px solid #fda4af",
+                                  borderRadius: 4,
+                                  padding: "4px 8px",
+                                  fontSize: 11,
+                                }}
                               >
-                                ✕
-                              </button>
-                            </span>
-                          ))}
+                                <span
+                                  style={{ fontWeight: 600, color: "#0f172a" }}
+                                >
+                                  {a.name}
+                                </span>
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 10,
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 4,
+                                    }}
+                                  >
+                                    <span
+                                      style={{ color: "#475569", fontSize: 10 }}
+                                    >
+                                      Qty:
+                                    </span>
+                                    <input
+                                      type="number"
+                                      value={a.qty}
+                                      onChange={(e) =>
+                                        handleUpdateAccessoryQty(
+                                          i,
+                                          e.target.value,
+                                        )
+                                      }
+                                      style={{
+                                        width: 45,
+                                        padding: "2px 4px",
+                                        fontSize: 11,
+                                        border: "1px solid #cbd5e1",
+                                        borderRadius: 4,
+                                      }}
+                                      min="1"
+                                    />
+                                  </div>
+                                  <span style={{ color: "#475569" }}>
+                                    Unit: {formatINR(a.unitPrice)}
+                                  </span>
+                                  <span
+                                    style={{
+                                      fontWeight: 700,
+                                      color: "#881337",
+                                    }}
+                                  >
+                                    Total: {formatINR(a.cost)}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    style={{
+                                      border: "none",
+                                      background: "none",
+                                      color: "#dc2626",
+                                      cursor: "pointer",
+                                      fontWeight: 700,
+                                      fontSize: 13,
+                                    }}
+                                    onClick={() =>
+                                      setItemAccessories(
+                                        itemAccessories.filter(
+                                          (_, idx) => idx !== i,
+                                        ),
+                                      )
+                                    }
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
 
                     {/* Additional Specifications */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr 1fr', gap: 6, marginBottom: 8 }}>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr 1fr",
+                        gap: 6,
+                        marginBottom: 8,
+                      }}
+                    >
                       <div>
-                        <label style={{ fontSize: 10, color: '#475569' }}>Selected Material</label>
-                        <input type="text" value={specCarcass} onChange={(e) => setSpecCarcass(e.target.value)} style={{ ...styles.formInput, padding: '4px 6px', fontSize: 11 }} />
+                        <label style={{ fontSize: 10, color: "#475569" }}>
+                          Selected Material
+                        </label>
+                        <input
+                          type="text"
+                          value={specCarcass}
+                          onChange={(e) => setSpecCarcass(e.target.value)}
+                          style={{
+                            ...styles.formInput,
+                            padding: "4px 6px",
+                            fontSize: 11,
+                          }}
+                        />
                       </div>
                       <div>
-                        <label style={{ fontSize: 10, color: '#475569' }}>Selected Hardware</label>
-                        <input type="text" value={specHardware} onChange={(e) => setSpecHardware(e.target.value)} style={{ ...styles.formInput, padding: '4px 6px', fontSize: 11 }} />
+                        <label style={{ fontSize: 10, color: "#475569" }}>
+                          Selected Hardware
+                        </label>
+                        <input
+                          type="text"
+                          value={specHardware}
+                          onChange={(e) => setSpecHardware(e.target.value)}
+                          style={{
+                            ...styles.formInput,
+                            padding: "4px 6px",
+                            fontSize: 11,
+                          }}
+                        />
                       </div>
                       <div>
-                        <label style={{ fontSize: 10, color: '#475569' }}>Shutter</label>
-                        <input type="text" value={specShutter} onChange={(e) => setSpecShutter(e.target.value)} style={{ ...styles.formInput, padding: '4px 6px', fontSize: 11 }} />
+                        <label style={{ fontSize: 10, color: "#475569" }}>
+                          Shutter
+                        </label>
+                        <input
+                          type="text"
+                          value={specShutter}
+                          onChange={(e) => setSpecShutter(e.target.value)}
+                          style={{
+                            ...styles.formInput,
+                            padding: "4px 6px",
+                            fontSize: 11,
+                          }}
+                        />
                       </div>
                       <div>
-                        <label style={{ fontSize: 10, color: '#475569' }}>Finish</label>
-                        <input type="text" value={specFinish} onChange={(e) => setSpecFinish(e.target.value)} style={{ ...styles.formInput, padding: '4px 6px', fontSize: 11 }} />
+                        <label style={{ fontSize: 10, color: "#475569" }}>
+                          Finish
+                        </label>
+                        <input
+                          type="text"
+                          value={specFinish}
+                          onChange={(e) => setSpecFinish(e.target.value)}
+                          style={{
+                            ...styles.formInput,
+                            padding: "4px 6px",
+                            fontSize: 11,
+                          }}
+                        />
                       </div>
                       <div>
-                        <label style={{ fontSize: 10, color: '#475569' }}>Brand</label>
-                        <input type="text" value={specBrand} onChange={(e) => setSpecBrand(e.target.value)} style={{ ...styles.formInput, padding: '4px 6px', fontSize: 11 }} />
+                        <label style={{ fontSize: 10, color: "#475569" }}>
+                          Brand
+                        </label>
+                        <input
+                          type="text"
+                          value={specBrand}
+                          onChange={(e) => setSpecBrand(e.target.value)}
+                          style={{
+                            ...styles.formInput,
+                            padding: "4px 6px",
+                            fontSize: 11,
+                          }}
+                        />
                       </div>
                       <div>
-                        <label style={{ fontSize: 10, color: '#475569' }}>Thickness</label>
-                        <input type="text" value={specThickness} onChange={(e) => setSpecThickness(e.target.value)} style={{ ...styles.formInput, padding: '4px 6px', fontSize: 11 }} />
+                        <label style={{ fontSize: 10, color: "#475569" }}>
+                          Thickness
+                        </label>
+                        <input
+                          type="text"
+                          value={specThickness}
+                          onChange={(e) => setSpecThickness(e.target.value)}
+                          style={{
+                            ...styles.formInput,
+                            padding: "4px 6px",
+                            fontSize: 11,
+                          }}
+                        />
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-                      <button type="button" className="btn btn-secondary" onClick={handleAddItem} style={{ fontSize: 12, padding: '5px 12px' }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "flex-end",
+                        marginTop: 8,
+                      }}
+                    >
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={handleAddItem}
+                        style={{ fontSize: 12, padding: "5px 12px" }}
+                      >
                         + Add Item to Scope
                       </button>
                     </div>
                   </div>
 
                   {/* Items List */}
-                  <h4 style={{ margin: '10px 0', fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Scope Items ({items.length})</h4>
-                  <div style={{ maxHeight: 180, overflowY: 'auto', border: '1px solid #cbd5e1', borderRadius: 6, padding: 8, marginBottom: 16 }}>
+                  <h4
+                    style={{
+                      margin: "10px 0",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: "#0f172a",
+                    }}
+                  >
+                    Scope Items ({items.length})
+                  </h4>
+                  <div
+                    style={{
+                      maxHeight: 180,
+                      overflowY: "auto",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: 6,
+                      padding: 8,
+                      marginBottom: 16,
+                    }}
+                  >
                     {items.length === 0 ? (
-                      <div style={{ fontSize: 12, color: '#64748b', textAlign: 'center', padding: 12 }}>No items added yet. Compose one above.</div>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: "#64748b",
+                          textAlign: "center",
+                          padding: 12,
+                        }}
+                      >
+                        No items added yet. Compose one above.
+                      </div>
                     ) : (
                       items.map((it, idx) => (
-                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', borderBottom: '1px solid #f1f5f9' }}>
-                          <div>
-                            <span style={{ fontWeight: 700, fontSize: 12, color: '#0f172a' }}>{it.name}</span>{' '}
-                            <span style={{ fontSize: 11, color: '#64748b' }}>[{it.room}]</span>
-                            <div style={{ fontSize: 11, color: '#475569' }}>{it.quantity} {it.unit} × {formatINR(it.rate)}</div>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <span style={{ fontWeight: 700, fontSize: 12, color: '#0f172a' }}>{formatINR(it.amount)}</span>
-                            <button
-                              type="button"
-                              style={{ border: 'none', background: 'none', color: '#dc2626', cursor: 'pointer', fontWeight: 700 }}
-                              onClick={() => setItems(items.filter((_, i) => i !== idx))}
+                        <div
+                          key={idx}
+                          style={{
+                            padding: "8px 10px",
+                            borderBottom: "1px solid #e2e8f0",
+                            background: idx % 2 === 0 ? "#ffffff" : "#f8fafc",
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                            }}
+                          >
+                            <div>
+                              <span
+                                style={{
+                                  fontWeight: 700,
+                                  fontSize: 12,
+                                  color: "#0f172a",
+                                }}
+                              >
+                                {it.name}
+                              </span>{" "}
+                              <span
+                                style={{
+                                  fontSize: 11,
+                                  color: "#64748b",
+                                  fontWeight: 600,
+                                }}
+                              >
+                                [{it.room}]
+                              </span>
+                              <div
+                                style={{
+                                  fontSize: 11,
+                                  color: "#475569",
+                                  marginTop: 4,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 6,
+                                  flexWrap: "wrap",
+                                }}
+                              >
+                                <span>Size/Qty ({it.unit || "Sq Ft"}):</span>
+                                <input
+                                  type="number"
+                                  value={it.quantity}
+                                  onChange={(e) =>
+                                    handleUpdateItemQty(idx, e.target.value)
+                                  }
+                                  style={{
+                                    width: 55,
+                                    padding: "2px 4px",
+                                    fontSize: 11,
+                                    border: "1px solid #cbd5e1",
+                                    borderRadius: 4,
+                                    fontWeight: 700,
+                                  }}
+                                  min="0.1"
+                                  step="any"
+                                />
+                                <span>× Rate (₹):</span>
+                                <input
+                                  type="number"
+                                  value={it.rate}
+                                  onChange={(e) =>
+                                    handleUpdateItemRate(idx, e.target.value)
+                                  }
+                                  style={{
+                                    width: 70,
+                                    padding: "2px 4px",
+                                    fontSize: 11,
+                                    border: "1px solid #cbd5e1",
+                                    borderRadius: 4,
+                                    fontWeight: 700,
+                                  }}
+                                  min="0"
+                                  step="any"
+                                />
+                              </div>
+                            </div>
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 12,
+                              }}
                             >
-                              ✕
-                            </button>
+                              <span
+                                style={{
+                                  fontWeight: 800,
+                                  fontSize: 13,
+                                  color: "#0f172a",
+                                }}
+                              >
+                                {formatINR(
+                                  Math.round(
+                                    (it.quantity || 1) * (it.rate || 0),
+                                  ) +
+                                    (it.accessories || []).reduce((sum, a) => {
+                                      if (
+                                        a.name &&
+                                        it.name &&
+                                        a.name.trim().toLowerCase() ===
+                                          it.name.trim().toLowerCase()
+                                      )
+                                        return sum;
+                                      return (
+                                        sum +
+                                        (a.cost !== undefined
+                                          ? Number(a.cost)
+                                          : (Number(a.qty) || 1) *
+                                            (Number(a.unitPrice) || 0))
+                                      );
+                                    }, 0),
+                                )}
+                              </span>
+                              <button
+                                type="button"
+                                style={{
+                                  border: "none",
+                                  background: "none",
+                                  color: "#dc2626",
+                                  cursor: "pointer",
+                                  fontWeight: 700,
+                                  fontSize: 14,
+                                }}
+                                onClick={() =>
+                                  setItems(items.filter((_, i) => i !== idx))
+                                }
+                                title="Remove Item"
+                              >
+                                ✕
+                              </button>
+                            </div>
                           </div>
+                          {it.accessories && it.accessories.length > 0 && (
+                            <div
+                              style={{
+                                marginTop: 6,
+                                paddingLeft: 10,
+                                borderLeft: "2px solid #fda4af",
+                                fontSize: 11,
+                                color: "#881337",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  fontWeight: 700,
+                                  fontSize: 10.5,
+                                  marginBottom: 2,
+                                }}
+                              >
+                                Included Accessories:
+                              </div>
+                              {it.accessories.map((acc, aIdx) => (
+                                <div
+                                  key={aIdx}
+                                  style={{
+                                    display: "flex",
+                                    gap: 8,
+                                    fontSize: 10.5,
+                                  }}
+                                >
+                                  <span>
+                                    • <strong>{acc.name}</strong>
+                                  </span>
+                                  <span>Qty: {acc.qty}</span>
+                                  <span>
+                                    Unit Price: {formatINR(acc.unitPrice)}
+                                  </span>
+                                  <span style={{ fontWeight: 700 }}>
+                                    Total: {formatINR(acc.cost)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       ))
                     )}
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <button type="button" className="btn btn-secondary" onClick={() => setFormStep(1)}>← Back</button>
-                    <button type="button" className="btn btn-primary" onClick={() => setFormStep(3)}>Next: Charges &amp; GST →</button>
+                  {/* Subtotal Banner for Step 2 */}
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      background: "#fff5f5",
+                      border: "1px solid #fecdd3",
+                      padding: "10px 14px",
+                      borderRadius: 8,
+                      marginTop: 10,
+                      marginBottom: 16,
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontWeight: 700,
+                        fontSize: 13,
+                        color: "#881337",
+                      }}
+                    >
+                      Items Subtotal ({items.length} items):
+                    </span>
+                    <span
+                      style={{
+                        fontWeight: 800,
+                        fontSize: 16,
+                        color: "#881337",
+                      }}
+                    >
+                      {formatINR(liveCalc.sub)}
+                    </span>
+                  </div>
+
+                  <div
+                    style={{ display: "flex", justifyContent: "space-between" }}
+                  >
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => setFormStep(1)}
+                    >
+                      ← Back
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={() => setFormStep(3)}
+                    >
+                      Next: Charges &amp; GST →
+                    </button>
                   </div>
                 </div>
               )}
@@ -1892,46 +3336,114 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
               {/* STEP 3: PRICING & GST */}
               {formStep === 3 && (
                 <div>
-                  <h4 style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 10 }}>Additional Fees &amp; Discounts</h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+                  <h4
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 700,
+                      color: "#0f172a",
+                      marginBottom: 10,
+                    }}
+                  >
+                    Additional Fees &amp; Discounts
+                  </h4>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr 1fr 1fr",
+                      gap: 12,
+                      marginBottom: 16,
+                    }}
+                  >
                     <div>
                       <label style={styles.label}>Handling Fees (%)</label>
-                      <input type="number" value={handlingPercent} onChange={(e) => setHandlingPercent(e.target.value)} style={styles.formInput} />
+                      <input
+                        type="number"
+                        value={handlingPercent}
+                        onChange={(e) => setHandlingPercent(e.target.value)}
+                        style={styles.formInput}
+                      />
                     </div>
                     <div>
                       <label style={styles.label}>Design Fees (%)</label>
-                      <input type="number" value={designPercent} onChange={(e) => setDesignPercent(e.target.value)} style={styles.formInput} />
+                      <input
+                        type="number"
+                        value={designPercent}
+                        onChange={(e) => setDesignPercent(e.target.value)}
+                        style={styles.formInput}
+                      />
                     </div>
                     <div>
                       <label style={styles.label}>Discount Type</label>
-                      <select value={discountType} onChange={(e) => setDiscountType(e.target.value)} style={styles.formInput}>
+                      <select
+                        value={discountType}
+                        onChange={(e) => setDiscountType(e.target.value)}
+                        style={styles.formInput}
+                      >
                         <option value="PERCENT">% Percentage</option>
                         <option value="FIXED">₹ Fixed Amount</option>
                       </select>
                     </div>
                     <div>
                       <label style={styles.label}>Discount Value</label>
-                      <input type="number" value={discountValue} onChange={(e) => setDiscountValue(e.target.value)} style={styles.formInput} />
+                      <input
+                        type="number"
+                        value={discountValue}
+                        onChange={(e) => setDiscountValue(e.target.value)}
+                        style={styles.formInput}
+                      />
                     </div>
                   </div>
 
-                  <h4 style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 10 }}>
+                  <h4
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 700,
+                      color: "#0f172a",
+                      marginBottom: 10,
+                    }}
+                  >
                     GST Configuration &amp; Tax Options
                   </h4>
 
-                  <div style={{ marginBottom: 16, background: '#ffffff', padding: 12, borderRadius: 8, border: '1px solid #cbd5e1' }}>
-                    <label style={{ ...styles.label, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>
+                  <div
+                    style={{
+                      marginBottom: 16,
+                      background: "#ffffff",
+                      padding: 12,
+                      borderRadius: 8,
+                      border: "1px solid #cbd5e1",
+                    }}
+                  >
+                    <label
+                      style={{
+                        ...styles.label,
+                        fontWeight: 700,
+                        color: "#0f172a",
+                        marginBottom: 8,
+                      }}
+                    >
                       Apply GST Tax on Proposal?
                     </label>
 
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 8,
+                        flexWrap: "wrap",
+                        marginBottom: 12,
+                      }}
+                    >
                       <button
                         type="button"
                         onClick={() => {
-                          setGstPercent('18');
-                          setGstType('AS_PER_ACTUAL');
+                          setGstPercent("18");
+                          setGstType("AS_PER_ACTUAL");
                         }}
-                        style={gstType === 'AS_PER_ACTUAL' ? styles.subItemBtnActive : styles.subItemBtn}
+                        style={
+                          gstType === "AS_PER_ACTUAL"
+                            ? styles.subItemBtnActive
+                            : styles.subItemBtn
+                        }
                       >
                         18% (As per actuals)
                       </button>
@@ -1939,10 +3451,15 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                       <button
                         type="button"
                         onClick={() => {
-                          setGstPercent('18');
-                          setGstType('CGST_SGST');
+                          setGstPercent("18");
+                          setGstType("CGST_SGST");
                         }}
-                        style={gstType !== 'AS_PER_ACTUAL' && parseFloat(gstPercent) === 18 ? styles.subItemBtnActive : styles.subItemBtn}
+                        style={
+                          gstType !== "AS_PER_ACTUAL" &&
+                          parseFloat(gstPercent) === 18
+                            ? styles.subItemBtnActive
+                            : styles.subItemBtn
+                        }
                       >
                         GST 18% (Calculated in total)
                       </button>
@@ -1953,16 +3470,29 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                           type="button"
                           onClick={() => {
                             setGstPercent(String(rate));
-                            if (gstType === 'AS_PER_ACTUAL') setGstType('CGST_SGST');
+                            if (gstType === "AS_PER_ACTUAL")
+                              setGstType("CGST_SGST");
                           }}
-                          style={gstType !== 'AS_PER_ACTUAL' && parseFloat(gstPercent) === rate ? styles.subItemBtnActive : styles.subItemBtn}
+                          style={
+                            gstType !== "AS_PER_ACTUAL" &&
+                            parseFloat(gstPercent) === rate
+                              ? styles.subItemBtnActive
+                              : styles.subItemBtn
+                          }
                         >
                           GST {rate}%
                         </button>
                       ))}
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 10 }}>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: 12,
+                        marginTop: 10,
+                      }}
+                    >
                       <div>
                         <label style={styles.label}>GST Rate (%)</label>
                         <input
@@ -1975,44 +3505,151 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                       </div>
                       <div>
                         <label style={styles.label}>Tax Type Structure</label>
-                        <select value={gstType} onChange={(e) => setGstType(e.target.value)} style={styles.formInput}>
-                          <option value="AS_PER_ACTUAL">As per actuals (18% Extra / Not calculated in total)</option>
-                          <option value="CGST_SGST">CGST + SGST (Intrastate - Calculated)</option>
-                          <option value="IGST">IGST (Interstate - Calculated)</option>
+                        <select
+                          value={gstType}
+                          onChange={(e) => setGstType(e.target.value)}
+                          style={styles.formInput}
+                        >
+                          <option value="AS_PER_ACTUAL">
+                            As per actuals (18% Extra / Not calculated in total)
+                          </option>
+                          <option value="CGST_SGST">
+                            CGST + SGST (Intrastate - Calculated)
+                          </option>
+                          <option value="IGST">
+                            IGST (Interstate - Calculated)
+                          </option>
                         </select>
                       </div>
                     </div>
 
-                    {gstType === 'AS_PER_ACTUAL' ? (
-                      <div style={{ marginTop: 10, fontSize: 12, color: '#1d4ed8', fontWeight: 600, background: '#eff6ff', padding: '8px 12px', borderRadius: 6, border: '1px solid #bfdbfe' }}>
-                        ℹ️ GST 18% will be charged as per actuals and is not included in the estimated total.
+                    {gstType === "AS_PER_ACTUAL" ? (
+                      <div
+                        style={{
+                          marginTop: 10,
+                          fontSize: 12,
+                          color: "#1d4ed8",
+                          fontWeight: 600,
+                          background: "#eff6ff",
+                          padding: "8px 12px",
+                          borderRadius: 6,
+                          border: "1px solid #bfdbfe",
+                        }}
+                      >
+                        ℹ️ GST 18% will be charged as per actuals and is not
+                        included in the estimated total.
                       </div>
                     ) : (
-                      <div style={{ marginTop: 10, fontSize: 12, color: '#059669', fontWeight: 600, background: '#ecfdf5', padding: '8px 12px', borderRadius: 6, border: '1px solid #a7f3d0' }}>
-                        ✓ GST {gstPercent}% is calculated and included in the estimated total.
+                      <div
+                        style={{
+                          marginTop: 10,
+                          fontSize: 12,
+                          color: "#059669",
+                          fontWeight: 600,
+                          background: "#ecfdf5",
+                          padding: "8px 12px",
+                          borderRadius: 6,
+                          border: "1px solid #a7f3d0",
+                        }}
+                      >
+                        ✓ GST {gstPercent}% is calculated and included in the
+                        estimated total.
                       </div>
                     )}
                   </div>
 
                   {/* Live Computed Card */}
-                  <div style={{ background: '#f8fafc', padding: 14, borderRadius: 8, border: '1px solid #cbd5e1', marginBottom: 16 }}>
-                    <h4 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>Live Financial Summary</h4>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 13 }}>
-                      <div>Subtotal: <strong>{formatINR(liveCalc.sub)}</strong></div>
-                      <div>Handling ({handlingPercent}%): <strong>{formatINR(liveCalc.handlingFee)}</strong></div>
-                      <div>Design ({designPercent}%): <strong>{formatINR(liveCalc.designFee)}</strong></div>
-                      <div>Discount: <strong style={{ color: '#059669' }}>-{formatINR(liveCalc.discountAmt)}</strong></div>
-                      <div>Taxable Total: <strong>{formatINR(liveCalc.taxable)}</strong></div>
-                      <div>GST ({gstPercent}% {gstType === 'AS_PER_ACTUAL' ? '– As per Actuals' : ''}): <strong>{gstType === 'AS_PER_ACTUAL' ? '18% – As per Actuals (Not included)' : formatINR(liveCalc.gstAmt)}</strong></div>
+                  <div
+                    style={{
+                      background: "#f8fafc",
+                      padding: 14,
+                      borderRadius: 8,
+                      border: "1px solid #cbd5e1",
+                      marginBottom: 16,
+                    }}
+                  >
+                    <h4
+                      style={{
+                        margin: 0,
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: "#0f172a",
+                        marginBottom: 8,
+                      }}
+                    >
+                      Live Financial Summary
+                    </h4>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: 8,
+                        fontSize: 13,
+                      }}
+                    >
+                      <div>
+                        Subtotal: <strong>{formatINR(liveCalc.sub)}</strong>
+                      </div>
+                      <div>
+                        Handling ({handlingPercent}%):{" "}
+                        <strong>{formatINR(liveCalc.handlingFee)}</strong>
+                      </div>
+                      <div>
+                        Design ({designPercent}%):{" "}
+                        <strong>{formatINR(liveCalc.designFee)}</strong>
+                      </div>
+                      <div>
+                        Discount:{" "}
+                        <strong style={{ color: "#059669" }}>
+                          -{formatINR(liveCalc.discountAmt)}
+                        </strong>
+                      </div>
+                      <div>
+                        Taxable Total:{" "}
+                        <strong>{formatINR(liveCalc.taxable)}</strong>
+                      </div>
+                      <div>
+                        GST ({gstPercent}%{" "}
+                        {gstType === "AS_PER_ACTUAL" ? "– As per Actuals" : ""}
+                        ):{" "}
+                        <strong>
+                          {gstType === "AS_PER_ACTUAL"
+                            ? "18% – As per Actuals (Not included)"
+                            : formatINR(liveCalc.gstAmt)}
+                        </strong>
+                      </div>
                     </div>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', marginTop: 10, borderTop: '1px solid #cbd5e1', paddingTop: 8 }}>
+                    <div
+                      style={{
+                        fontSize: 16,
+                        fontWeight: 800,
+                        color: "#0f172a",
+                        marginTop: 10,
+                        borderTop: "1px solid #cbd5e1",
+                        paddingTop: 8,
+                      }}
+                    >
                       Estimated Grand Total: {formatINR(liveCalc.grandTotal)}
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <button type="button" className="btn btn-secondary" onClick={() => setFormStep(2)}>← Back</button>
-                    <button type="button" className="btn btn-primary" onClick={() => setFormStep(4)}>Next: Payment Schedule →</button>
+                  <div
+                    style={{ display: "flex", justifyContent: "space-between" }}
+                  >
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => setFormStep(2)}
+                    >
+                      ← Back
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={() => setFormStep(4)}
+                    >
+                      Next: Payment Schedule →
+                    </button>
                   </div>
                 </div>
               )}
@@ -2020,16 +3657,60 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
               {/* STEP 4: MILESTONES & SAVE */}
               {formStep === 4 && (
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                    <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#0f172a' }}>Payment Milestones Schedule</h4>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: liveCalc.isMilestoneValid ? '#059669' : '#dc2626' }}>
-                      Total Share: {liveCalc.totalMilestonePct}% {liveCalc.isMilestoneValid ? '✓ Valid (100%)' : '⚠️ Must equal 100%'}
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: 10,
+                    }}
+                  >
+                    <h4
+                      style={{
+                        margin: 0,
+                        fontSize: 14,
+                        fontWeight: 700,
+                        color: "#0f172a",
+                      }}
+                    >
+                      Payment Milestones Schedule
+                    </h4>
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: liveCalc.isMilestoneValid
+                          ? "#059669"
+                          : "#dc2626",
+                      }}
+                    >
+                      Total Share: {liveCalc.totalMilestonePct}%{" "}
+                      {liveCalc.isMilestoneValid
+                        ? "✓ Valid (100%)"
+                        : "⚠️ Must equal 100%"}
                     </span>
                   </div>
 
-                  <div style={{ maxHeight: 200, overflowY: 'auto', border: '1px solid #cbd5e1', borderRadius: 6, padding: 8, marginBottom: 16 }}>
+                  <div
+                    style={{
+                      maxHeight: 200,
+                      overflowY: "auto",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: 6,
+                      padding: 8,
+                      marginBottom: 16,
+                    }}
+                  >
                     {milestones.map((m, idx) => (
-                      <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 80px 1fr', gap: 8, marginBottom: 8 }}>
+                      <div
+                        key={idx}
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr 80px 1fr",
+                          gap: 8,
+                          marginBottom: 8,
+                        }}
+                      >
                         <input
                           type="text"
                           value={m.milestoneName}
@@ -2038,27 +3719,41 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                             updated[idx].milestoneName = e.target.value;
                             setMilestones(updated);
                           }}
-                          style={{ ...styles.formInput, padding: '4px 6px', fontSize: 12 }}
+                          style={{
+                            ...styles.formInput,
+                            padding: "4px 6px",
+                            fontSize: 12,
+                          }}
                         />
                         <input
                           type="number"
                           value={m.percentage}
                           onChange={(e) => {
                             const updated = [...milestones];
-                            updated[idx].percentage = Number(e.target.value) || 0;
+                            updated[idx].percentage =
+                              Number(e.target.value) || 0;
                             setMilestones(updated);
                           }}
-                          style={{ ...styles.formInput, padding: '4px 6px', fontSize: 12, textAlign: 'center' }}
+                          style={{
+                            ...styles.formInput,
+                            padding: "4px 6px",
+                            fontSize: 12,
+                            textAlign: "center",
+                          }}
                         />
                         <input
                           type="text"
-                          value={m.stage || ''}
+                          value={m.stage || ""}
                           onChange={(e) => {
                             const updated = [...milestones];
                             updated[idx].stage = e.target.value;
                             setMilestones(updated);
                           }}
-                          style={{ ...styles.formInput, padding: '4px 6px', fontSize: 12 }}
+                          style={{
+                            ...styles.formInput,
+                            padding: "4px 6px",
+                            fontSize: 12,
+                          }}
                           placeholder="Stage description"
                         />
                       </div>
@@ -2071,15 +3766,29 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                       rows={3}
                       value={quotationNotes}
                       onChange={(e) => setQuotationNotes(e.target.value)}
-                      style={{ ...styles.formInput, resize: 'vertical' }}
+                      style={{ ...styles.formInput, resize: "vertical" }}
                       placeholder="Special customer remarks or scope details..."
                     />
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <button type="button" className="btn btn-secondary" onClick={() => setFormStep(3)}>← Back</button>
-                    <button type="submit" className="btn btn-primary" disabled={isActionLoading}>
-                      {isActionLoading ? 'Saving...' : '✓ Save & Generate Quotation'}
+                  <div
+                    style={{ display: "flex", justifyContent: "space-between" }}
+                  >
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => setFormStep(3)}
+                    >
+                      ← Back
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                      disabled={isActionLoading}
+                    >
+                      {isActionLoading
+                        ? "Saving..."
+                        : "✓ Save & Generate Quotation"}
                     </button>
                   </div>
                 </div>
@@ -2095,73 +3804,308 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
           <div style={{ ...styles.modalCard, maxWidth: 750 }}>
             <div style={styles.modalHeader}>
               <div>
-                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#0f172a' }}>
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: 18,
+                    fontWeight: 700,
+                    color: "#0f172a",
+                  }}
+                >
                   Quotation {selectedQuotation.quotationNumber}
                 </h3>
-                <div style={{ fontSize: 12, color: '#64748b' }}>{selectedQuotation.projectTitle}</div>
+                <div style={{ fontSize: 12, color: "#64748b" }}>
+                  {selectedQuotation.projectTitle}
+                </div>
               </div>
-              <button onClick={() => { setShowDetailModal(false); if (subRoute !== 'list') navigate(basePath); }} style={styles.closeBtn}>✕</button>
+              <button
+                onClick={() => {
+                  setShowDetailModal(false);
+                  if (subRoute !== "list") navigate(basePath);
+                }}
+                style={styles.closeBtn}
+              >
+                ✕
+              </button>
             </div>
 
-            <div style={{ margin: '16px 0' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-                <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Client Information</div>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a', marginTop: 4 }}>{selectedQuotation.client?.name}</div>
-                  <div style={{ fontSize: 12, color: '#475569' }}>📞 {selectedQuotation.client?.phone || '—'} | ✉️ {selectedQuotation.client?.email || '—'}</div>
-                  <div style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>📍 {selectedQuotation.siteLocation || selectedQuotation.client?.address || '—'}</div>
+            <div style={{ margin: "16px 0" }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 16,
+                  marginBottom: 16,
+                }}
+              >
+                <div
+                  style={{
+                    background: "#f8fafc",
+                    padding: 12,
+                    borderRadius: 8,
+                    border: "1px solid #e2e8f0",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: "#64748b",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Client Information
+                  </div>
+                  <div
+                    style={{
+                      fontWeight: 700,
+                      fontSize: 14,
+                      color: "#0f172a",
+                      marginTop: 4,
+                    }}
+                  >
+                    {selectedQuotation.client?.name}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#475569" }}>
+                    📞 {selectedQuotation.client?.phone || "—"} | ✉️{" "}
+                    {selectedQuotation.client?.email || "—"}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>
+                    📍{" "}
+                    {selectedQuotation.siteLocation ||
+                      selectedQuotation.client?.address ||
+                      "—"}
+                  </div>
                 </div>
 
-                <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Proposal Financials</div>
-                  <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', marginTop: 4 }}>
-                    {formatINR(selectedQuotation.pricing?.grandTotal || selectedQuotation.grandTotal)}
+                <div
+                  style={{
+                    background: "#f8fafc",
+                    padding: 12,
+                    borderRadius: 8,
+                    border: "1px solid #e2e8f0",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: "#64748b",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Proposal Financials
                   </div>
-                  <div style={{ fontSize: 12, color: '#475569' }}>Subtotal: {formatINR(selectedQuotation.pricing?.subtotal || selectedQuotation.subtotal)}</div>
-                  <div style={{ fontSize: 12, color: '#475569' }}>Status: <strong>{selectedQuotation.status}</strong></div>
+                  <div
+                    style={{
+                      fontSize: 18,
+                      fontWeight: 800,
+                      color: "#0f172a",
+                      marginTop: 4,
+                    }}
+                  >
+                    {formatINR(
+                      selectedQuotation.pricing?.grandTotal ||
+                        selectedQuotation.grandTotal,
+                    )}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#475569" }}>
+                    Subtotal:{" "}
+                    {formatINR(
+                      selectedQuotation.pricing?.subtotal ||
+                        selectedQuotation.subtotal,
+                    )}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#475569" }}>
+                    Status: <strong>{selectedQuotation.status}</strong>
+                  </div>
                 </div>
               </div>
 
-              <h4 style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>Scope Items ({selectedQuotation.items?.length || 0})</h4>
-              <div style={{ maxHeight: 200, overflowY: 'auto', border: '1px solid #cbd5e1', borderRadius: 6, padding: 8, marginBottom: 16 }}>
+              <h4
+                style={{
+                  fontSize: 14,
+                  fontWeight: 700,
+                  color: "#0f172a",
+                  marginBottom: 8,
+                }}
+              >
+                Scope Items ({selectedQuotation.items?.length || 0})
+              </h4>
+              <div
+                style={{
+                  maxHeight: 200,
+                  overflowY: "auto",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: 6,
+                  padding: 8,
+                  marginBottom: 16,
+                }}
+              >
                 {(selectedQuotation.items || []).map((it, idx) => (
-                  <div key={idx} style={{ padding: '6px 8px', borderBottom: '1px solid #f1f5f9' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>{it.name} <span style={{ fontSize: 11, color: '#64748b' }}>[{it.room}]</span></span>
-                      <span style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>{formatINR(it.amount)}</span>
+                  <div
+                    key={idx}
+                    style={{
+                      padding: "6px 8px",
+                      borderBottom: "1px solid #f1f5f9",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontWeight: 700,
+                          fontSize: 13,
+                          color: "#0f172a",
+                        }}
+                      >
+                        {it.name}{" "}
+                        <span style={{ fontSize: 11, color: "#64748b" }}>
+                          [{it.room}]
+                        </span>
+                      </span>
+                      <span
+                        style={{
+                          fontWeight: 700,
+                          fontSize: 13,
+                          color: "#0f172a",
+                        }}
+                      >
+                        {formatINR(it.amount)}
+                      </span>
                     </div>
-                    <div style={{ fontSize: 11, color: '#475569' }}>
+                    <div style={{ fontSize: 11, color: "#475569" }}>
                       {it.quantity} {it.unit} @ {formatINR(it.rate)}
-                      {it.measurements?.calculatedArea ? ` (Area: ${it.measurements.calculatedArea} ${it.unit})` : ''}
+                      {it.measurements?.calculatedArea
+                        ? ` (Area: ${it.measurements.calculatedArea} ${it.unit})`
+                        : ""}
                     </div>
                   </div>
                 ))}
               </div>
 
               {/* Payment & Transaction Summary Box */}
-              <div style={{ background: '#fff1f2', padding: 12, borderRadius: 8, border: '1px solid #fecdd3', marginBottom: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#7a131a', textTransform: 'uppercase' }}>Payment &amp; Transaction Summary</div>
-                  <span style={{ fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 4, background: selectedQuotation.paymentSummary?.paymentStatus === 'PAID' ? '#d1fae5' : selectedQuotation.paymentSummary?.paymentStatus === 'PARTIALLY_PAID' ? '#fef3c7' : '#fee2e2', color: selectedQuotation.paymentSummary?.paymentStatus === 'PAID' ? '#065f46' : selectedQuotation.paymentSummary?.paymentStatus === 'PARTIALLY_PAID' ? '#92400e' : '#991b1b' }}>
-                    {(selectedQuotation.paymentSummary?.paymentStatus || 'UNPAID').replace('_', ' ')}
+              <div
+                style={{
+                  background: "#fff1f2",
+                  padding: 12,
+                  borderRadius: 8,
+                  border: "1px solid #fecdd3",
+                  marginBottom: 16,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: 6,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: "#7a131a",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Payment &amp; Transaction Summary
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 800,
+                      padding: "2px 8px",
+                      borderRadius: 4,
+                      background:
+                        selectedQuotation.paymentSummary?.paymentStatus ===
+                        "PAID"
+                          ? "#d1fae5"
+                          : selectedQuotation.paymentSummary?.paymentStatus ===
+                              "PARTIALLY_PAID"
+                            ? "#fef3c7"
+                            : "#fee2e2",
+                      color:
+                        selectedQuotation.paymentSummary?.paymentStatus ===
+                        "PAID"
+                          ? "#065f46"
+                          : selectedQuotation.paymentSummary?.paymentStatus ===
+                              "PARTIALLY_PAID"
+                            ? "#92400e"
+                            : "#991b1b",
+                    }}
+                  >
+                    {(
+                      selectedQuotation.paymentSummary?.paymentStatus ||
+                      "UNPAID"
+                    ).replace("_", " ")}
                   </span>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, fontSize: 12, marginBottom: 8 }}>
-                  <div>Total: <strong>{formatINR(selectedQuotation.paymentSummary?.totalAmount || selectedQuotation.pricing?.grandTotal || selectedQuotation.grandTotal)}</strong></div>
-                  <div style={{ color: '#059669' }}>Paid: <strong>{formatINR(selectedQuotation.paymentSummary?.paidAmount || 0)}</strong></div>
-                  <div style={{ color: '#dc2626' }}>Balance: <strong>{formatINR(selectedQuotation.paymentSummary?.remainingAmount ?? (selectedQuotation.pricing?.grandTotal || selectedQuotation.grandTotal || 0))}</strong></div>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr 1fr",
+                    gap: 8,
+                    fontSize: 12,
+                    marginBottom: 8,
+                  }}
+                >
+                  <div>
+                    Total:{" "}
+                    <strong>
+                      {formatINR(
+                        selectedQuotation.paymentSummary?.totalAmount ||
+                          selectedQuotation.pricing?.grandTotal ||
+                          selectedQuotation.grandTotal,
+                      )}
+                    </strong>
+                  </div>
+                  <div style={{ color: "#059669" }}>
+                    Paid:{" "}
+                    <strong>
+                      {formatINR(
+                        selectedQuotation.paymentSummary?.paidAmount || 0,
+                      )}
+                    </strong>
+                  </div>
+                  <div style={{ color: "#dc2626" }}>
+                    Balance:{" "}
+                    <strong>
+                      {formatINR(
+                        selectedQuotation.paymentSummary?.remainingAmount ??
+                          (selectedQuotation.pricing?.grandTotal ||
+                            selectedQuotation.grandTotal ||
+                            0),
+                      )}
+                    </strong>
+                  </div>
                 </div>
 
                 <button
                   className="btn btn-primary"
-                  style={{ width: '100%', fontSize: 12, fontWeight: 700, background: '#7a131a', borderColor: '#7a131a', padding: '6px 12px' }}
+                  style={{
+                    width: "100%",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    background: "#7a131a",
+                    borderColor: "#7a131a",
+                    padding: "6px 12px",
+                  }}
                   onClick={() => {
                     setQuotationPaymentForm({
-                      amount: selectedQuotation.paymentSummary?.remainingAmount || selectedQuotation.pricing?.grandTotal || '',
-                      paymentMethod: 'UPI',
-                      referenceId: '',
-                      notes: '',
+                      amount:
+                        selectedQuotation.paymentSummary?.remainingAmount ||
+                        selectedQuotation.pricing?.grandTotal ||
+                        "",
+                      paymentMethod: "UPI",
+                      referenceId: "",
+                      notes: "",
                     });
                     setShowQuotationPaymentModal(true);
                   }}
@@ -2169,35 +4113,96 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                   💳 Record Quotation Payment / Transaction
                 </button>
 
-                {selectedQuotation.transactions && selectedQuotation.transactions.length > 0 && (
-                  <div style={{ marginTop: 10, borderTop: '1px solid #fecdd3', paddingTop: 8 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#7a131a', marginBottom: 4 }}>Transaction History ({selectedQuotation.transactions.length})</div>
-                    <div style={{ maxHeight: 120, overflowY: 'auto' }}>
-                      {selectedQuotation.transactions.map((tx, idx) => (
-                        <div key={tx._id || idx} style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 4, padding: 6, marginBottom: 4, fontSize: 11 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}>
-                            <span>{tx.transactionId || tx.referenceId || `TXN-${idx + 1}`}</span>
-                            <span style={{ color: '#059669' }}>{formatINR(tx.amount)}</span>
+                {selectedQuotation.transactions &&
+                  selectedQuotation.transactions.length > 0 && (
+                    <div
+                      style={{
+                        marginTop: 10,
+                        borderTop: "1px solid #fecdd3",
+                        paddingTop: 8,
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: "#7a131a",
+                          marginBottom: 4,
+                        }}
+                      >
+                        Transaction History (
+                        {selectedQuotation.transactions.length})
+                      </div>
+                      <div style={{ maxHeight: 120, overflowY: "auto" }}>
+                        {selectedQuotation.transactions.map((tx, idx) => (
+                          <div
+                            key={tx._id || idx}
+                            style={{
+                              background: "#ffffff",
+                              border: "1px solid #e2e8f0",
+                              borderRadius: 4,
+                              padding: 6,
+                              marginBottom: 4,
+                              fontSize: 11,
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                fontWeight: 700,
+                              }}
+                            >
+                              <span>
+                                {tx.transactionId ||
+                                  tx.referenceId ||
+                                  `TXN-${idx + 1}`}
+                              </span>
+                              <span style={{ color: "#059669" }}>
+                                {formatINR(tx.amount)}
+                              </span>
+                            </div>
+                            <div style={{ color: "#64748b", fontSize: 10 }}>
+                              {tx.paymentMethod || "UPI"} •{" "}
+                              {formatDate(tx.transactionDate || tx.createdAt)} •{" "}
+                              {tx.status || "Completed"}
+                            </div>
                           </div>
-                          <div style={{ color: '#64748b', fontSize: 10 }}>
-                            {tx.paymentMethod || 'UPI'} • {formatDate(tx.transactionDate || tx.createdAt)} • {tx.status || 'Completed'}
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
               </div>
 
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                <button className="btn btn-secondary" onClick={() => printQuotation(selectedQuotation)}>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  justifyContent: "flex-end",
+                  flexWrap: "wrap",
+                }}
+              >
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => printQuotation(selectedQuotation)}
+                >
                   📄 Print / PDF
                 </button>
-                <button className="btn btn-secondary" onClick={() => { setShowDetailModal(false); handleOpenEmailModal(selectedQuotation); }}>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setShowDetailModal(false);
+                    handleOpenEmailModal(selectedQuotation);
+                  }}
+                >
                   ✉️ Email Client
                 </button>
-                {selectedQuotation.status !== 'Converted to Project' && (
-                  <button className="btn btn-primary" onClick={() => handleConvertToProject(selectedQuotation)} disabled={isActionLoading}>
+                {selectedQuotation.status !== "Converted to Project" && (
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => handleConvertToProject(selectedQuotation)}
+                    disabled={isActionLoading}
+                  >
                     🚀 Convert to Project
                   </button>
                 )}
@@ -2212,10 +4217,32 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
         <div style={styles.modalBackdrop}>
           <div style={styles.modalCard}>
             <div style={styles.modalHeader}>
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#0f172a' }}>Email Quotation PDF</h3>
-              <button onClick={() => setShowEmailModal(false)} style={styles.closeBtn}>✕</button>
+              <h3
+                style={{
+                  margin: 0,
+                  fontSize: 18,
+                  fontWeight: 700,
+                  color: "#0f172a",
+                }}
+              >
+                Email Quotation PDF
+              </h3>
+              <button
+                onClick={() => setShowEmailModal(false)}
+                style={styles.closeBtn}
+              >
+                ✕
+              </button>
             </div>
-            <form onSubmit={handleSendEmail} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
+            <form
+              onSubmit={handleSendEmail}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 12,
+                marginTop: 16,
+              }}
+            >
               <div>
                 <label style={styles.label}>Recipient Email *</label>
                 <input
@@ -2250,18 +4277,47 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                   rows={4}
                   value={emailMessage}
                   onChange={(e) => setEmailMessage(e.target.value)}
-                  style={{ ...styles.formInput, resize: 'vertical' }}
+                  style={{ ...styles.formInput, resize: "vertical" }}
                 />
               </div>
-              <div style={{ background: '#f8fafc', padding: 10, borderRadius: 6, fontSize: 12, color: '#475569', border: '1px solid #e2e8f0' }}>
-                📎 Attached: <strong>Quotation_{selectedQuotation.quotationNumber}.pdf</strong>
+              <div
+                style={{
+                  background: "#f8fafc",
+                  padding: 10,
+                  borderRadius: 6,
+                  fontSize: 12,
+                  color: "#475569",
+                  border: "1px solid #e2e8f0",
+                }}
+              >
+                📎 Attached:{" "}
+                <strong>
+                  Quotation_{selectedQuotation.quotationNumber}.pdf
+                </strong>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
-                <button type="button" className="btn btn-secondary" onClick={() => setShowEmailModal(false)}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  gap: 10,
+                  marginTop: 8,
+                }}
+              >
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowEmailModal(false)}
+                >
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary" disabled={isActionLoading}>
-                  {isActionLoading ? 'Dispatching...' : 'Send Proposal Email ✉️'}
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={isActionLoading}
+                >
+                  {isActionLoading
+                    ? "Dispatching..."
+                    : "Send Proposal Email ✉️"}
                 </button>
               </div>
             </form>
@@ -2274,17 +4330,44 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
         <div style={styles.modalBackdrop}>
           <div style={styles.modalCard}>
             <div style={styles.modalHeader}>
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#0f172a' }}>Create New Invoice</h3>
-              <button onClick={() => setShowInvoiceModal(false)} style={styles.closeBtn}>✕</button>
+              <h3
+                style={{
+                  margin: 0,
+                  fontSize: 18,
+                  fontWeight: 700,
+                  color: "#0f172a",
+                }}
+              >
+                Create New Invoice
+              </h3>
+              <button
+                onClick={() => setShowInvoiceModal(false)}
+                style={styles.closeBtn}
+              >
+                ✕
+              </button>
             </div>
-            <form onSubmit={handleCreateInvoice} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
+            <form
+              onSubmit={handleCreateInvoice}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 12,
+                marginTop: 16,
+              }}
+            >
               <div>
                 <label style={styles.label}>Client Name *</label>
                 <input
                   type="text"
                   required
                   value={invoiceForm.clientName}
-                  onChange={(e) => setInvoiceForm({ ...invoiceForm, clientName: e.target.value })}
+                  onChange={(e) =>
+                    setInvoiceForm({
+                      ...invoiceForm,
+                      clientName: e.target.value,
+                    })
+                  }
                   style={styles.formInput}
                 />
               </div>
@@ -2293,7 +4376,12 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                 <input
                   type="text"
                   value={invoiceForm.projectName}
-                  onChange={(e) => setInvoiceForm({ ...invoiceForm, projectName: e.target.value })}
+                  onChange={(e) =>
+                    setInvoiceForm({
+                      ...invoiceForm,
+                      projectName: e.target.value,
+                    })
+                  }
                   style={styles.formInput}
                 />
               </div>
@@ -2302,18 +4390,34 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                 <input
                   type="text"
                   value={invoiceForm.description}
-                  onChange={(e) => setInvoiceForm({ ...invoiceForm, description: e.target.value })}
+                  onChange={(e) =>
+                    setInvoiceForm({
+                      ...invoiceForm,
+                      description: e.target.value,
+                    })
+                  }
                   style={styles.formInput}
                 />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 12,
+                }}
+              >
                 <div>
                   <label style={styles.label}>Amount Before GST (₹)</label>
                   <input
                     type="number"
                     required
                     value={invoiceForm.amount}
-                    onChange={(e) => setInvoiceForm({ ...invoiceForm, amount: Number(e.target.value) })}
+                    onChange={(e) =>
+                      setInvoiceForm({
+                        ...invoiceForm,
+                        amount: Number(e.target.value),
+                      })
+                    }
                     style={styles.formInput}
                   />
                 </div>
@@ -2323,13 +4427,29 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                     type="date"
                     required
                     value={invoiceForm.dueDate}
-                    onChange={(e) => setInvoiceForm({ ...invoiceForm, dueDate: e.target.value })}
+                    onChange={(e) =>
+                      setInvoiceForm({
+                        ...invoiceForm,
+                        dueDate: e.target.value,
+                      })
+                    }
                     style={styles.formInput}
                   />
                 </div>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 12 }}>
-                <button type="button" className="btn btn-secondary" onClick={() => setShowInvoiceModal(false)}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  gap: 10,
+                  marginTop: 12,
+                }}
+              >
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowInvoiceModal(false)}
+                >
                   Cancel
                 </button>
                 <button type="submit" className="btn btn-primary">
@@ -2346,14 +4466,51 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
         <div style={styles.modalBackdrop}>
           <div style={styles.modalCard}>
             <div style={styles.modalHeader}>
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#0f172a' }}>Record Payment for {selectedInvoice.invoiceNumber}</h3>
-              <button onClick={() => setShowPaymentModal(false)} style={styles.closeBtn}>✕</button>
+              <h3
+                style={{
+                  margin: 0,
+                  fontSize: 18,
+                  fontWeight: 700,
+                  color: "#0f172a",
+                }}
+              >
+                Record Payment for {selectedInvoice.invoiceNumber}
+              </h3>
+              <button
+                onClick={() => setShowPaymentModal(false)}
+                style={styles.closeBtn}
+              >
+                ✕
+              </button>
             </div>
-            <form onSubmit={handleRecordPayment} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
-              <div style={{ background: '#f1f5f9', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                <div style={{ color: '#0f172a' }}>Client: <strong>{selectedInvoice.clientName}</strong></div>
-                <div style={{ color: '#0f172a' }}>Total Invoice: <strong>{formatINR(selectedInvoice.totalAmount)}</strong></div>
-                <div style={{ color: '#0f172a' }}>Outstanding: <strong>{formatINR(selectedInvoice.balanceAmount)}</strong></div>
+            <form
+              onSubmit={handleRecordPayment}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 12,
+                marginTop: 16,
+              }}
+            >
+              <div
+                style={{
+                  background: "#f1f5f9",
+                  padding: 12,
+                  borderRadius: 8,
+                  border: "1px solid #e2e8f0",
+                }}
+              >
+                <div style={{ color: "#0f172a" }}>
+                  Client: <strong>{selectedInvoice.clientName}</strong>
+                </div>
+                <div style={{ color: "#0f172a" }}>
+                  Total Invoice:{" "}
+                  <strong>{formatINR(selectedInvoice.totalAmount)}</strong>
+                </div>
+                <div style={{ color: "#0f172a" }}>
+                  Outstanding:{" "}
+                  <strong>{formatINR(selectedInvoice.balanceAmount)}</strong>
+                </div>
               </div>
 
               <div>
@@ -2362,7 +4519,12 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                   type="number"
                   required
                   value={paymentForm.amount}
-                  onChange={(e) => setPaymentForm({ ...paymentForm, amount: Number(e.target.value) })}
+                  onChange={(e) =>
+                    setPaymentForm({
+                      ...paymentForm,
+                      amount: Number(e.target.value),
+                    })
+                  }
                   style={styles.formInput}
                 />
               </div>
@@ -2370,10 +4532,14 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                 <label style={styles.label}>Payment Method</label>
                 <select
                   value={paymentForm.method}
-                  onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value })}
+                  onChange={(e) =>
+                    setPaymentForm({ ...paymentForm, method: e.target.value })
+                  }
                   style={styles.formInput}
                 >
-                  <option value="Bank Transfer (NEFT/RTGS)">Bank Transfer (NEFT/RTGS)</option>
+                  <option value="Bank Transfer (NEFT/RTGS)">
+                    Bank Transfer (NEFT/RTGS)
+                  </option>
                   <option value="UPI">UPI</option>
                   <option value="Cheque">Cheque</option>
                   <option value="Credit Card">Credit Card</option>
@@ -2381,8 +4547,19 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                 </select>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 12 }}>
-                <button type="button" className="btn btn-secondary" onClick={() => setShowPaymentModal(false)}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  gap: 10,
+                  marginTop: 12,
+                }}
+              >
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowPaymentModal(false)}
+                >
                   Cancel
                 </button>
                 <button type="submit" className="btn btn-primary">
@@ -2399,16 +4576,65 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
         <div style={styles.modalBackdrop}>
           <div style={styles.modalCard}>
             <div style={styles.modalHeader}>
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#0f172a' }}>
+              <h3
+                style={{
+                  margin: 0,
+                  fontSize: 18,
+                  fontWeight: 700,
+                  color: "#0f172a",
+                }}
+              >
                 Record Payment for #{selectedQuotation.quotationNumber}
               </h3>
-              <button onClick={() => setShowQuotationPaymentModal(false)} style={styles.closeBtn}>✕</button>
+              <button
+                onClick={() => setShowQuotationPaymentModal(false)}
+                style={styles.closeBtn}
+              >
+                ✕
+              </button>
             </div>
-            <form onSubmit={handleRecordQuotationPayment} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
-              <div style={{ background: '#f8fafc', padding: 10, borderRadius: 6, fontSize: 12, border: '1px solid #e2e8f0' }}>
-                <div>Client: <strong>{selectedQuotation.client?.name}</strong></div>
-                <div>Quotation Total: <strong>{formatINR(selectedQuotation.paymentSummary?.totalAmount || selectedQuotation.pricing?.grandTotal || selectedQuotation.grandTotal)}</strong></div>
-                <div>Remaining Balance: <strong style={{ color: '#dc2626' }}>{formatINR(selectedQuotation.paymentSummary?.remainingAmount ?? (selectedQuotation.pricing?.grandTotal || selectedQuotation.grandTotal || 0))}</strong></div>
+            <form
+              onSubmit={handleRecordQuotationPayment}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 12,
+                marginTop: 16,
+              }}
+            >
+              <div
+                style={{
+                  background: "#f8fafc",
+                  padding: 10,
+                  borderRadius: 6,
+                  fontSize: 12,
+                  border: "1px solid #e2e8f0",
+                }}
+              >
+                <div>
+                  Client: <strong>{selectedQuotation.client?.name}</strong>
+                </div>
+                <div>
+                  Quotation Total:{" "}
+                  <strong>
+                    {formatINR(
+                      selectedQuotation.paymentSummary?.totalAmount ||
+                        selectedQuotation.pricing?.grandTotal ||
+                        selectedQuotation.grandTotal,
+                    )}
+                  </strong>
+                </div>
+                <div>
+                  Remaining Balance:{" "}
+                  <strong style={{ color: "#dc2626" }}>
+                    {formatINR(
+                      selectedQuotation.paymentSummary?.remainingAmount ??
+                        (selectedQuotation.pricing?.grandTotal ||
+                          selectedQuotation.grandTotal ||
+                          0),
+                    )}
+                  </strong>
+                </div>
               </div>
 
               <div>
@@ -2418,7 +4644,12 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                   required
                   placeholder="e.g. 50000"
                   value={quotationPaymentForm.amount}
-                  onChange={(e) => setQuotationPaymentForm({ ...quotationPaymentForm, amount: e.target.value })}
+                  onChange={(e) =>
+                    setQuotationPaymentForm({
+                      ...quotationPaymentForm,
+                      amount: e.target.value,
+                    })
+                  }
                   style={styles.formInput}
                 />
               </div>
@@ -2427,11 +4658,18 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                 <label style={styles.label}>Payment Method *</label>
                 <select
                   value={quotationPaymentForm.paymentMethod}
-                  onChange={(e) => setQuotationPaymentForm({ ...quotationPaymentForm, paymentMethod: e.target.value })}
+                  onChange={(e) =>
+                    setQuotationPaymentForm({
+                      ...quotationPaymentForm,
+                      paymentMethod: e.target.value,
+                    })
+                  }
                   style={styles.formInput}
                 >
                   <option value="UPI">UPI</option>
-                  <option value="Bank Transfer">Bank Transfer (NEFT/RTGS)</option>
+                  <option value="Bank Transfer">
+                    Bank Transfer (NEFT/RTGS)
+                  </option>
                   <option value="Cash">Cash</option>
                   <option value="Cheque">Cheque</option>
                   <option value="Card">Credit/Debit Card</option>
@@ -2439,12 +4677,19 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
               </div>
 
               <div>
-                <label style={styles.label}>Reference / Transaction ID (Optional)</label>
+                <label style={styles.label}>
+                  Reference / Transaction ID (Optional)
+                </label>
                 <input
                   type="text"
                   placeholder="e.g. UTR / Cheque No"
                   value={quotationPaymentForm.referenceId}
-                  onChange={(e) => setQuotationPaymentForm({ ...quotationPaymentForm, referenceId: e.target.value })}
+                  onChange={(e) =>
+                    setQuotationPaymentForm({
+                      ...quotationPaymentForm,
+                      referenceId: e.target.value,
+                    })
+                  }
                   style={styles.formInput}
                 />
               </div>
@@ -2455,17 +4700,38 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                   rows={2}
                   placeholder="e.g. 10% booking token received"
                   value={quotationPaymentForm.notes}
-                  onChange={(e) => setQuotationPaymentForm({ ...quotationPaymentForm, notes: e.target.value })}
-                  style={{ ...styles.formInput, resize: 'vertical' }}
+                  onChange={(e) =>
+                    setQuotationPaymentForm({
+                      ...quotationPaymentForm,
+                      notes: e.target.value,
+                    })
+                  }
+                  style={{ ...styles.formInput, resize: "vertical" }}
                 />
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 12 }}>
-                <button type="button" className="btn btn-secondary" onClick={() => setShowQuotationPaymentModal(false)}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  gap: 10,
+                  marginTop: 12,
+                }}
+              >
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowQuotationPaymentModal(false)}
+                >
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary" style={{ background: '#059669', borderColor: '#059669' }} disabled={isActionLoading}>
-                  {isActionLoading ? 'Saving...' : '✓ Save & Sync Transaction'}
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  style={{ background: "#059669", borderColor: "#059669" }}
+                  disabled={isActionLoading}
+                >
+                  {isActionLoading ? "Saving..." : "✓ Save & Sync Transaction"}
                 </button>
               </div>
             </form>
@@ -2478,252 +4744,252 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
 
 const styles = {
   tabBar: {
-    display: 'flex',
+    display: "flex",
     gap: 8,
-    borderBottom: '1px solid #cbd5e1',
+    borderBottom: "1px solid #cbd5e1",
     paddingBottom: 12,
     marginBottom: 20,
-    overflowX: 'auto',
+    overflowX: "auto",
   },
   tabBtn: {
-    padding: '8px 16px',
-    background: '#ffffff',
-    border: '1px solid #cbd5e1',
+    padding: "8px 16px",
+    background: "#ffffff",
+    border: "1px solid #cbd5e1",
     borderRadius: 8,
     fontWeight: 600,
     fontSize: 13,
-    color: '#475569',
-    cursor: 'pointer',
-    whiteSpace: 'nowrap',
+    color: "#475569",
+    cursor: "pointer",
+    whiteSpace: "nowrap",
   },
   tabBtnActive: {
-    padding: '8px 16px',
-    background: '#0f172a',
-    border: '1px solid #0f172a',
+    padding: "8px 16px",
+    background: "#0f172a",
+    border: "1px solid #0f172a",
     borderRadius: 8,
     fontWeight: 600,
     fontSize: 13,
-    color: '#ffffff',
-    cursor: 'pointer',
-    whiteSpace: 'nowrap',
+    color: "#ffffff",
+    cursor: "pointer",
+    whiteSpace: "nowrap",
   },
   kpiCard: {
     padding: 14,
-    border: '1px solid #cbd5e1',
+    border: "1px solid #cbd5e1",
     borderRadius: 10,
   },
   kpiLabel: {
     fontSize: 11,
     fontWeight: 700,
-    color: '#64748b',
-    textTransform: 'uppercase',
+    color: "#64748b",
+    textTransform: "uppercase",
   },
   kpiVal: {
     fontSize: 20,
     fontWeight: 800,
-    color: '#0f172a',
+    color: "#0f172a",
     marginTop: 2,
   },
   kpiSub: {
     fontSize: 11,
-    color: '#64748b',
+    color: "#64748b",
     marginTop: 2,
   },
   searchInput: {
-    padding: '8px 12px',
-    border: '1px solid #cbd5e1',
+    padding: "8px 12px",
+    border: "1px solid #cbd5e1",
     borderRadius: 6,
     fontSize: 13,
     minWidth: 220,
-    color: '#0f172a',
+    color: "#0f172a",
   },
   selectInput: {
-    padding: '8px 12px',
-    border: '1px solid #cbd5e1',
+    padding: "8px 12px",
+    border: "1px solid #cbd5e1",
     borderRadius: 6,
     fontSize: 13,
-    color: '#0f172a',
-    background: '#ffffff',
+    color: "#0f172a",
+    background: "#ffffff",
   },
   actionHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
-    flexWrap: 'wrap',
+    flexWrap: "wrap",
     gap: 12,
   },
   table: {
-    width: '100%',
-    borderCollapse: 'collapse',
-    textAlign: 'left',
+    width: "100%",
+    borderCollapse: "collapse",
+    textAlign: "left",
   },
   thRow: {
-    borderBottom: '2px solid #cbd5e1',
-    background: '#f8fafc',
+    borderBottom: "2px solid #cbd5e1",
+    background: "#f8fafc",
     fontSize: 12,
-    color: '#475569',
-    textTransform: 'uppercase',
+    color: "#475569",
+    textTransform: "uppercase",
   },
   trRow: {
-    borderBottom: '1px solid #f1f5f9',
+    borderBottom: "1px solid #f1f5f9",
     fontSize: 13,
   },
   revBadge: {
-    background: '#f1f5f9',
-    color: '#0f172a',
-    padding: '2px 6px',
+    background: "#f1f5f9",
+    color: "#0f172a",
+    padding: "2px 6px",
     borderRadius: 12,
     fontSize: 10,
     fontWeight: 700,
     marginLeft: 6,
-    border: '1px solid #cbd5e1',
+    border: "1px solid #cbd5e1",
   },
   badgeStatus: {
-    background: '#f1f5f9',
-    color: '#0f172a',
-    padding: '3px 8px',
+    background: "#f1f5f9",
+    color: "#0f172a",
+    padding: "3px 8px",
     borderRadius: 12,
     fontSize: 11,
     fontWeight: 700,
-    border: '1px solid #cbd5e1',
+    border: "1px solid #cbd5e1",
   },
   iconBtn: {
-    padding: '4px 8px',
+    padding: "4px 8px",
     fontSize: 12,
   },
   wizardTabs: {
-    display: 'flex',
+    display: "flex",
     gap: 6,
-    borderBottom: '1px solid #e2e8f0',
+    borderBottom: "1px solid #e2e8f0",
     paddingBottom: 10,
     marginBottom: 14,
-    overflowX: 'auto',
+    overflowX: "auto",
   },
   wizardTab: {
-    padding: '6px 12px',
-    background: '#f8fafc',
-    border: '1px solid #cbd5e1',
+    padding: "6px 12px",
+    background: "#f8fafc",
+    border: "1px solid #cbd5e1",
     borderRadius: 6,
     fontSize: 12,
     fontWeight: 600,
-    color: '#475569',
-    cursor: 'pointer',
-    whiteSpace: 'nowrap',
+    color: "#475569",
+    cursor: "pointer",
+    whiteSpace: "nowrap",
   },
   wizardTabActive: {
-    padding: '6px 12px',
-    background: '#7a131a',
-    border: '1px solid #7a131a',
+    padding: "6px 12px",
+    background: "#7a131a",
+    border: "1px solid #7a131a",
     borderRadius: 6,
     fontSize: 12,
     fontWeight: 700,
-    color: '#ffffff',
-    cursor: 'pointer',
-    whiteSpace: 'nowrap',
+    color: "#ffffff",
+    cursor: "pointer",
+    whiteSpace: "nowrap",
   },
   roomBtn: {
-    padding: '4px 10px',
-    background: '#ffffff',
-    border: '1px solid #cbd5e1',
+    padding: "4px 10px",
+    background: "#ffffff",
+    border: "1px solid #cbd5e1",
     borderRadius: 14,
     fontSize: 11,
     fontWeight: 600,
-    color: '#475569',
-    cursor: 'pointer',
+    color: "#475569",
+    cursor: "pointer",
   },
   roomBtnActive: {
-    padding: '4px 10px',
-    background: '#7a131a',
-    border: '1px solid #7a131a',
+    padding: "4px 10px",
+    background: "#7a131a",
+    border: "1px solid #7a131a",
     borderRadius: 14,
     fontSize: 11,
     fontWeight: 700,
-    color: '#ffffff',
-    cursor: 'pointer',
+    color: "#ffffff",
+    cursor: "pointer",
   },
   subItemBtn: {
-    padding: '5px 12px',
-    background: '#f8fafc',
-    border: '1px solid #cbd5e1',
+    padding: "5px 12px",
+    background: "#f8fafc",
+    border: "1px solid #cbd5e1",
     borderRadius: 6,
     fontSize: 11,
     fontWeight: 600,
-    color: '#334155',
-    cursor: 'pointer',
-    transition: 'all 0.15s ease',
+    color: "#334155",
+    cursor: "pointer",
+    transition: "all 0.15s ease",
   },
   subItemBtnActive: {
-    padding: '5px 12px',
-    background: '#7a131a',
-    border: '1px solid #7a131a',
+    padding: "5px 12px",
+    background: "#7a131a",
+    border: "1px solid #7a131a",
     borderRadius: 6,
     fontSize: 11,
     fontWeight: 700,
-    color: '#ffffff',
-    cursor: 'pointer',
-    boxShadow: '0 1px 3px rgba(122, 19, 26, 0.3)',
+    color: "#ffffff",
+    cursor: "pointer",
+    boxShadow: "0 1px 3px rgba(122, 19, 26, 0.3)",
   },
   subItemAddMoreBtn: {
-    padding: '5px 12px',
-    background: '#fff5f5',
-    border: '1px dashed #7a131a',
+    padding: "5px 12px",
+    background: "#fff5f5",
+    border: "1px dashed #7a131a",
     borderRadius: 6,
     fontSize: 11,
     fontWeight: 700,
-    color: '#7a131a',
-    cursor: 'pointer',
+    color: "#7a131a",
+    cursor: "pointer",
   },
   modalBackdrop: {
-    position: 'fixed',
+    position: "fixed",
     inset: 0,
-    background: 'rgba(15, 23, 42, 0.6)',
-    backdropFilter: 'blur(2px)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
+    background: "rgba(15, 23, 42, 0.6)",
+    backdropFilter: "blur(2px)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
     zIndex: 200,
     padding: 16,
   },
   modalCard: {
-    background: '#ffffff',
+    background: "#ffffff",
     borderRadius: 12,
     maxWidth: 580,
-    width: '100%',
+    width: "100%",
     padding: 24,
-    maxHeight: '90vh',
-    overflowY: 'auto',
-    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+    maxHeight: "90vh",
+    overflowY: "auto",
+    boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
   },
   modalHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottom: '1px solid #e2e8f0',
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderBottom: "1px solid #e2e8f0",
     paddingBottom: 12,
   },
   closeBtn: {
-    border: 'none',
-    background: 'none',
+    border: "none",
+    background: "none",
     fontSize: 18,
-    color: '#64748b',
-    cursor: 'pointer',
+    color: "#64748b",
+    cursor: "pointer",
   },
   label: {
-    display: 'block',
+    display: "block",
     fontSize: 12,
     fontWeight: 600,
-    color: '#334155',
+    color: "#334155",
     marginBottom: 4,
   },
   formInput: {
-    width: '100%',
-    padding: '8px 12px',
-    border: '1px solid #cbd5e1',
+    width: "100%",
+    padding: "8px 12px",
+    border: "1px solid #cbd5e1",
     borderRadius: 6,
     fontSize: 13,
-    color: '#0f172a',
-    background: '#ffffff',
-    boxSizing: 'border-box',
+    color: "#0f172a",
+    background: "#ffffff",
+    boxSizing: "border-box",
   },
 };

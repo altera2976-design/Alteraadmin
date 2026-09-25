@@ -104,7 +104,7 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)',
+    background: '#FFFFFF',
     padding: 20,
     fontFamily: "'Inter', system-ui, sans-serif",
   },

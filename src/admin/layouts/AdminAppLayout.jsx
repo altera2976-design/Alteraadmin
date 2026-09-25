@@ -254,7 +254,7 @@ const styles = {
   root: {
     display: "flex",
     minHeight: "100vh",
-    background: "#F8F6F2",
+    background: "#FFFFFF",
     fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif",
     overflowX: "hidden",
   },

@@ -46,14 +46,50 @@ export function utf8ToBase64(str) {
 }
 
 export function buildQuotationHtml(q) {
-  const company = q.companyDetails || {
+  const defaultCompany = {
     name: "ALTERA INTERIOR",
     tagline: "The Modern Home Maker • Interior | Architect | Construction",
     address:
-      "Plot 16/2, Dhanwapur Villae,Behind Ats Triump Tower,Dwarka Expressway,Sec-104,Gurugram(HR)",
-    phone: "+91 8368955198",
-    email: "[EMAIL_ADDRESS]",
+      "Plot 16/2, Dhanwapur Village, Behind ATS Triumph Tower, Dwarka Expressway, Sec-104, Gurugram (HR)",
+    phone: "+91 9718374407",
+    email: "info@alterainterior.com",
     gstin: "06CFEPS8731P1Z0",
+  };
+
+  const rawCompany = q.companyDetails || {};
+  const company = {
+    name: rawCompany.name || defaultCompany.name,
+    tagline: rawCompany.tagline || defaultCompany.tagline,
+    address:
+      !rawCompany.address ||
+      rawCompany.address.includes("Plot 42") ||
+      rawCompany.address.includes("New Delhi")
+        ? defaultCompany.address
+        : rawCompany.address,
+    phone:
+      !rawCompany.phone || rawCompany.phone.includes("98765")
+        ? defaultCompany.phone
+        : rawCompany.phone,
+    email:
+      !rawCompany.email ||
+      rawCompany.email.includes("EMAIL_ADDRESS") ||
+      rawCompany.email.includes("contact@alterainterior.com")
+        ? defaultCompany.email
+        : rawCompany.email,
+    gstin:
+      !rawCompany.gstin || rawCompany.gstin.includes("07AAAAA")
+        ? defaultCompany.gstin
+        : rawCompany.gstin,
+  };
+
+  const bank = q.bankDetails || {
+    accountName: "Altera Interior",
+    bankName: "IndusInd Bank Limited",
+    accountNumber: "201002880175",
+    ifscCode: "INDB0000518",
+    branch: "Sector-31, Gurgaon Branch",
+    bankAddress:
+      "SCO-8, Sector 31/32A HUDA Market, Gurgaon – 122 002, Haryana, India",
   };
 
   const client = q.client || {
@@ -90,8 +126,28 @@ export function buildQuotationHtml(q) {
   const roomSectionsHtml = Object.keys(roomGroups)
     .map((roomName) => {
       const items = roomGroups[roomName];
+      const getItemAmt = (it) => {
+        const baseAmt = Math.round((it.quantity || 1) * (it.rate || 0));
+        const accTotal = (it.accessories || []).reduce(
+          (sum, a) => {
+            if (a.name && it.name && a.name.trim().toLowerCase() === it.name.trim().toLowerCase()) return sum;
+            return (
+              sum +
+              (a.cost !== undefined
+                ? Number(a.cost)
+                : (Number(a.qty) || 1) * (Number(a.unitPrice) || 0))
+            );
+          },
+          0,
+        );
+        const expected = baseAmt + accTotal;
+        return it.amount !== undefined && Number(it.amount) > expected
+          ? Number(it.amount)
+          : expected;
+      };
+
       const roomTotal = items.reduce(
-        (acc, it) => acc + (it.amount || (it.quantity || 1) * (it.rate || 0)),
+        (acc, it) => acc + getItemAmt(it),
         0,
       );
       computedSubtotal += roomTotal;
@@ -99,10 +155,7 @@ export function buildQuotationHtml(q) {
       const itemRows = items
         .map((it) => {
           globalItemIndex++;
-          const amt =
-            it.amount !== undefined
-              ? it.amount
-              : (it.quantity || 1) * (it.rate || 0);
+          const amt = getItemAmt(it);
 
           const specs = it.specifications || {};
           const specEntries = Object.entries(specs).filter(([_, v]) =>
@@ -110,70 +163,67 @@ export function buildQuotationHtml(q) {
           );
           const specsHtml =
             specEntries.length > 0
-              ? `<div class="specs-grid">
-                  ${specEntries
-                    .map(
-                      ([k, v]) =>
-                        `<span class="spec-chip"><strong>${escapeHtml(k)}:</strong> ${escapeHtml(v)}</span>`,
-                    )
-                    .join("")}
-                </div>`
+              ? `<div class="item-specs"><strong>Specifications:</strong> ${specEntries
+                  .map(([k, v]) => `${escapeHtml(k)}: ${escapeHtml(v)}`)
+                  .join(" | ")}</div>`
               : "";
 
           const accs = it.accessories || [];
           const accsHtml =
             accs.length > 0
-              ? `<div class="acc-box">
-                  <strong>Accessories:</strong> ${accs
-                    .map(
-                      (a) =>
-                        `${escapeHtml(a.name)} (${a.qty} nos - ${escapeHtml(a.inclusionType)})`,
-                    )
-                    .join("; ")}
-                </div>`
+              ? `<div class="item-accs"><strong>Accessories:</strong> ${accs
+                  .map((a) => {
+                    const qty = a.qty || 1;
+                    const unitPrice =
+                      a.unitPrice || (a.cost ? Math.round(a.cost / qty) : 0);
+                    const totalCost = a.cost || qty * unitPrice;
+                    return `${escapeHtml(a.name)} (Qty: ${qty}, Unit Price: ${formatINR(unitPrice)}, Total: ${formatINR(totalCost)})`;
+                  })
+                  .join("; ")}</div>`
               : "";
 
           const m = it.measurements;
           const dimInfo =
             m && m.length > 0 && (m.height > 0 || m.width > 0)
-              ? `<div class="dim-tag">📏 ${m.length} × ${m.height || m.width} = ${m.calculatedArea} ${it.unit}</div>`
+              ? `<div class="item-specs"><strong>Measurements:</strong> ${m.length} × ${m.height || m.width} = ${m.calculatedArea} ${it.unit}</div>`
               : "";
 
           return `
-            <tr class="item-tr">
-              <td class="center col-num">${globalItemIndex}</td>
-              <td class="col-desc">
-                <div class="item-title">${escapeHtml(it.name)}</div>
-                ${it.description ? `<div class="item-subdesc">${escapeHtml(it.description)}</div>` : ""}
+            <tr>
+              <td class="center font-bold">${globalItemIndex}</td>
+              <td>
+                <div class="item-name">${escapeHtml(it.name)}</div>
+                ${it.description ? `<div class="item-desc">${escapeHtml(it.description)}</div>` : ""}
                 ${dimInfo}
                 ${specsHtml}
                 ${accsHtml}
-                ${it.remarks ? `<div class="item-remark">Note: ${escapeHtml(it.remarks)}</div>` : ""}
+                ${it.remarks ? `<div class="item-note">Note: ${escapeHtml(it.remarks)}</div>` : ""}
+                ${it.costVariationNote ? `<div class="item-note" style="color: #DC2626;">${escapeHtml(it.costVariationNote)}</div>` : ""}
               </td>
-              <td class="center col-unit">${escapeHtml(it.unit || "Nos")}</td>
-              <td class="center col-qty">${it.quantity || 1}</td>
-              <td class="right col-rate">${formatINR(it.rate || 0)}</td>
-              <td class="right col-amt">${formatINR(amt)}</td>
+              <td class="center">${escapeHtml(it.unit || "Nos")}</td>
+              <td class="center font-bold">${it.quantity || 1}</td>
+              <td class="right">${formatINR(it.rate || 0)}</td>
+              <td class="right font-bold">${formatINR(amt)}</td>
             </tr>
           `;
         })
         .join("");
 
       return `
-        <div class="room-group">
+        <div class="room-block">
           <div class="room-header">
-            <div class="room-title">📍 ${escapeHtml(roomName.toUpperCase())}</div>
-            <div class="room-subtotal">Area Subtotal: ${formatINR(roomTotal)}</div>
+            <span>${escapeHtml(roomName.toUpperCase())}</span>
+            <span>Area Subtotal: ${formatINR(roomTotal)}</span>
           </div>
           <table class="item-table">
             <thead>
               <tr>
-                <th class="center" style="width: 5%;">#</th>
+                <th class="center" style="width: 4%;">#</th>
                 <th style="width: 48%;">Item Description &amp; Specifications</th>
                 <th class="center" style="width: 10%;">Unit</th>
-                <th class="center" style="width: 9%;">Qty</th>
-                <th class="right" style="width: 13%;">Rate</th>
-                <th class="right" style="width: 15%;">Amount</th>
+                <th class="center" style="width: 8%;">Qty</th>
+                <th class="right" style="width: 14%;">Rate</th>
+                <th class="right" style="width: 16%;">Amount</th>
               </tr>
             </thead>
             <tbody>
@@ -187,34 +237,51 @@ export function buildQuotationHtml(q) {
 
   // Financial calculations
   const p = q.pricing || {};
-  const subtotal = p.subtotal || computedSubtotal;
+  const subtotal = p.subtotal !== undefined ? p.subtotal : computedSubtotal;
   const handlingAmt = p.handlingFeeAmount || 0;
   const designAmt = p.designFeeAmount || 0;
   const discountAmt = p.discountAmount || 0;
   const taxable =
-    p.taxableAmount || subtotal + handlingAmt + designAmt - discountAmt;
+    p.taxableAmount !== undefined
+      ? p.taxableAmount
+      : subtotal + handlingAmt + designAmt - discountAmt;
   const gstAmt = p.totalGstAmount || 0;
-  const grandTotal = p.grandTotal || taxable + gstAmt;
+  const grandTotal =
+    p.grandTotal !== undefined ? p.grandTotal : taxable + gstAmt;
 
   // Payment milestones
   const milestones = q.paymentMilestones || [];
   const milestonesHtml =
     milestones.length > 0
-      ? milestones
-          .map((m, idx) => {
-            const mAmt = m.amount || (grandTotal * (m.percentage || 0)) / 100;
-            return `
-              <tr>
-                <td class="center">${idx + 1}</td>
-                <td><strong>${escapeHtml(m.milestoneName)}</strong></td>
-                <td>${escapeHtml(m.stage || "Stage Milestone")}</td>
-                <td class="center font-bold">${m.percentage}%</td>
-                <td class="right font-bold">${formatINR(mAmt)}</td>
-              </tr>
-            `;
-          })
-          .join("")
-      : '<tr><td colspan="5" class="center">Standard payment terms apply (10% token, 50% mobilization, 40% handover).</td></tr>';
+      ? `
+      <div class="section-title">4. Payment Milestones</div>
+      <table class="standard-table">
+        <thead>
+          <tr>
+            <th style="width: 5%;" class="center">#</th>
+            <th style="width: 35%;">Milestone / Stage</th>
+            <th style="width: 40%;">Stage Description / Deliverables</th>
+            <th class="center" style="width: 8%;">Share (%)</th>
+            <th class="right" style="width: 12%;">Payable</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${milestones
+            .map(
+              (m, idx) => `
+            <tr>
+              <td class="center">${idx + 1}</td>
+              <td><strong>${escapeHtml(m.milestoneName)}</strong></td>
+              <td>${escapeHtml(m.stage || "As per stage completion approval")}</td>
+              <td class="center font-bold">${m.percentage}%</td>
+              <td class="right font-bold">${formatINR(m.amount || Math.round(grandTotal * (m.percentage / 100)))}</td>
+            </tr>
+          `,
+            )
+            .join("")}
+        </tbody>
+      </table>`
+      : "";
 
   const txList = Array.isArray(q.transactions) ? q.transactions : [];
   const calculatedPaidAmount = txList.reduce(
@@ -240,208 +307,542 @@ export function buildQuotationHtml(q) {
   };
 
   const paymentSummaryHtml = `
-    <div style="margin-top: 20px; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; page-break-inside: avoid;">
-      <div style="background: #f8fafc; padding: 8px 12px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; font-weight: 800; font-size: 11px; color: #334155;">
-        <span>💳 PAYMENT &amp; TRANSACTION HISTORY</span>
-        <span style="padding: 2px 8px; border-radius: 4px; font-weight: 800; font-size: 9px; ${
-          paySummary.paymentStatus === "PAID"
-            ? "background: #dcfce7; color: #15803d;"
-            : paySummary.paymentStatus === "PARTIALLY_PAID"
-              ? "background: #fef3c7; color: #b45309;"
-              : "background: #fee2e2; color: #b91c1c;"
-        }">
-          STATUS: ${paySummary.paymentStatus.replace("_", " ")}
-        </span>
-      </div>
-      <div style="display: flex; background: #ffffff; padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-size: 11px;">
-        <div style="flex: 1;"><strong>Total Amount:</strong> ${formatINR(paySummary.totalAmount || grandTotal)}</div>
-        <div style="flex: 1; color: #16a34a;"><strong>Total Paid:</strong> ${formatINR(paySummary.paidAmount)}</div>
-        <div style="flex: 1; color: #dc2626;"><strong>Balance Remaining:</strong> ${formatINR(paySummary.remainingAmount)}</div>
-      </div>
-      ${
-        txList.length > 0
-          ? `
-        <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
-          <thead>
-            <tr style="background: #f1f5f9; text-transform: uppercase; color: #475569;">
-              <th style="padding: 6px; text-align: left; width: 5%;">#</th>
-              <th style="padding: 6px; text-align: left; width: 25%;">Txn Ref ID</th>
-              <th style="padding: 6px; text-align: left; width: 20%;">Date</th>
-              <th style="padding: 6px; text-align: left; width: 20%;">Payment Mode</th>
-              <th style="padding: 6px; text-align: left; width: 15%;">Status</th>
-              <th style="padding: 6px; text-align: right; width: 15%;">Amount Paid</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${txList
-              .map(
-                (tx, idx) => `
-              <tr style="border-bottom: 1px solid #f1f5f9;">
-                <td style="padding: 6px;">${idx + 1}</td>
-                <td style="padding: 6px;"><strong>${escapeHtml(tx.transactionId || tx.referenceId || "TXN")}</strong></td>
-                <td style="padding: 6px;">${formatDate(tx.transactionDate || tx.createdAt)}</td>
-                <td style="padding: 6px;">${escapeHtml(tx.paymentMethod || "UPI")}</td>
-                <td style="padding: 6px; color: #16a34a; font-weight: 700;">${escapeHtml(tx.status || "Completed")}</td>
-                <td style="padding: 6px; text-align: right; font-weight: 700; color: #0f172a;">${formatINR(tx.amount)}</td>
-              </tr>
-            `,
-              )
-              .join("")}
-          </tbody>
-        </table>`
-          : `<div style="padding: 10px 12px; font-size: 10px; color: #64748b;">No payment transactions recorded yet for this quotation.</div>`
-      }
-    </div>
-  `;
+    <div class="section-title">6. Payment &amp; Transaction History</div>
+    <table class="standard-table">
+      <thead>
+        <tr>
+          <th style="width: 25%;">Payment Status</th>
+          <th style="width: 25%;" class="right">Total Amount</th>
+          <th style="width: 25%;" class="right">Total Paid</th>
+          <th style="width: 25%;" class="right">Balance Remaining</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="font-bold">${escapeHtml(paySummary.paymentStatus.replace("_", " "))}</td>
+          <td class="right font-bold">${formatINR(paySummary.totalAmount || grandTotal)}</td>
+          <td class="right font-bold" style="color: #059669;">${formatINR(paySummary.paidAmount)}</td>
+          <td class="right font-bold" style="color: #DC2626;">${formatINR(paySummary.remainingAmount)}</td>
+        </tr>
+      </tbody>
+    </table>
 
-  return `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="utf-8" />
-        <title>Quotation_${quotationNumber}</title>
-        <style>
-          * { box-sizing: border-box; margin: 0; padding: 0; }
-          body { font-family: 'Segoe UI', Arial, sans-serif; color: #0f172a; background: #ffffff; padding: 30px; font-size: 13px; line-height: 1.4; }
-          .header-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; border-bottom: 2px solid #0f172a; padding-bottom: 16px; }
-          .brand-title { font-size: 22px; font-weight: 800; color: #0f172a; letter-spacing: 0.5px; }
-          .brand-sub { font-size: 11px; color: #64748b; font-weight: 600; margin-top: 2px; }
-          .doc-type { font-size: 20px; font-weight: 900; color: #0f172a; text-align: right; }
-          .doc-no { font-size: 13px; font-weight: 700; color: #475569; text-align: right; margin-top: 4px; }
-          .info-grid { display: flex; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
-          .info-box { flex: 1; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; background: #f8fafc; }
-          .box-head { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 6px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
-          .room-group { margin-bottom: 20px; }
-          .room-header { background: #0f172a; color: #ffffff; padding: 8px 12px; border-radius: 6px 6px 0 0; display: flex; justify-content: space-between; align-items: center; }
-          .room-title { font-size: 12px; font-weight: 800; letter-spacing: 0.5px; }
-          .room-subtotal { font-size: 12px; font-weight: 700; }
-          .item-table { width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; border-top: none; }
-          .item-table th { background: #f1f5f9; padding: 8px 10px; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; border-bottom: 1px solid #cbd5e1; }
-          .item-tr { border-bottom: 1px solid #e2e8f0; }
-          .item-tr td { padding: 8px 10px; vertical-align: top; }
-          .item-title { font-weight: 700; color: #0f172a; font-size: 13px; }
-          .item-subdesc { font-size: 11px; color: #475569; margin-top: 2px; }
-          .spec-chip { display: inline-block; background: #e2e8f0; color: #0f172a; padding: 1px 6px; border-radius: 4px; font-size: 10px; margin-right: 4px; margin-top: 4px; }
-          .dim-tag { font-size: 11px; color: #0f172a; font-weight: 700; margin-top: 3px; }
-          .center { text-align: center; }
-          .right { text-align: right; }
-          .summary-container { display: flex; justify-content: space-between; gap: 20px; margin-top: 24px; }
-          .milestones-table { width: 60%; border-collapse: collapse; border: 1px solid #cbd5e1; border-radius: 6px; }
-          .milestones-table th { background: #f1f5f9; font-size: 11px; padding: 6px 10px; text-transform: uppercase; border-bottom: 1px solid #cbd5e1; }
-          .milestones-table td { padding: 6px 10px; font-size: 12px; border-bottom: 1px solid #f1f5f9; }
-          .pricing-table { width: 36%; border-collapse: collapse; border: 1px solid #cbd5e1; border-radius: 6px; }
-          .pricing-table td { padding: 6px 10px; font-size: 12px; }
-          .grand-row { background: #0f172a; color: #ffffff; font-weight: 800; font-size: 14px; }
-          .grand-row td { padding: 8px 10px; }
-          .signatures { display: flex; justify-content: space-between; margin-top: 40px; padding-top: 20px; border-top: 1px solid #cbd5e1; }
-          .sig-box { text-align: center; width: 200px; }
-          .sig-line { border-top: 1px dashed #0f172a; margin-top: 40px; margin-bottom: 6px; }
-          @media print {
-            body { padding: 0; }
-            .no-print { display: none !important; }
-          }
-        </style>
-      </head>
-      <body>
-        <table class="header-table">
+    ${
+      txList.length > 0
+        ? `
+      <table class="standard-table">
+        <thead>
           <tr>
-            <td>
-              <img src="${COMPANY_LOGO_DATA_URL}" alt="Altera Interior Logo" style="height: 52px; width: auto; max-width: 270px; object-fit: contain; margin-bottom: 6px; display: block;" />
-              <div style="font-size: 11px; color: #64748b; margin-top: 4px;">
-                📍 ${escapeHtml(company.address)} | 📞 ${escapeHtml(company.phone)} | ✉️ ${escapeHtml(company.email)}<br/>
-                GSTIN: <strong>${escapeHtml(company.gstin)}</strong>
-              </div>
-            </td>
-            <td style="vertical-align: top;">
-              <div class="doc-type">OFFICIAL QUOTATION</div>
-              <div class="doc-no"># ${escapeHtml(quotationNumber)} (Rev ${q.revision || 0})</div>
-              <div style="font-size: 11px; color: #64748b; text-align: right; margin-top: 4px;">
-                Date: <strong>${qDate}</strong> | Valid Until: <strong>${vUntil}</strong>
-              </div>
-            </td>
+            <th style="width: 5%;" class="center">#</th>
+            <th style="width: 30%;">Txn Ref ID</th>
+            <th style="width: 20%;">Date</th>
+            <th style="width: 20%;">Payment Mode</th>
+            <th style="width: 10%;" class="center">Status</th>
+            <th class="right" style="width: 15%;">Amount Paid</th>
           </tr>
-        </table>
-
-        <div class="info-grid">
-          <div class="info-box">
-            <div class="box-head">Client Information</div>
-            <div style="font-weight: 700; font-size: 14px; color: #0f172a;">${escapeHtml(client.name)}</div>
-            ${client.company ? `<div style="font-size: 12px; color: #475569;">${escapeHtml(client.company)}</div>` : ""}
-            <div style="font-size: 11px; color: #64748b; margin-top: 4px;">
-              📞 ${escapeHtml(client.phone || "—")} | ✉️ ${escapeHtml(client.email || "—")}<br/>
-              ${client.gstin ? `GSTIN: ${escapeHtml(client.gstin)}` : ""}
-            </div>
-          </div>
-          <div class="info-box">
-            <div class="box-head">Project &amp; Site Details</div>
-            <div style="font-weight: 700; font-size: 13px; color: #0f172a;">${escapeHtml(q.projectTitle || "Interior Execution")}</div>
-            <div style="font-size: 11px; color: #64748b; margin-top: 4px;">
-              <strong>Type:</strong> ${escapeHtml(q.projectType || "Residential Interior")}<br/>
-              <strong>Site Location:</strong> ${escapeHtml(q.siteLocation || client.address || "—")}
-            </div>
-          </div>
-        </div>
-
-        ${roomSectionsHtml}
-
-        <div class="summary-container">
-          <table class="milestones-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Milestone</th>
-                <th>Stage Description</th>
-                <th class="center">%</th>
-                <th class="right">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${milestonesHtml}
-            </tbody>
-          </table>
-
-          <table class="pricing-table">
+        </thead>
+        <tbody>
+          ${txList
+            .map(
+              (tx, idx) => `
             <tr>
-              <td>Items Subtotal:</td>
-              <td class="right font-bold">${formatINR(subtotal)}</td>
+              <td class="center">${idx + 1}</td>
+              <td><strong>${escapeHtml(tx.transactionId || tx.referenceId || "TXN")}</strong></td>
+              <td>${formatDate(tx.transactionDate || tx.createdAt)}</td>
+              <td>${escapeHtml(tx.paymentMethod || "UPI")}</td>
+              <td class="center" style="color: #059669; font-weight: 700;">${escapeHtml(tx.status || "Completed")}</td>
+              <td class="right font-bold">${formatINR(tx.amount)}</td>
             </tr>
-            ${handlingAmt > 0 ? `<tr><td>Handling Charges (${p.handlingFeePercent || 2}%):</td><td class="right">${formatINR(handlingAmt)}</td></tr>` : ""}
-            ${designAmt > 0 ? `<tr><td>Designing Fees (${p.designFeePercent || 2}%):</td><td class="right">${formatINR(designAmt)}</td></tr>` : ""}
-            ${discountAmt > 0 ? `<tr><td style="color: #059669;">Special Discount:</td><td class="right" style="color: #059669;">-${formatINR(discountAmt)}</td></tr>` : ""}
-            <tr style="border-top: 1px solid #cbd5e1;">
-              <td>Taxable Total:</td>
-              <td class="right font-bold">${formatINR(taxable)}</td>
-            </tr>
-            <tr>
-              <td>GST (${p.gstPercent || 18}% ${p.gstType === "AS_PER_ACTUAL" ? "– As per Actuals" : ""}):</td>
-              <td class="right" style="${p.gstType === "AS_PER_ACTUAL" ? "color: #2563eb; font-weight: 600;" : ""}">${p.gstType === "AS_PER_ACTUAL" ? "18% – As per Actuals" : formatINR(gstAmt)}</td>
-            </tr>
-            <tr class="grand-row">
-              <td>Grand Total:</td>
-              <td class="right">${formatINR(grandTotal)}</td>
-            </tr>
-          </table>
-        </div>
-
-        ${p.gstType === "AS_PER_ACTUAL" ? `<div style="margin-top: 12px; padding: 8px 12px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; font-size: 11px; color: #1d4ed8; font-weight: 600;">ℹ️ GST @ 18% will be charged separately as applicable on the actual/final invoice and is not included in this estimated total.</div>` : ""}
-
-        ${paymentSummaryHtml}
-
-        ${q.notes ? `<div style="margin-top: 20px; padding: 10px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 11px;"><strong>Notes / Terms:</strong> ${escapeHtml(q.notes)}</div>` : ""}
-
-        <div class="signatures">
-          <div class="sig-box">
-            <div class="sig-line"></div>
-            <div style="font-size: 11px; font-weight: 700;">Client Acceptance Signature</div>
-          </div>
-          <div class="sig-box">
-            <div class="sig-line"></div>
-            <div style="font-size: 11px; font-weight: 700;">Authorized Signatory (${escapeHtml(company.name)})</div>
-          </div>
-        </div>
-      </body>
-    </html>
+          `,
+            )
+            .join("")}
+        </tbody>
+      </table>`
+        : ""
+    }
   `;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Quotation_${escapeHtml(quotationNumber)}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 12mm 15mm 12mm 15mm;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 9.5pt;
+      color: #1E293B;
+      background: #FFFFFF;
+      line-height: 1.4;
+      padding: 10px 0;
+    }
+
+    /* ── Header ── */
+    .header-table {
+      width: 100%;
+      border-collapse: collapse;
+      border-bottom: 2px solid #0F172A;
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+    }
+    .header-table td {
+      vertical-align: top;
+    }
+    .company-logo {
+      height: 48px;
+      width: auto;
+      max-width: 240px;
+      object-fit: contain;
+      margin-bottom: 6px;
+      display: block;
+    }
+    .company-name {
+      font-size: 14pt;
+      font-weight: 800;
+      color: #0F172A;
+      letter-spacing: 0.5px;
+    }
+    .company-details {
+      font-size: 8.5pt;
+      color: #475569;
+      line-height: 1.35;
+      margin-top: 2px;
+    }
+    .header-right {
+      text-align: right;
+    }
+    .doc-title {
+      font-size: 16pt;
+      font-weight: 800;
+      color: #0F172A;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .doc-meta {
+      font-size: 9pt;
+      color: #334155;
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+    .doc-status {
+      display: inline-block;
+      margin-top: 4px;
+      padding: 2px 8px;
+      border: 1px solid #CBD5E1;
+      font-size: 8pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #334155;
+      background: #F8FAFC;
+    }
+
+    /* ── Client & Project Info ── */
+    .info-section {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 18px;
+      page-break-inside: avoid;
+    }
+    .info-card {
+      width: 49%;
+      vertical-align: top;
+      border: 1px solid #CBD5E1;
+      background: #F8FAFC;
+      padding: 10px 12px;
+    }
+    .info-card-title {
+      font-size: 9pt;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: #0F172A;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid #CBD5E1;
+      padding-bottom: 4px;
+      margin-bottom: 6px;
+    }
+    .info-card-name {
+      font-size: 11pt;
+      font-weight: 700;
+      color: #0F172A;
+      margin-bottom: 4px;
+    }
+    .info-row {
+      font-size: 8.5pt;
+      color: #334155;
+      margin-bottom: 2px;
+    }
+
+    /* ── Section Title ── */
+    .section-title {
+      font-size: 10pt;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: #0F172A;
+      letter-spacing: 0.5px;
+      border-bottom: 1.5px solid #0F172A;
+      padding-bottom: 3px;
+      margin-top: 16px;
+      margin-bottom: 8px;
+      page-break-after: avoid;
+    }
+
+    /* ── Room / Scope Group ── */
+    .room-block {
+      margin-bottom: 16px;
+      page-break-inside: avoid;
+    }
+    .room-header {
+      background: #F1F5F9;
+      border: 1px solid #CBD5E1;
+      border-bottom: none;
+      padding: 6px 10px;
+      font-size: 9.5pt;
+      font-weight: 800;
+      color: #0F172A;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* ── Item Table ── */
+    .item-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid #CBD5E1;
+      font-size: 8.5pt;
+    }
+    .item-table th {
+      background: #F8FAFC;
+      color: #334155;
+      font-size: 8pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 6px 8px;
+      border-bottom: 1px solid #CBD5E1;
+      border-right: 1px solid #E2E8F0;
+    }
+    .item-table th:last-child {
+      border-right: none;
+    }
+    .item-table td {
+      padding: 6px 8px;
+      border-bottom: 1px solid #E2E8F0;
+      border-right: 1px solid #E2E8F0;
+      vertical-align: top;
+      color: #1E293B;
+    }
+    .item-table td:last-child {
+      border-right: none;
+    }
+    .item-table tr:nth-child(even) {
+      background: #FAFAFA;
+    }
+    .item-name {
+      font-weight: 700;
+      color: #0F172A;
+      font-size: 9pt;
+      margin-bottom: 2px;
+    }
+    .item-desc {
+      color: #475569;
+      margin-bottom: 3px;
+      font-size: 8pt;
+    }
+    .item-specs {
+      font-size: 8pt;
+      color: #475569;
+      margin-top: 2px;
+    }
+    .item-accs {
+      font-size: 8pt;
+      color: #475569;
+      margin-top: 2px;
+    }
+    .item-note {
+      font-size: 7.5pt;
+      color: #64748B;
+      font-style: italic;
+      margin-top: 2px;
+    }
+
+    /* ── Summary Table & Layout ── */
+    .summary-container {
+      width: 100%;
+      margin-top: 16px;
+      margin-bottom: 16px;
+      page-break-inside: avoid;
+    }
+    .summary-table {
+      width: 48%;
+      margin-left: auto;
+      border-collapse: collapse;
+      font-size: 9pt;
+      border: 1px solid #CBD5E1;
+    }
+    .summary-table td {
+      padding: 5px 10px;
+      border-bottom: 1px solid #E2E8F0;
+    }
+    .summary-table tr.grand-row td {
+      background: #0F172A;
+      color: #FFFFFF;
+      font-weight: 800;
+      font-size: 10.5pt;
+      border-bottom: none;
+    }
+
+    /* ── Tables (Milestones, Transactions, Bank) ── */
+    .standard-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid #CBD5E1;
+      font-size: 8.5pt;
+      margin-bottom: 14px;
+      page-break-inside: avoid;
+    }
+    .standard-table th {
+      background: #F8FAFC;
+      color: #334155;
+      font-size: 8pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 6px 8px;
+      border-bottom: 1px solid #CBD5E1;
+      border-right: 1px solid #E2E8F0;
+    }
+    .standard-table th:last-child {
+      border-right: none;
+    }
+    .standard-table td {
+      padding: 6px 8px;
+      border-bottom: 1px solid #E2E8F0;
+      border-right: 1px solid #E2E8F0;
+      color: #1E293B;
+    }
+    .standard-table td:last-child {
+      border-right: none;
+    }
+
+    /* ── Bank Grid Horizontal ── */
+    .bank-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid #CBD5E1;
+      font-size: 8.5pt;
+      margin-bottom: 14px;
+      page-break-inside: avoid;
+    }
+    .bank-table td {
+      padding: 8px 10px;
+      border-right: 1px solid #E2E8F0;
+      vertical-align: top;
+    }
+    .bank-table td:last-child {
+      border-right: none;
+    }
+
+    /* ── Terms & Notes ── */
+    .terms-block {
+      border: 1px solid #E2E8F0;
+      background: #F8FAFC;
+      padding: 8px 12px;
+      font-size: 8pt;
+      color: #475569;
+      line-height: 1.4;
+      margin-bottom: 16px;
+      page-break-inside: avoid;
+    }
+
+    /* ── Signatures ── */
+    .signature-table {
+      width: 100%;
+      margin-top: 32px;
+      page-break-inside: avoid;
+    }
+    .signature-box {
+      width: 45%;
+      vertical-align: bottom;
+    }
+    .signature-line {
+      border-top: 1px solid #0F172A;
+      margin-top: 40px;
+      padding-top: 4px;
+      font-size: 9pt;
+      font-weight: 700;
+      color: #0F172A;
+    }
+    .signature-sub {
+      font-size: 8pt;
+      color: #64748B;
+    }
+
+    /* Helper Utilities */
+    .center { text-align: center; }
+    .right { text-align: right; }
+    .font-bold { font-weight: 700; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <table class="header-table">
+    <tr>
+      <td style="width: 55%; vertical-align: top;">
+        <img src="${COMPANY_LOGO_DATA_URL}" alt="Altera Interior Logo" class="company-logo" />
+        <div class="company-name">${escapeHtml(company.name)}</div>
+        <div class="company-details">
+          ${escapeHtml(company.address)}<br />
+          Phone: ${escapeHtml(company.phone)} &bull; Email: ${escapeHtml(company.email)}<br />
+          <strong>GSTIN:</strong> ${escapeHtml(company.gstin)}
+        </div>
+      </td>
+      <td style="width: 45%; vertical-align: top;" class="header-right">
+        <div class="doc-title">OFFICIAL QUOTATION</div>
+        <div class="doc-meta">
+          <strong>Quotation No:</strong> ${escapeHtml(quotationNumber)}${q.revision ? ` (Rev ${q.revision})` : ""}<br />
+          <strong>Date:</strong> ${qDate}<br />
+          <strong>Valid Until:</strong> ${vUntil}
+        </div>
+        <div class="doc-status">${escapeHtml(status)}</div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- 1. Client Information & 2. Project & Site Details -->
+  <table class="info-section">
+    <tr>
+      <td class="info-card" style="width: 49%;">
+        <div class="info-card-title">1. Client Information</div>
+        <div class="info-card-name">${escapeHtml(client.name)}</div>
+        ${client.company ? `<div class="info-row"><strong>Company:</strong> ${escapeHtml(client.company)}</div>` : ""}
+        <div class="info-row"><strong>Phone:</strong> ${escapeHtml(client.phone || "—")}</div>
+        <div class="info-row"><strong>Email:</strong> ${escapeHtml(client.email || "—")}</div>
+        ${client.gstin ? `<div class="info-row"><strong>GSTIN:</strong> ${escapeHtml(client.gstin)}</div>` : ""}
+      </td>
+      <td style="width: 2%;"></td>
+      <td class="info-card" style="width: 49%;">
+        <div class="info-card-title">2. Project &amp; Site Details</div>
+        <div class="info-card-name">${escapeHtml(q.projectTitle || "Interior Execution")}</div>
+        <div class="info-row"><strong>Project Type:</strong> ${escapeHtml(q.projectType || "Residential Interior")}</div>
+        <div class="info-row"><strong>Site Address:</strong> ${escapeHtml(q.siteLocation || client.address || "Onsite")}</div>
+        <div class="info-row"><strong>Designer:</strong> ${escapeHtml(q.assignedDesignerName || "Altera Design Team")}</div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- 3. Items / Scope of Work -->
+  <div class="section-title">3. Items / Scope of Work</div>
+  ${roomSectionsHtml}
+
+  <!-- 4. Milestones -->
+  ${milestonesHtml}
+
+  <!-- 5. Cost Summary -->
+  <div class="section-title">5. Cost Summary</div>
+  <div class="summary-container">
+    <table class="summary-table">
+      <tr>
+        <td>Items Subtotal:</td>
+        <td class="right font-bold">${formatINR(subtotal)}</td>
+      </tr>
+      ${
+        handlingAmt > 0
+          ? `
+      <tr>
+        <td>Handling Charges (${p.handlingFeePercent || 2}%):</td>
+        <td class="right">${formatINR(handlingAmt)}</td>
+      </tr>`
+          : ""
+      }
+      ${
+        designAmt > 0
+          ? `
+      <tr>
+        <td>Designing / Consultation Fees (${p.designFeePercent || 2}%):</td>
+        <td class="right">${formatINR(designAmt)}</td>
+      </tr>`
+          : ""
+      }
+      ${
+        discountAmt > 0
+          ? `
+      <tr>
+        <td style="color: #059669;">Special Discount:</td>
+        <td class="right" style="color: #059669;">-${formatINR(discountAmt)}</td>
+      </tr>`
+          : ""
+      }
+      <tr style="border-top: 1px solid #CBD5E1;">
+        <td class="font-bold">Taxable Total:</td>
+        <td class="right font-bold">${formatINR(taxable)}</td>
+      </tr>
+      <tr>
+        <td>GST (${p.gstPercent || 18}% ${p.gstType === "AS_PER_ACTUAL" ? "– As per Actuals" : p.gstType || "CGST+SGST"}):</td>
+        <td class="right" style="${p.gstType === "AS_PER_ACTUAL" ? "color: #2563EB; font-weight: 600;" : ""}">${p.gstType === "AS_PER_ACTUAL" ? "18% – As per Actuals" : formatINR(gstAmt)}</td>
+      </tr>
+      <tr class="grand-row">
+        <td>ESTIMATED GRAND TOTAL:</td>
+        <td class="right">${formatINR(grandTotal)}</td>
+      </tr>
+    </table>
+  </div>
+  ${
+    p.gstType === "AS_PER_ACTUAL"
+      ? `<div style="font-size: 8.5pt; color: #1D4ED8; background: #EFF6FF; border: 1px solid #BFDBFE; padding: 6px 10px; margin-bottom: 12px; font-weight: 600;">GST @ 18% will be charged separately as applicable on the actual/final invoice and is not included in this estimated total.</div>`
+      : ""
+  }
+
+  <!-- 6. Payment & Transaction History -->
+  ${paymentSummaryHtml}
+
+  <!-- 7. Bank & Payment Details -->
+  <div class="section-title">7. Bank &amp; Payment Details</div>
+  <table class="bank-table">
+    <tr>
+      <td style="width: 20%;"><strong>Beneficiary:</strong><br />${escapeHtml(bank.accountName)}</td>
+      <td style="width: 20%;"><strong>Bank Name:</strong><br />${escapeHtml(bank.bankName)}</td>
+      <td style="width: 20%;"><strong>Account Number:</strong><br />${escapeHtml(bank.accountNumber)}</td>
+      <td style="width: 15%;"><strong>IFSC Code:</strong><br />${escapeHtml(bank.ifscCode)}</td>
+      <td style="width: 25%;"><strong>Branch:</strong><br />${escapeHtml(bank.branch)}${bank.bankAddress ? `<br/><span style="font-size: 7.5pt; color: #64748B;">${escapeHtml(bank.bankAddress)}</span>` : ""}</td>
+    </tr>
+  </table>
+
+  <!-- Terms & Notes -->
+  ${
+    q.notes
+      ? `
+  <div class="terms-block">
+    <div style="font-weight: 700; color: #0F172A; margin-bottom: 4px; text-transform: uppercase;">Notes &amp; Terms</div>
+    <div>${escapeHtml(q.notes)}</div>
+  </div>`
+      : ""
+  }
+
+  <!-- 8. Signature Section -->
+  <table class="signature-table">
+    <tr>
+      <td class="signature-box">
+        <div class="signature-line">Client Acceptance Signature</div>
+        <div class="signature-sub">Name, Date &amp; Official Seal</div>
+      </td>
+      <td style="width: 10%;"></td>
+      <td class="signature-box" style="text-align: right;">
+        <div class="signature-line" style="margin-left: auto;">For ${escapeHtml(company.name)}</div>
+        <div class="signature-sub">Authorized Signatory</div>
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>`;
 }
 
 export function printQuotation(q) {
