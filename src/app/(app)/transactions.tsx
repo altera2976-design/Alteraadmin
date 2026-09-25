@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Modal,
   RefreshControl,
@@ -17,8 +18,10 @@ import { useRouter } from 'expo-router';
 import { THEME } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
 import {
+  createTransaction,
   getTransactions,
   getTransactionSummary,
+  refundTransaction,
   TransactionDoc,
   TransactionSummary,
 } from '../../services/transactionApi';
@@ -81,12 +84,33 @@ export default function TransactionsScreen() {
   const [transactions, setTransactions] = useState<TransactionDoc[]>([]);
   const [summary, setSummary] = useState<TransactionSummary | null>(null);
 
+  // Filters
   const [search, setSearch] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
+  const [selectedType, setSelectedType] = useState<string>('ALL');
   const [selectedMethod, setSelectedMethod] = useState<string>('ALL');
 
+  // Modals
   const [selectedTxn, setSelectedTxn] = useState<TransactionDoc | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+
+  // Create Transaction Form Modal
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    type: 'Payment Received',
+    amount: '',
+    paymentMethod: 'UPI',
+    customerName: '',
+    referenceId: '',
+    note: '',
+    status: 'COMPLETED',
+  });
+
+  // Refund Modal State
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const [refundReason, setRefundReason] = useState('');
+  const [isRefunding, setIsRefunding] = useState(false);
 
   const loadData = async (isRefresh = false) => {
     if (!isAdmin) return;
@@ -97,6 +121,7 @@ export default function TransactionsScreen() {
       const params: Record<string, any> = {};
       if (search.trim()) params.search = search.trim();
       if (selectedStatus !== 'ALL') params.status = selectedStatus;
+      if (selectedType !== 'ALL') params.transactionType = selectedType;
       if (selectedMethod !== 'ALL') params.paymentMethod = selectedMethod;
 
       const [listRes, summaryRes] = await Promise.all([
@@ -120,14 +145,90 @@ export default function TransactionsScreen() {
     } else {
       setLoading(false);
     }
-  }, [selectedStatus, selectedMethod, isAdmin]);
+  }, [selectedStatus, selectedType, selectedMethod, isAdmin]);
 
   const handleSearchSubmit = () => {
     loadData();
   };
 
+  const handleCreateSubmit = async () => {
+    const amt = parseFloat(createForm.amount);
+    if (!amt || isNaN(amt) || amt <= 0) {
+      Alert.alert('Validation Error', 'Please enter a valid amount.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await createTransaction({
+        type: createForm.type as any,
+        amount: amt,
+        paymentMethod: createForm.paymentMethod as any,
+        customerName: createForm.customerName.trim() || undefined,
+        referenceId: createForm.referenceId.trim() || undefined,
+        note: createForm.note.trim() || undefined,
+        status: createForm.status as any,
+      });
+
+      if (res?.success) {
+        Alert.alert(
+          'Transaction Recorded',
+          res.message || `Transaction ${res.data.transactionId} recorded successfully.`,
+        );
+        setIsCreateModalOpen(false);
+        setCreateForm({
+          type: 'Payment Received',
+          amount: '',
+          paymentMethod: 'UPI',
+          customerName: '',
+          referenceId: '',
+          note: '',
+          status: 'COMPLETED',
+        });
+        loadData();
+      }
+    } catch (err: any) {
+      Alert.alert(
+        'Transaction Error',
+        err?.response?.data?.message || 'Failed to create transaction record.',
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRefundSubmit = async () => {
+    if (!selectedTxn?._id) return;
+    setIsRefunding(true);
+    try {
+      const res = await refundTransaction(selectedTxn._id, refundReason.trim());
+      if (res?.success) {
+        Alert.alert('Refund Processed', res.message || 'Transaction refunded successfully.');
+        setShowRefundModal(false);
+        setModalVisible(false);
+        setRefundReason('');
+        loadData();
+      }
+    } catch (err: any) {
+      Alert.alert(
+        'Refund Error',
+        err?.response?.data?.message || 'Failed to process refund.',
+      );
+    } finally {
+      setIsRefunding(false);
+    }
+  };
+
   const statusOptions = ['ALL', 'COMPLETED', 'PENDING', 'REFUNDED', 'FAILED', 'CANCELLED'];
-  const methodOptions = ['ALL', 'CASH', 'ONLINE', 'BANK_TRANSFER', 'CHEQUE', 'UPI', 'OTHER'];
+  const typeOptions = [
+    'ALL',
+    'Payment Received',
+    'Quotation Payment',
+    'Payroll Disbursement',
+    'Expense',
+    'Refund',
+  ];
+  const methodOptions = ['ALL', 'UPI', 'BANK_TRANSFER', 'CASH', 'CHEQUE', 'ONLINE'];
 
   const renderItem = ({ item }: { item: TransactionDoc }) => {
     const statusStyle = getStatusBadgeStyle(item.status);
@@ -170,7 +271,7 @@ export default function TransactionsScreen() {
           <View style={styles.infoRow}>
             <Ionicons name="card-outline" size={14} color="#6B7280" />
             <Text style={styles.infoText}>
-              {item.paymentMethod} • {item.type.replace('_', ' ')}
+              {item.paymentMethod} • {(item.type || 'PAYMENT').replace('_', ' ')}
             </Text>
           </View>
           <View style={styles.infoRow}>
@@ -181,7 +282,19 @@ export default function TransactionsScreen() {
 
         <View style={styles.cardFooter}>
           <Text style={styles.amountLabel}>Amount</Text>
-          <Text style={styles.amountValue}>{formatINR(item.amount)}</Text>
+          <Text
+            style={[
+              styles.amountValue,
+              {
+                color:
+                  item.type?.toLowerCase().includes('refund') || item.type?.toLowerCase().includes('expense')
+                    ? '#DC2626'
+                    : '#059669',
+              },
+            ]}
+          >
+            {formatINR(item.amount)}
+          </Text>
         </View>
       </TouchableOpacity>
     );
@@ -229,7 +342,15 @@ export default function TransactionsScreen() {
           <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Transaction History</Text>
-        <View style={{ width: 24 }} />
+
+        <TouchableOpacity
+          style={styles.newTxnHeaderBtn}
+          onPress={() => setIsCreateModalOpen(true)}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="add" size={16} color="#7A131A" />
+          <Text style={styles.newTxnHeaderBtnText}>+ New Txn</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Summary Banner Cards */}
@@ -278,7 +399,7 @@ export default function TransactionsScreen() {
         <Ionicons name="search" size={18} color="#9CA3AF" style={{ marginRight: 8 }} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search by ID, Ref, Name..."
+          placeholder="Search by ID, Ref, Customer Name..."
           value={search}
           onChangeText={setSearch}
           onSubmitEditing={handleSearchSubmit}
@@ -296,8 +417,8 @@ export default function TransactionsScreen() {
         ) : null}
       </View>
 
-      {/* Filter Horizontal Pills */}
-      <View style={{ maxHeight: 44 }}>
+      {/* Filter Category 1: Status */}
+      <View style={{ maxHeight: 40, marginBottom: 4 }}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -313,6 +434,30 @@ export default function TransactionsScreen() {
               >
                 <Text style={[styles.pillText, isActive && styles.pillTextActive]}>
                   {st}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* Filter Category 2: Transaction Types (including Quotation Payment) */}
+      <View style={{ maxHeight: 40, marginBottom: 6 }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.pillsContainer}
+        >
+          {typeOptions.map((tp) => {
+            const isActive = selectedType === tp;
+            return (
+              <TouchableOpacity
+                key={tp}
+                style={[styles.pill, isActive && styles.pillActiveBlue]}
+                onPress={() => setSelectedType(tp)}
+              >
+                <Text style={[styles.pillText, isActive && styles.pillTextActive]}>
+                  {tp}
                 </Text>
               </TouchableOpacity>
             );
@@ -350,7 +495,120 @@ export default function TransactionsScreen() {
         />
       )}
 
-      {/* Transaction Detail Modal */}
+      {/* ── CREATE TRANSACTION MODAL ────────────────────────────────────────── */}
+      <Modal
+        visible={isCreateModalOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setIsCreateModalOpen(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Record CRM Transaction</Text>
+              <TouchableOpacity onPress={() => setIsCreateModalOpen(false)}>
+                <Ionicons name="close" size={24} color="#374151" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ maxHeight: 480 }}>
+              <Text style={styles.inputLabel}>Transaction Type *</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginVertical: 6 }}>
+                {[
+                  'Payment Received',
+                  'Quotation Payment',
+                  'Payroll Disbursement',
+                  'Expense',
+                  'Refund',
+                  'Other',
+                ].map((type) => {
+                  const isActive = createForm.type === type;
+                  return (
+                    <TouchableOpacity
+                      key={type}
+                      style={[styles.smallPill, isActive && styles.smallPillActive]}
+                      onPress={() => setCreateForm({ ...createForm, type })}
+                    >
+                      <Text style={[styles.smallPillText, isActive && styles.smallPillTextActive]}>
+                        {type}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <Text style={styles.inputLabel}>Amount (₹) *</Text>
+              <TextInput
+                style={styles.textInput}
+                keyboardType="numeric"
+                placeholder="e.g. 25000"
+                value={createForm.amount}
+                onChangeText={(amount) => setCreateForm({ ...createForm, amount })}
+              />
+
+              <Text style={[styles.inputLabel, { marginTop: 10 }]}>Payment Method *</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginVertical: 6 }}>
+                {['UPI', 'BANK_TRANSFER', 'CASH', 'CHEQUE', 'ONLINE'].map((method) => {
+                  const isActive = createForm.paymentMethod === method;
+                  return (
+                    <TouchableOpacity
+                      key={method}
+                      style={[styles.smallPill, isActive && styles.smallPillActive]}
+                      onPress={() => setCreateForm({ ...createForm, paymentMethod: method })}
+                    >
+                      <Text style={[styles.smallPillText, isActive && styles.smallPillTextActive]}>
+                        {method}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <Text style={styles.inputLabel}>Customer / Payee Name (Optional)</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="e.g. Rajesh Kumar / Client Name"
+                value={createForm.customerName}
+                onChangeText={(customerName) => setCreateForm({ ...createForm, customerName })}
+              />
+
+              <Text style={styles.inputLabel}>Reference / Transaction ID (Optional)</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="e.g. UTR / Cheque No / Txn Ref"
+                value={createForm.referenceId}
+                onChangeText={(referenceId) => setCreateForm({ ...createForm, referenceId })}
+              />
+
+              <Text style={styles.inputLabel}>Notes / Purpose (Optional)</Text>
+              <TextInput
+                style={[styles.textInput, { height: 60 }]}
+                multiline
+                placeholder="e.g. Project advance payment received"
+                value={createForm.note}
+                onChangeText={(note) => setCreateForm({ ...createForm, note })}
+              />
+
+              <TouchableOpacity
+                style={styles.submitBtn}
+                onPress={handleCreateSubmit}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
+                    <Text style={styles.submitBtnText}>Save &amp; Sync Transaction</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── TRANSACTION DETAIL MODAL ────────────────────────────────────────── */}
       <Modal visible={modalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -441,6 +699,17 @@ export default function TransactionsScreen() {
                     ))}
                   </View>
                 )}
+
+                {/* Refund Action if Completed */}
+                {selectedTxn.status === 'COMPLETED' && (
+                  <TouchableOpacity
+                    style={styles.refundBtn}
+                    onPress={() => setShowRefundModal(true)}
+                  >
+                    <Ionicons name="refresh-circle-outline" size={18} color="#DC2626" />
+                    <Text style={styles.refundBtnText}>Issue Refund for this Transaction</Text>
+                  </TouchableOpacity>
+                )}
               </ScrollView>
             )}
 
@@ -450,6 +719,54 @@ export default function TransactionsScreen() {
             >
               <Text style={styles.closeBtnText}>Close</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── REFUND CONFIRMATION MODAL ────────────────────────────────────────── */}
+      <Modal visible={showRefundModal} animationType="fade" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Issue Transaction Refund</Text>
+              <TouchableOpacity onPress={() => setShowRefundModal(false)}>
+                <Ionicons name="close" size={24} color="#374151" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={{ fontSize: 13, color: '#6B7280', marginBottom: 12 }}>
+              Refunding <Text style={{ fontWeight: '700', color: '#111827' }}>{selectedTxn?.transactionId}</Text> ({formatINR(selectedTxn?.amount || 0)}).
+            </Text>
+
+            <Text style={styles.inputLabel}>Refund Reason / Notes</Text>
+            <TextInput
+              style={[styles.textInput, { height: 60 }]}
+              multiline
+              placeholder="e.g. Order cancellation requested by customer"
+              value={refundReason}
+              onChangeText={setRefundReason}
+            />
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+              <TouchableOpacity
+                style={[styles.closeBtn, { flex: 1, backgroundColor: '#F3F4F6' }]}
+                onPress={() => setShowRefundModal(false)}
+              >
+                <Text style={{ color: '#4B5563', fontWeight: '700' }}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.submitBtn, { flex: 1, backgroundColor: '#DC2626', marginTop: 0 }]}
+                onPress={handleRefundSubmit}
+                disabled={isRefunding}
+              >
+                {isRefunding ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.submitBtnText}>Confirm Refund</Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -478,6 +795,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
+  newTxnHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    gap: 3,
+  },
+  newTxnHeaderBtnText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#7A131A',
+  },
   summaryScroll: {
     marginVertical: 10,
     maxHeight: 90,
@@ -501,12 +832,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#6B7280',
     fontWeight: '600',
-    textTransform: 'uppercase',
   },
   summaryValue: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
-    marginTop: 4,
+    marginTop: 2,
   },
   summarySubtext: {
     fontSize: 10,
@@ -517,32 +847,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    marginHorizontal: 12,
+    marginHorizontal: 16,
     marginBottom: 8,
-    borderRadius: 8,
     paddingHorizontal: 12,
-    height: 42,
+    borderRadius: 8,
+    height: 40,
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
   searchInput: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 13,
     color: '#111827',
   },
   pillsContainer: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
+    gap: 8,
     alignItems: 'center',
   },
   pill: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 20,
+    borderRadius: 16,
     backgroundColor: '#E5E7EB',
-    marginRight: 8,
   },
   pillActive: {
     backgroundColor: '#DC2626',
+  },
+  pillActiveBlue: {
+    backgroundColor: '#2563EB',
   },
   pillText: {
     fontSize: 12,
@@ -553,33 +886,33 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   listContent: {
-    padding: 12,
+    padding: 16,
+    gap: 12,
   },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 14,
-    marginBottom: 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     elevation: 1,
     shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 2,
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   txnIdText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: '#111827',
   },
   refIdText: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#6B7280',
     marginTop: 2,
   },
@@ -594,37 +927,36 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   cardBody: {
-    marginBottom: 8,
-    paddingVertical: 4,
+    gap: 6,
+    paddingVertical: 6,
     borderTopWidth: 1,
     borderBottomWidth: 1,
     borderColor: '#F3F4F6',
+    marginVertical: 6,
   },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 2,
+    gap: 6,
   },
   infoText: {
     fontSize: 12,
     color: '#4B5563',
-    marginLeft: 6,
   },
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 4,
+    marginTop: 4,
   },
   amountLabel: {
     fontSize: 12,
     color: '#6B7280',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   amountValue: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#111827',
   },
   centerContainer: {
     flex: 1,
@@ -632,8 +964,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyContainer: {
-    padding: 40,
     alignItems: 'center',
+    paddingVertical: 48,
   },
   emptyTitle: {
     fontSize: 16,
@@ -642,89 +974,96 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   emptySub: {
-    fontSize: 13,
-    color: '#6B7280',
-    textAlign: 'center',
+    fontSize: 12,
+    color: '#9CA3AF',
     marginTop: 4,
+    textAlign: 'center',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 16,
   },
   modalContent: {
-    width: '100%',
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 18,
-    elevation: 5,
+    width: '100%',
+    maxWidth: 420,
+    maxHeight: '85%',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
     borderBottomWidth: 1,
-    borderColor: '#E5E7EB',
-    paddingBottom: 8,
+    borderBottomColor: '#F3F4F6',
+    paddingBottom: 10,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '800',
     color: '#111827',
   },
   modalAmountBox: {
-    alignItems: 'center',
     backgroundColor: '#F9FAFB',
-    borderRadius: 12,
+    borderRadius: 10,
     padding: 14,
-    marginBottom: 12,
+    alignItems: 'center',
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   modalAmountLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#6B7280',
+    fontWeight: '600',
+    textTransform: 'uppercase',
   },
   modalAmountValue: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: '800',
     color: '#111827',
     marginVertical: 4,
   },
   modalBadge: {
-    backgroundColor: '#DC2626',
+    backgroundColor: '#DEF7EC',
     paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 12,
+    paddingVertical: 2,
+    borderRadius: 10,
   },
   modalBadgeText: {
-    color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '700',
+    color: '#03543F',
   },
   modalDetailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 6,
     borderBottomWidth: 1,
-    borderColor: '#F3F4F6',
+    borderBottomColor: '#F3F4F6',
   },
   detailLabel: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#6B7280',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   detailVal: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#111827',
-    fontWeight: '600',
+    fontWeight: '700',
   },
   noteSection: {
     marginTop: 10,
-    padding: 10,
     backgroundColor: '#FFFBEB',
+    padding: 10,
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
   },
   noteText: {
     fontSize: 12,
@@ -735,14 +1074,15 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   timelineTitle: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
-    color: '#111827',
+    color: '#374151',
     marginBottom: 8,
   },
   timelineItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
+    gap: 8,
     marginBottom: 8,
   },
   timelineDot: {
@@ -750,13 +1090,12 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: '#DC2626',
-    marginTop: 5,
-    marginRight: 8,
+    marginTop: 4,
   },
   timelineStatus: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#374151',
+    color: '#111827',
   },
   timelineNote: {
     fontSize: 11,
@@ -767,15 +1106,81 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
   },
   closeBtn: {
-    backgroundColor: '#DC2626',
-    paddingVertical: 12,
-    borderRadius: 10,
+    backgroundColor: '#F3F4F6',
+    paddingVertical: 10,
+    borderRadius: 8,
     alignItems: 'center',
     marginTop: 14,
   },
   closeBtnText: {
-    color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
+    color: '#374151',
+  },
+  inputLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#374151',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  textInput: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 12,
+    color: '#111827',
+  },
+  smallPill: {
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    backgroundColor: '#E5E7EB',
+  },
+  smallPillActive: {
+    backgroundColor: '#DC2626',
+  },
+  smallPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#374151',
+  },
+  smallPillTextActive: {
+    color: '#FFFFFF',
+  },
+  submitBtn: {
+    backgroundColor: '#059669',
+    paddingVertical: 11,
+    borderRadius: 8,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 16,
+  },
+  submitBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 13,
+  },
+  refundBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    paddingVertical: 9,
+    borderRadius: 8,
+    gap: 6,
+    marginTop: 14,
+  },
+  refundBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#DC2626',
   },
 });

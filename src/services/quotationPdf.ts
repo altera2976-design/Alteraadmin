@@ -73,10 +73,11 @@ export function buildQuotationHtml(q: any): string {
   const company = q.companyDetails || {
     name: "ALTERA INTERIOR",
     tagline: "The Modern Home Maker • Interior | Architect | Construction",
-    address: "Plot 42, Sector 18, Commercial Hub, New Delhi - 110001",
-    phone: "+91 98765 43210",
-    email: "contact@alterainterior.com",
-    gstin: "07AAAAA0000A1Z5",
+    address:
+      "Plot 16/2, Dhanwapur Villae,Behind Ats Triump Tower,Dwarka Expressway,Sec-104,Gurugram(HR)",
+    phone: "+91 9718374407",
+    email: "[EMAIL_ADDRESS]",
+    gstin: "06CFEPS8731P1Z0",
   };
 
   const client = q.client || {
@@ -284,6 +285,85 @@ export function buildQuotationHtml(q: any): string {
         </table>
       </div>`
       : "";
+
+  // ── Payment & Transaction History ─────────────────────────────────────────
+  const txList = Array.isArray(q.transactions) ? q.transactions : [];
+  const calculatedPaidAmount = txList.reduce(
+    (acc: number, tx: any) =>
+      acc +
+      (tx.status === "Completed" ||
+      tx.status === "PAID" ||
+      tx.status === "COMPLETED"
+        ? Number(tx.amount || 0)
+        : 0),
+    0,
+  );
+  const paySummary = q.paymentSummary || {
+    totalAmount: grandTotal,
+    paidAmount: calculatedPaidAmount,
+    remainingAmount: Math.max(0, grandTotal - calculatedPaidAmount),
+    paymentStatus:
+      calculatedPaidAmount >= grandTotal && grandTotal > 0
+        ? "PAID"
+        : calculatedPaidAmount > 0
+          ? "PARTIALLY_PAID"
+          : "UNPAID",
+  };
+
+  const paymentSummaryHtml = `
+    <div class="section-card">
+      <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <span>💳 PAYMENT &amp; TRANSACTION HISTORY</span>
+        <span style="padding: 2px 8px; border-radius: 4px; font-weight: 800; font-size: 9px; ${
+          paySummary.paymentStatus === "PAID"
+            ? "background: #DCFCE7; color: #15803D;"
+            : paySummary.paymentStatus === "PARTIALLY_PAID"
+              ? "background: #FEF3C7; color: #B45309;"
+              : "background: #FEE2E2; color: #B91C1C;"
+        }">
+          STATUS: ${paySummary.paymentStatus.replace("_", " ")}
+        </span>
+      </div>
+      <div style="display: flex; background: #F8FAFC; padding: 8px 12px; border-bottom: 1px solid #E2E8F0; font-size: 10px;">
+        <div style="flex: 1;"><strong>Total Amount:</strong> ${inr(paySummary.totalAmount || grandTotal)}</div>
+        <div style="flex: 1; color: #16A34A;"><strong>Total Paid:</strong> ${inr(paySummary.paidAmount)}</div>
+        <div style="flex: 1; color: #DC2626;"><strong>Balance Remaining:</strong> ${inr(paySummary.remainingAmount)}</div>
+      </div>
+      ${
+        txList.length > 0
+          ? `
+        <table class="milestone-table">
+          <thead>
+            <tr>
+              <th style="width: 5%;">#</th>
+              <th style="width: 25%;">Txn Ref ID</th>
+              <th style="width: 20%;">Date</th>
+              <th style="width: 20%;">Payment Mode</th>
+              <th style="width: 15%;">Status</th>
+              <th class="right" style="width: 15%;">Amount Paid</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${txList
+              .map(
+                (tx: any, idx: number) => `
+              <tr>
+                <td>${idx + 1}</td>
+                <td><strong>${esc(tx.transactionId || tx.referenceId || "TXN")}</strong></td>
+                <td>${formatDate(tx.transactionDate || tx.createdAt)}</td>
+                <td>${esc(tx.paymentMethod || "UPI")}</td>
+                <td><span style="color: #16A34A; font-weight: 700;">${esc(tx.status || "Completed")}</span></td>
+                <td class="right font-bold" style="color: #0F172A;">${inr(tx.amount)}</td>
+              </tr>
+            `,
+              )
+              .join("")}
+          </tbody>
+        </table>`
+          : `<div style="padding: 10px 12px; font-size: 10px; color: #64748B;">No payment transactions recorded yet for this quotation.</div>`
+      }
+    </div>
+  `;
 
   // ── Bank Details ───────────────────────────────────────────────────────────
   const bank = q.bankDetails || {
@@ -758,8 +838,8 @@ export function buildQuotationHtml(q: any): string {
         <td class="right font-bold">${inr(taxable)}</td>
       </tr>
       <tr>
-        <td>GST (${pricing.gstPercent || 18}% ${pricing.gstType === 'AS_PER_ACTUAL' ? '– As per Actuals' : (pricing.gstType || "CGST+SGST")}):</td>
-        <td class="right" style="${pricing.gstType === 'AS_PER_ACTUAL' ? 'color: #2563EB; font-weight: 600;' : ''}">${pricing.gstType === 'AS_PER_ACTUAL' ? '18% – As per Actuals' : inr(totalGst)}</td>
+        <td>GST (${pricing.gstPercent || 18}% ${pricing.gstType === "AS_PER_ACTUAL" ? "– As per Actuals" : pricing.gstType || "CGST+SGST"}):</td>
+        <td class="right" style="${pricing.gstType === "AS_PER_ACTUAL" ? "color: #2563EB; font-weight: 600;" : ""}">${pricing.gstType === "AS_PER_ACTUAL" ? "18% – As per Actuals" : inr(totalGst)}</td>
       </tr>
       <tr class="total-row">
         <td>ESTIMATED GRAND TOTAL:</td>
@@ -768,7 +848,7 @@ export function buildQuotationHtml(q: any): string {
     </table>
   </div>
 
-  ${pricing.gstType === 'AS_PER_ACTUAL' ? `<div style="margin-top: 12px; padding: 8px 12px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 6px; font-size: 11px; color: #1D4ED8; font-weight: 600;">ℹ️ GST @ 18% will be charged separately as applicable on the actual/final invoice and is not included in this estimated total.</div>` : ''}
+  ${pricing.gstType === "AS_PER_ACTUAL" ? `<div style="margin-top: 12px; padding: 8px 12px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 6px; font-size: 11px; color: #1D4ED8; font-weight: 600;">ℹ️ GST @ 18% will be charged separately as applicable on the actual/final invoice and is not included in this estimated total.</div>` : ""}
 
   ${
     amountInWords
@@ -781,6 +861,9 @@ export function buildQuotationHtml(q: any): string {
 
   <!-- Payment Milestones Schedule -->
   ${milestonesHtml}
+
+  <!-- Payment & Transaction History Summary -->
+  ${paymentSummaryHtml}
 
   <!-- Bank & Payment Details -->
   <div class="section-card">

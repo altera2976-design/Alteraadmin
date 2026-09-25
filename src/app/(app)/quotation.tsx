@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  Image,
   Modal,
   Platform,
   RefreshControl,
@@ -247,6 +248,67 @@ export default function QuotationScreen() {
   const [emailSubject, setEmailSubject] = useState("");
   const [emailMessage, setEmailMessage] = useState("");
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+  // Quotation Transaction Modal State
+  const [isAddTxnModalOpen, setIsAddTxnModalOpen] = useState(false);
+  const [txnAmount, setTxnAmount] = useState("");
+  const [txnPaymentMethod, setTxnPaymentMethod] = useState("UPI");
+  const [txnReferenceId, setTxnReferenceId] = useState("");
+  const [txnNotes, setTxnNotes] = useState("");
+  const [isSubmittingTxn, setIsSubmittingTxn] = useState(false);
+
+  const handleAddTxnSubmit = async () => {
+    if (!selectedQuotation?._id) return;
+    const amt = parseFloat(txnAmount);
+    if (!amt || isNaN(amt) || amt <= 0) {
+      Alert.alert("Validation Error", "Please enter a valid payment amount.");
+      return;
+    }
+
+    setIsSubmittingTxn(true);
+    try {
+      const res = await quotationApi.addQuotationTransaction(
+        selectedQuotation._id,
+        {
+          amount: amt,
+          paymentMethod: txnPaymentMethod,
+          referenceId: txnReferenceId.trim() || undefined,
+          notes: txnNotes.trim() || undefined,
+          status: "Completed",
+        },
+      );
+
+      if (res?.success) {
+        Alert.alert(
+          "Payment Recorded",
+          res.message || `Payment of ${formatINR(amt)} recorded successfully.`,
+        );
+        setIsAddTxnModalOpen(false);
+        setTxnAmount("");
+        setTxnReferenceId("");
+        setTxnNotes("");
+
+        setSelectedQuotation((prev) =>
+          prev
+            ? {
+                ...prev,
+                paymentSummary: res.paymentSummary,
+                transactions: res.transactions,
+              }
+            : null,
+        );
+
+        loadData();
+      }
+    } catch (err: any) {
+      Alert.alert(
+        "Transaction Error",
+        err?.response?.data?.message || "Failed to record payment transaction.",
+      );
+    } finally {
+      setIsSubmittingTxn(false);
+    }
+  };
 
   // ── Form State for New / Edit Quotation ────────────────────────────────────
   const [formStep, setFormStep] = useState<1 | 2 | 3 | 4>(1);
@@ -1411,6 +1473,98 @@ export default function QuotationScreen() {
                     ) : null}
                   </View>
 
+                  {/* Payment & Transaction Summary Card */}
+                  <View style={[styles.sectionBox, { backgroundColor: '#F8FAFC', borderColor: '#CBD5E1' }]}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                      <Text style={styles.boxTitle}>Payment &amp; Transactions</Text>
+                      <View
+                        style={[
+                          styles.statusTag,
+                          selectedQuotation.paymentSummary?.paymentStatus === 'PAID'
+                            ? styles.statusTagApproved
+                            : selectedQuotation.paymentSummary?.paymentStatus === 'PARTIALLY_PAID'
+                            ? styles.statusTagSent
+                            : styles.statusTagRejected,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.statusTagText,
+                            selectedQuotation.paymentSummary?.paymentStatus === 'PAID'
+                              ? styles.statusTextApproved
+                              : selectedQuotation.paymentSummary?.paymentStatus === 'PARTIALLY_PAID'
+                              ? styles.statusTextSent
+                              : styles.statusTextRejected,
+                          ]}
+                        >
+                          {(selectedQuotation.paymentSummary?.paymentStatus || 'UNPAID').replace('_', ' ')}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <Text style={styles.priceLabel}>Quotation Grand Total:</Text>
+                      <Text style={styles.priceVal}>{formatINR(selectedQuotation.paymentSummary?.totalAmount || selectedQuotation.pricing?.grandTotal)}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <Text style={[styles.priceLabel, { color: '#059669' }]}>Total Amount Paid:</Text>
+                      <Text style={[styles.priceVal, { color: '#059669', fontWeight: '800' }]}>{formatINR(selectedQuotation.paymentSummary?.paidAmount || 0)}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+                      <Text style={[styles.priceLabel, { color: '#DC2626' }]}>Balance Remaining:</Text>
+                      <Text style={[styles.priceVal, { color: '#DC2626', fontWeight: '800' }]}>{formatINR(selectedQuotation.paymentSummary?.remainingAmount ?? (selectedQuotation.pricing?.grandTotal || 0))}</Text>
+                    </View>
+
+                    {/* Record Payment Button */}
+                    <TouchableOpacity
+                      style={{
+                        backgroundColor: '#7A131A',
+                        paddingVertical: 10,
+                        paddingHorizontal: 14,
+                        borderRadius: 8,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 6,
+                        marginBottom: 12,
+                      }}
+                      onPress={() => {
+                        setTxnAmount(String(selectedQuotation.paymentSummary?.remainingAmount || selectedQuotation.pricing?.grandTotal || ''));
+                        setIsAddTxnModalOpen(true);
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="add-circle-outline" size={18} color="#FFFFFF" />
+                      <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Record Payment / Transaction</Text>
+                    </TouchableOpacity>
+
+                    {/* Transaction History List */}
+                    {selectedQuotation.transactions && selectedQuotation.transactions.length > 0 ? (
+                      <View style={{ marginTop: 6, borderTopWidth: 1, borderTopColor: '#E2E8F0', paddingTop: 8 }}>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#475569', marginBottom: 8 }}>
+                          Recorded Transactions ({selectedQuotation.transactions.length}):
+                        </Text>
+                        {selectedQuotation.transactions.map((tx: any, idx: number) => (
+                          <View key={tx._id || idx} style={{ backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 6, padding: 10, marginBottom: 8 }}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Text style={{ fontSize: 12, fontWeight: '800', color: '#0F172A' }}>{tx.transactionId || tx.referenceId || `TXN-${idx + 1}`}</Text>
+                              <Text style={{ fontSize: 13, fontWeight: '800', color: '#059669' }}>{formatINR(tx.amount)}</Text>
+                            </View>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
+                              <Text style={{ fontSize: 11, color: '#64748B' }}>Mode: {tx.paymentMethod || 'UPI'} • {formatDate(tx.transactionDate || tx.createdAt)}</Text>
+                              <Text style={{ fontSize: 11, color: '#16A34A', fontWeight: '700' }}>{tx.status || 'Completed'}</Text>
+                            </View>
+                            {tx.notes ? <Text style={{ fontSize: 11, color: '#64748B', fontStyle: 'italic', marginTop: 2 }}>Note: {tx.notes}</Text> : null}
+                          </View>
+                        ))}
+                      </View>
+                    ) : (
+                      <Text style={{ fontSize: 11, color: '#64748B', fontStyle: 'italic', textAlign: 'center', marginTop: 4 }}>
+                        No transactions recorded yet for this quotation.
+                      </Text>
+                    )}
+                  </View>
+
                   {/* Room Items List */}
                   <View style={styles.sectionBox}>
                     <Text style={styles.boxTitle}>
@@ -1855,8 +2009,8 @@ export default function QuotationScreen() {
                             isActive && styles.roomPillActive,
                             isAddMore &&
                               !isActive && {
-                                borderColor: "#2563EB",
-                                backgroundColor: "#EFF6FF",
+                                borderColor: "#7A131A",
+                                backgroundColor: "#FFF5F5",
                               },
                           ]}
                           onPress={() => handleSelectSubItem(sub)}
@@ -1867,7 +2021,7 @@ export default function QuotationScreen() {
                               isActive && styles.roomPillTextActive,
                               isAddMore &&
                                 !isActive && {
-                                  color: "#1D4ED8",
+                                  color: "#7A131A",
                                   fontWeight: "700",
                                 },
                             ]}
@@ -1957,8 +2111,8 @@ export default function QuotationScreen() {
                             isActive && styles.roomPillActive,
                             isAddMore &&
                               !isActive && {
-                                borderColor: "#2563EB",
-                                backgroundColor: "#EFF6FF",
+                                borderColor: "#7A131A",
+                                backgroundColor: "#FFF5F5",
                               },
                           ]}
                           onPress={() => handleSelectDescription(desc)}
@@ -1969,7 +2123,7 @@ export default function QuotationScreen() {
                               isActive && styles.roomPillTextActive,
                               isAddMore &&
                                 !isActive && {
-                                  color: "#1D4ED8",
+                                  color: "#7A131A",
                                   fontWeight: "700",
                                 },
                             ]}
@@ -2024,8 +2178,8 @@ export default function QuotationScreen() {
                             isActive && styles.roomPillActive,
                             isAddMore &&
                               !isActive && {
-                                borderColor: "#2563EB",
-                                backgroundColor: "#EFF6FF",
+                                borderColor: "#7A131A",
+                                backgroundColor: "#FFF5F5",
                               },
                           ]}
                           onPress={() => handleSelectUnit(u)}
@@ -2036,7 +2190,7 @@ export default function QuotationScreen() {
                               isActive && styles.roomPillTextActive,
                               isAddMore &&
                                 !isActive && {
-                                  color: "#1D4ED8",
+                                  color: "#7A131A",
                                   fontWeight: "700",
                                 },
                             ]}
@@ -2131,8 +2285,8 @@ export default function QuotationScreen() {
                             isActive && styles.roomPillActive,
                             isAddMore &&
                               !isActive && {
-                                borderColor: "#2563EB",
-                                backgroundColor: "#EFF6FF",
+                                borderColor: "#7A131A",
+                                backgroundColor: "#FFF5F5",
                               },
                           ]}
                           onPress={() => handleSelectMaterial(m)}
@@ -2143,7 +2297,7 @@ export default function QuotationScreen() {
                               isActive && styles.roomPillTextActive,
                               isAddMore &&
                                 !isActive && {
-                                  color: "#1D4ED8",
+                                  color: "#7A131A",
                                   fontWeight: "700",
                                 },
                             ]}
@@ -2203,8 +2357,8 @@ export default function QuotationScreen() {
                             isActive && styles.roomPillActive,
                             isAddMore &&
                               !isActive && {
-                                borderColor: "#2563EB",
-                                backgroundColor: "#EFF6FF",
+                                borderColor: "#7A131A",
+                                backgroundColor: "#FFF5F5",
                               },
                           ]}
                           onPress={() => handleSelectHardware(h)}
@@ -2215,7 +2369,7 @@ export default function QuotationScreen() {
                               isActive && styles.roomPillTextActive,
                               isAddMore &&
                                 !isActive && {
-                                  color: "#1D4ED8",
+                                  color: "#7A131A",
                                   fontWeight: "700",
                                 },
                             ]}
@@ -2275,8 +2429,8 @@ export default function QuotationScreen() {
                             isActive && styles.roomPillActive,
                             isAddMore &&
                               !isActive && {
-                                borderColor: "#2563EB",
-                                backgroundColor: "#EFF6FF",
+                                borderColor: "#7A131A",
+                                backgroundColor: "#FFF5F5",
                               },
                           ]}
                           onPress={() => handleSelectAccessory(acc)}
@@ -2287,7 +2441,7 @@ export default function QuotationScreen() {
                               isActive && styles.roomPillTextActive,
                               isAddMore &&
                                 !isActive && {
-                                  color: "#1D4ED8",
+                                  color: "#7A131A",
                                   fontWeight: "700",
                                 },
                             ]}
@@ -2364,8 +2518,8 @@ export default function QuotationScreen() {
                         <TouchableOpacity
                           key={i}
                           style={{
-                            backgroundColor: "#EFF6FF",
-                            borderColor: "#BFDBFE",
+                            backgroundColor: "#FFF5F5",
+                            borderColor: "#FECDD3",
                             borderWidth: 1,
                             borderRadius: 14,
                             paddingVertical: 3,
@@ -2383,7 +2537,7 @@ export default function QuotationScreen() {
                           <Text
                             style={{
                               fontSize: 11,
-                              color: "#1E40AF",
+                              color: "#7A131A",
                               fontWeight: "700",
                             }}
                           >
@@ -2702,10 +2856,10 @@ export default function QuotationScreen() {
                 {gstType === "AS_PER_ACTUAL" ? (
                   <View
                     style={{
-                      backgroundColor: "#EFF6FF",
+                      backgroundColor: "#FFF5F5",
                       padding: 10,
                       borderRadius: 8,
-                      borderColor: "#BFDBFE",
+                      borderColor: "#FECDD3",
                       borderWidth: 1,
                       marginTop: 8,
                     }}
@@ -2713,7 +2867,7 @@ export default function QuotationScreen() {
                     <Text
                       style={{
                         fontSize: 11,
-                        color: "#1D4ED8",
+                        color: "#7A131A",
                         fontWeight: "600",
                       }}
                     >
@@ -3031,6 +3185,109 @@ export default function QuotationScreen() {
                     <Ionicons name="send" size={16} color="#ffffff" />
                     <Text style={styles.primaryActionBtnText}>
                       Dispatch Email to Client
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── ADD TRANSACTION MODAL ──────────────────────────────────────────────── */}
+      <Modal
+        visible={isAddTxnModalOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setIsAddTxnModalOpen(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.emailCardModal}>
+            <View style={styles.modalHead}>
+              <Text style={styles.modalTitle}>Record Quotation Payment</Text>
+              <TouchableOpacity
+                onPress={() => setIsAddTxnModalOpen(false)}
+                style={styles.closeBtn}
+              >
+                <Ionicons name="close" size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ padding: 18 }}>
+              <Text style={{ fontSize: 12, color: "#64748B", marginBottom: 12 }}>
+                Quotation: <Text style={{ fontWeight: "700", color: "#0F172A" }}>#{selectedQuotation?.quotationNumber}</Text> ({selectedQuotation?.client?.name})
+              </Text>
+
+              {selectedQuotation?.paymentSummary && (
+                <View style={{ backgroundColor: "#F8FAFC", padding: 10, borderRadius: 8, marginBottom: 14, borderWidth: 1, borderColor: "#E2E8F0" }}>
+                  <Text style={{ fontSize: 11, color: "#64748B" }}>
+                    Grand Total: <Text style={{ fontWeight: "700", color: "#0F172A" }}>{formatINR(selectedQuotation.paymentSummary.totalAmount)}</Text>
+                  </Text>
+                  <Text style={{ fontSize: 11, color: "#059669", marginTop: 2 }}>
+                    Paid So Far: <Text style={{ fontWeight: "700" }}>{formatINR(selectedQuotation.paymentSummary.paidAmount)}</Text>
+                  </Text>
+                  <Text style={{ fontSize: 11, color: "#DC2626", marginTop: 2 }}>
+                    Remaining Balance: <Text style={{ fontWeight: "700" }}>{formatINR(selectedQuotation.paymentSummary.remainingAmount)}</Text>
+                  </Text>
+                </View>
+              )}
+
+              <Text style={styles.inputLabel}>Payment Amount (₹) *</Text>
+              <TextInput
+                style={styles.textInput}
+                keyboardType="numeric"
+                placeholder="e.g. 50000"
+                value={txnAmount}
+                onChangeText={setTxnAmount}
+              />
+
+              <Text style={[styles.inputLabel, { marginTop: 10 }]}>Payment Method *</Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginVertical: 6 }}>
+                {["UPI", "Bank Transfer", "Cash", "Cheque", "Card"].map((method) => {
+                  const isActive = txnPaymentMethod === method;
+                  return (
+                    <TouchableOpacity
+                      key={method}
+                      style={[styles.smallPill, isActive && styles.smallPillActive]}
+                      onPress={() => setTxnPaymentMethod(method)}
+                    >
+                      <Text style={[styles.smallPillText, isActive && styles.smallPillTextActive]}>
+                        {method}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <Text style={styles.inputLabel}>Reference / Transaction ID (Optional)</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="e.g. UTR / Cheque No / Txn Ref"
+                value={txnReferenceId}
+                onChangeText={setTxnReferenceId}
+              />
+
+              <Text style={styles.inputLabel}>Notes / Remarks (Optional)</Text>
+              <TextInput
+                style={[styles.textInput, { height: 60 }]}
+                multiline
+                placeholder="e.g. Advance 10% token payment received"
+                value={txnNotes}
+                onChangeText={setTxnNotes}
+              />
+
+              <TouchableOpacity
+                style={[styles.primaryActionBtn, { marginTop: 16, backgroundColor: "#059669" }]}
+                onPress={handleAddTxnSubmit}
+                disabled={isSubmittingTxn}
+              >
+                {isSubmittingTxn ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark-circle" size={18} color="#ffffff" />
+                    <Text style={styles.primaryActionBtnText}>
+                      Save & Sync Transaction
                     </Text>
                   </>
                 )}

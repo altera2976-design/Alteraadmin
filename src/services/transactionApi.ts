@@ -24,7 +24,17 @@ export interface TransactionDoc {
   amount: number;
   paymentMethod: 'CASH' | 'ONLINE' | 'BANK_TRANSFER' | 'CHEQUE' | 'UPI' | 'OTHER';
   status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED' | 'CANCELLED';
-  type: 'PAYMENT_RECEIVED' | 'REFUND' | 'PAYROLL_DISBURSEMENT' | 'EXPENSE' | 'OTHER';
+  type:
+    | 'PAYMENT_RECEIVED'
+    | 'Payment Received'
+    | 'Quotation Payment'
+    | 'REFUND'
+    | 'Refund'
+    | 'PAYROLL_DISBURSEMENT'
+    | 'Payroll Disbursement'
+    | 'EXPENSE'
+    | 'Expense'
+    | 'OTHER';
   note?: string;
   timeline?: TransactionTimeline[];
   createdAt?: string;
@@ -78,3 +88,13 @@ export const createTransaction = async (data: Partial<TransactionDoc>) => {
   }>('/transactions', data);
   return response.data;
 };
+
+export const refundTransaction = async (id: string, reason?: string) => {
+  const response = await api.post<{
+    success: boolean;
+    message: string;
+    data: TransactionDoc;
+  }>(`/transactions/${id}/refund`, { reason });
+  return response.data;
+};
+

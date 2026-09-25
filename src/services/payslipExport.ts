@@ -2,6 +2,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import { PayrollRecord } from './payrollService';
+import { COMPANY_LOGO_DATA_URL } from '../constants/companyLogo';
 
 export function formatINR(val: number | undefined): string {
   if (val === undefined || isNaN(val)) return '₹0';
@@ -271,7 +272,7 @@ export function buildPayslipHtml(payroll: PayrollRecord, emp: any): string {
     <body>
       <div class="header">
         <div>
-          <div class="brand-title">ALTERA INTERIOR</div>
+          <img src="${COMPANY_LOGO_DATA_URL}" alt="Altera Interior Logo" style="height: 48px; width: auto; max-width: 260px; object-fit: contain; margin-bottom: 4px; display: block;" />
           <div class="brand-sub">The Modern Home Maker • Corporate Payroll</div>
         </div>
         <div class="meta-box">

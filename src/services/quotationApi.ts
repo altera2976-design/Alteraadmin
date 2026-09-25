@@ -143,6 +143,8 @@ export interface QuotationDoc {
     convertedBy?: any;
   };
   notes?: string;
+  paymentSummary?: QuotationPaymentSummary;
+  transactions?: any[];
   auditLog?: Array<{
     action: string;
     performedBy?: string;
@@ -152,6 +154,13 @@ export interface QuotationDoc {
   }>;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface QuotationPaymentSummary {
+  totalAmount: number;
+  paidAmount: number;
+  remainingAmount: number;
+  paymentStatus: 'PAID' | 'PARTIALLY_PAID' | 'UNPAID';
 }
 
 export interface QuotationSummaryKpis {
@@ -307,6 +316,46 @@ export const quotationApi = {
     payload: { reason?: string; clientName?: string }
   ): Promise<{ success: boolean; message: string; quotation: QuotationDoc }> => {
     const res = await api.post(`/quotations/public/${token}/reject`, payload);
+    return res.data;
+  },
+
+  /**
+   * Fetch transactions & calculated payment summary for a quotation
+   */
+  getQuotationTransactions: async (
+    id: string
+  ): Promise<{
+    success: boolean;
+    quotationNumber: string;
+    paymentSummary: QuotationPaymentSummary;
+    transactions: any[];
+  }> => {
+    const res = await api.get(`/quotations/${id}/transactions`);
+    return res.data;
+  },
+
+  /**
+   * Add payment / transaction against a quotation
+   */
+  addQuotationTransaction: async (
+    id: string,
+    payload: {
+      amount: number;
+      paymentMethod?: string;
+      referenceId?: string;
+      description?: string;
+      notes?: string;
+      status?: string;
+      transactionDate?: string;
+    }
+  ): Promise<{
+    success: boolean;
+    message: string;
+    data: any;
+    paymentSummary: QuotationPaymentSummary;
+    transactions: any[];
+  }> => {
+    const res = await api.post(`/quotations/${id}/transactions`, payload);
     return res.data;
   },
 };

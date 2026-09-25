@@ -11,6 +11,7 @@ import {
   TextInput,
   Alert,
   Dimensions,
+  Image,
 } from 'react-native';
 import { THEME } from '../../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,6 +29,12 @@ import {
   downloadPayslipPdf,
   generatePayslipPdf,
 } from '../../services/payslipExport';
+import {
+  OfferLetterData,
+  downloadOfferLetterPdf,
+  shareOfferLetterPdf,
+} from '../../services/offerLetterPdf';
+import { COMPANY_LOGO_DATA_URL } from '../../constants/companyLogo';
 
 const { width, height } = Dimensions.get('window');
 
@@ -86,6 +93,45 @@ export default function SalaryScreen() {
   const [config, setConfig] = useState<PayrollConfig | null>(null);
   const [editConfig, setEditConfig] = useState<any>({});
   const [isSavingConfig, setIsSavingConfig] = useState(false);
+
+  // ── Offer Letter Modal State ───────────────────────────────────────────────
+  const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
+  const [offerCandidateName, setOfferCandidateName] = useState('');
+  const [offerDesignation, setOfferDesignation] = useState('Interior Designer');
+  const [offerDepartment, setOfferDepartment] = useState('Design & Execution');
+  const [offerMonthlySalary, setOfferMonthlySalary] = useState('45000');
+  const [offerAnnualCTC, setOfferAnnualCTC] = useState('540000');
+  const [offerJoiningDate, setOfferJoiningDate] = useState(
+    new Date().toISOString().split('T')[0]
+  );
+  const [offerWorkLocation, setOfferWorkLocation] = useState('Gurugram, Haryana');
+  const [isGeneratingOffer, setIsGeneratingOffer] = useState(false);
+
+  const handleDownloadOfferLetter = async () => {
+    if (!offerCandidateName.trim()) {
+      Alert.alert('Validation Error', 'Please enter candidate name.');
+      return;
+    }
+    setIsGeneratingOffer(true);
+    try {
+      const offerData: OfferLetterData = {
+        offerLetterNumber: `OL-${Date.now().toString().slice(-6)}`,
+        candidateName: offerCandidateName.trim(),
+        designation: offerDesignation.trim() || 'Staff',
+        department: offerDepartment.trim() || 'General',
+        monthlySalary: Number(offerMonthlySalary) || 0,
+        annualCTC: Number(offerAnnualCTC) || (Number(offerMonthlySalary) || 0) * 12,
+        joiningDate: offerJoiningDate,
+        workLocation: offerWorkLocation.trim() || 'Gurugram, Haryana',
+      };
+      await downloadOfferLetterPdf(offerData);
+      setIsOfferModalOpen(false);
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to generate Offer Letter.');
+    } finally {
+      setIsGeneratingOffer(false);
+    }
+  };
 
   const handleAuthError = useCallback((error: any) => {
     const status = error?.status || error?.response?.status;
@@ -410,6 +456,13 @@ export default function SalaryScreen() {
 
         {activeTab === 'admin' && isAdmin && (
           <View style={styles.quickActions}>
+            <TouchableOpacity
+              style={[styles.iconBtn, { backgroundColor: '#FEE2E2', borderColor: '#FECDD3' }]}
+              onPress={() => setIsOfferModalOpen(true)}
+              accessibilityLabel="Offer Letter"
+            >
+              <Ionicons name="document-text" size={18} color="#7A131A" />
+            </TouchableOpacity>
             <TouchableOpacity style={styles.iconBtn} onPress={handleRecalculateAll} accessibilityLabel="Recalculate">
               <Ionicons name="refresh" size={18} color="#374151" />
             </TouchableOpacity>
@@ -1252,6 +1305,149 @@ export default function SalaryScreen() {
                   <Text style={styles.confirmPayBtnText}>Save Configuration</Text>
                 )}
               </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ═════════════════════════════════════════════════════════════════════════
+          OFFER LETTER GENERATOR MODAL (ADMIN)
+      ═════════════════════════════════════════════════════════════════════════ */}
+      <Modal
+        visible={isOfferModalOpen}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsOfferModalOpen(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.monthModalContent, { maxHeight: '85%' }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Image
+                  source={{ uri: COMPANY_LOGO_DATA_URL }}
+                  style={{ width: 110, height: 26, resizeMode: 'contain' }}
+                />
+                <Text style={styles.modalHeaderTitle}>Generate Offer Letter</Text>
+              </View>
+              <TouchableOpacity onPress={() => setIsOfferModalOpen(false)}>
+                <Ionicons name="close" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ padding: 16 }} showsVerticalScrollIndicator={false}>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: '#6B7280', marginBottom: 4, textTransform: 'uppercase' }}>
+                Candidate Full Name *
+              </Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="e.g. Rahul Sharma"
+                value={offerCandidateName}
+                onChangeText={setOfferCandidateName}
+                placeholderTextColor="#9CA3AF"
+              />
+
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#6B7280', marginBottom: 4, textTransform: 'uppercase' }}>
+                    Designation
+                  </Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. Interior Designer"
+                    value={offerDesignation}
+                    onChangeText={setOfferDesignation}
+                    placeholderTextColor="#9CA3AF"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#6B7280', marginBottom: 4, textTransform: 'uppercase' }}>
+                    Department
+                  </Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. Design & Execution"
+                    value={offerDepartment}
+                    onChangeText={setOfferDepartment}
+                    placeholderTextColor="#9CA3AF"
+                  />
+                </View>
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#6B7280', marginBottom: 4, textTransform: 'uppercase' }}>
+                    Monthly Salary (₹)
+                  </Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="45000"
+                    keyboardType="numeric"
+                    value={offerMonthlySalary}
+                    onChangeText={(val) => {
+                      setOfferMonthlySalary(val);
+                      const num = Number(val) || 0;
+                      setOfferAnnualCTC(String(num * 12));
+                    }}
+                    placeholderTextColor="#9CA3AF"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#6B7280', marginBottom: 4, textTransform: 'uppercase' }}>
+                    Annual CTC (₹)
+                  </Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="540000"
+                    keyboardType="numeric"
+                    value={offerAnnualCTC}
+                    onChangeText={setOfferAnnualCTC}
+                    placeholderTextColor="#9CA3AF"
+                  />
+                </View>
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#6B7280', marginBottom: 4, textTransform: 'uppercase' }}>
+                    Joining Date (YYYY-MM-DD)
+                  </Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="2026-10-01"
+                    value={offerJoiningDate}
+                    onChangeText={setOfferJoiningDate}
+                    placeholderTextColor="#9CA3AF"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#6B7280', marginBottom: 4, textTransform: 'uppercase' }}>
+                    Work Location
+                  </Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="Gurugram, Haryana"
+                    value={offerWorkLocation}
+                    onChangeText={setOfferWorkLocation}
+                    placeholderTextColor="#9CA3AF"
+                  />
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.confirmPayBtn, { backgroundColor: '#7A131A', marginTop: 12 }]}
+                onPress={handleDownloadOfferLetter}
+                disabled={isGeneratingOffer}
+              >
+                {isGeneratingOffer ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="document-text-outline" size={18} color="#FFFFFF" />
+                    <Text style={styles.confirmPayBtnText}>Download Branded Offer Letter (PDF)</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+              <View style={{ height: 20 }} />
             </ScrollView>
           </View>
         </View>

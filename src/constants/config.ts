@@ -59,9 +59,16 @@ export const STORAGE_KEYS = {
 export const APP_COLORS = {
   primary: "#D60000",
   primaryDark: "#B00000",
+  primaryLight: "rgba(214, 0, 0, 0.1)",
+  secondary: "#475569",
   background: "#F4F6F9",
   card: "#FFFFFF",
   text: "#1A1A1A",
   textSecondary: "#666666",
+  textLight: "#94A3B8",
+  placeholder: "#9CA3AF",
   border: "#E0E0E0",
+  success: "#10B981",
+  danger: "#EF4444",
+  warning: "#D97706",
 };
