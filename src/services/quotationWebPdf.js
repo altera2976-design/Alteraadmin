@@ -49,9 +49,10 @@ export function buildQuotationHtml(q) {
   const company = q.companyDetails || {
     name: "ALTERA INTERIOR",
     tagline: "The Modern Home Maker • Interior | Architect | Construction",
-    address: "Plot 42, Sector 18, Commercial Hub, New Delhi - 110001",
-    phone: "+91 98765 43210",
-    email: "alterakitcheninterior@gmail.com",
+    address:
+      "Plot 16/2, Dhanwapur Villae,Behind Ats Triump Tower,Dwarka Expressway,Sec-104,Gurugram(HR)",
+    phone: "+91 8368955198",
+    email: "[EMAIL_ADDRESS]",
     gstin: "06CFEPS8731P1Z0",
   };
 
@@ -215,6 +216,84 @@ export function buildQuotationHtml(q) {
           .join("")
       : '<tr><td colspan="5" class="center">Standard payment terms apply (10% token, 50% mobilization, 40% handover).</td></tr>';
 
+  const txList = Array.isArray(q.transactions) ? q.transactions : [];
+  const calculatedPaidAmount = txList.reduce(
+    (acc, tx) =>
+      acc +
+      (tx.status === "Completed" ||
+      tx.status === "PAID" ||
+      tx.status === "COMPLETED"
+        ? Number(tx.amount || 0)
+        : 0),
+    0,
+  );
+  const paySummary = q.paymentSummary || {
+    totalAmount: grandTotal,
+    paidAmount: calculatedPaidAmount,
+    remainingAmount: Math.max(0, grandTotal - calculatedPaidAmount),
+    paymentStatus:
+      calculatedPaidAmount >= grandTotal && grandTotal > 0
+        ? "PAID"
+        : calculatedPaidAmount > 0
+          ? "PARTIALLY_PAID"
+          : "UNPAID",
+  };
+
+  const paymentSummaryHtml = `
+    <div style="margin-top: 20px; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; page-break-inside: avoid;">
+      <div style="background: #f8fafc; padding: 8px 12px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; font-weight: 800; font-size: 11px; color: #334155;">
+        <span>💳 PAYMENT &amp; TRANSACTION HISTORY</span>
+        <span style="padding: 2px 8px; border-radius: 4px; font-weight: 800; font-size: 9px; ${
+          paySummary.paymentStatus === "PAID"
+            ? "background: #dcfce7; color: #15803d;"
+            : paySummary.paymentStatus === "PARTIALLY_PAID"
+              ? "background: #fef3c7; color: #b45309;"
+              : "background: #fee2e2; color: #b91c1c;"
+        }">
+          STATUS: ${paySummary.paymentStatus.replace("_", " ")}
+        </span>
+      </div>
+      <div style="display: flex; background: #ffffff; padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-size: 11px;">
+        <div style="flex: 1;"><strong>Total Amount:</strong> ${formatINR(paySummary.totalAmount || grandTotal)}</div>
+        <div style="flex: 1; color: #16a34a;"><strong>Total Paid:</strong> ${formatINR(paySummary.paidAmount)}</div>
+        <div style="flex: 1; color: #dc2626;"><strong>Balance Remaining:</strong> ${formatINR(paySummary.remainingAmount)}</div>
+      </div>
+      ${
+        txList.length > 0
+          ? `
+        <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+          <thead>
+            <tr style="background: #f1f5f9; text-transform: uppercase; color: #475569;">
+              <th style="padding: 6px; text-align: left; width: 5%;">#</th>
+              <th style="padding: 6px; text-align: left; width: 25%;">Txn Ref ID</th>
+              <th style="padding: 6px; text-align: left; width: 20%;">Date</th>
+              <th style="padding: 6px; text-align: left; width: 20%;">Payment Mode</th>
+              <th style="padding: 6px; text-align: left; width: 15%;">Status</th>
+              <th style="padding: 6px; text-align: right; width: 15%;">Amount Paid</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${txList
+              .map(
+                (tx, idx) => `
+              <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 6px;">${idx + 1}</td>
+                <td style="padding: 6px;"><strong>${escapeHtml(tx.transactionId || tx.referenceId || "TXN")}</strong></td>
+                <td style="padding: 6px;">${formatDate(tx.transactionDate || tx.createdAt)}</td>
+                <td style="padding: 6px;">${escapeHtml(tx.paymentMethod || "UPI")}</td>
+                <td style="padding: 6px; color: #16a34a; font-weight: 700;">${escapeHtml(tx.status || "Completed")}</td>
+                <td style="padding: 6px; text-align: right; font-weight: 700; color: #0f172a;">${formatINR(tx.amount)}</td>
+              </tr>
+            `,
+              )
+              .join("")}
+          </tbody>
+        </table>`
+          : `<div style="padding: 10px 12px; font-size: 10px; color: #64748b;">No payment transactions recorded yet for this quotation.</div>`
+      }
+    </div>
+  `;
+
   return `
     <!DOCTYPE html>
     <html>
@@ -345,6 +424,8 @@ export function buildQuotationHtml(q) {
         </div>
 
         ${p.gstType === "AS_PER_ACTUAL" ? `<div style="margin-top: 12px; padding: 8px 12px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; font-size: 11px; color: #1d4ed8; font-weight: 600;">ℹ️ GST @ 18% will be charged separately as applicable on the actual/final invoice and is not included in this estimated total.</div>` : ""}
+
+        ${paymentSummaryHtml}
 
         ${q.notes ? `<div style="margin-top: 20px; padding: 10px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 11px;"><strong>Notes / Terms:</strong> ${escapeHtml(q.notes)}</div>` : ""}
 

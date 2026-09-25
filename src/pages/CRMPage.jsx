@@ -200,8 +200,12 @@ export default function CRMPage() {
         <div style={styles.heroContent}>
           <div style={styles.heroHeader}>
             <div style={styles.heroBadge}>
-              <span style={{ fontSize: 13 }}>✨</span>
-              <span>ALTERA INTERIOR DESIGN STUDIO</span>
+              <img
+                src="/company-logo.png"
+                alt="Altera Logo"
+                style={{ width: 18, height: 18, borderRadius: '50%', objectFit: 'contain' }}
+              />
+              <span>ALTERA INTERIOR DESIGN STUDIO • CRM</span>
             </div>
             <h2 style={styles.heroTitle}>Executive CRM & Client Lifecycle</h2>
             <p style={styles.heroSub}>

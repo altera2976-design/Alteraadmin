@@ -163,9 +163,17 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showQuotationPaymentModal, setShowQuotationPaymentModal] = useState(false);
   const [selectedQuotation, setSelectedQuotation] = useState(null);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [isActionLoading, setIsActionLoading] = useState(false);
+
+  const [quotationPaymentForm, setQuotationPaymentForm] = useState({
+    amount: '',
+    paymentMethod: 'UPI',
+    referenceId: '',
+    notes: '',
+  });
 
   // Form Step in Creator (1: Client/Project, 2: Rooms/Items, 3: Pricing/GST, 4: Milestones/Save)
   const [formStep, setFormStep] = useState(1);
@@ -883,9 +891,45 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
       setSuccess(`Payment recorded for ${selectedInvoice.invoiceNumber}!`);
       setShowPaymentModal(false);
       setSelectedInvoice(null);
-      fetchData();
     } catch (err) {
       setError('Failed to record payment.');
+    }
+  };
+
+  const handleRecordQuotationPayment = async (e) => {
+    if (e) e.preventDefault();
+    if (!selectedQuotation?._id) return;
+    const amt = Number(quotationPaymentForm.amount) || 0;
+    if (amt <= 0) {
+      alert('Please enter a valid amount.');
+      return;
+    }
+    setIsActionLoading(true);
+    try {
+      const res = await api.post(`/quotations/${selectedQuotation._id}/transactions`, {
+        amount: amt,
+        paymentMethod: quotationPaymentForm.paymentMethod,
+        referenceId: quotationPaymentForm.referenceId.trim() || undefined,
+        notes: quotationPaymentForm.notes.trim() || undefined,
+        status: 'Completed',
+      });
+      setSuccess(res.data?.message || 'Quotation payment recorded & synced successfully!');
+      setShowQuotationPaymentModal(false);
+      setQuotationPaymentForm({ amount: '', paymentMethod: 'UPI', referenceId: '', notes: '' });
+
+      const updatedQuotation = {
+        ...selectedQuotation,
+        paymentSummary: res.data?.paymentSummary || selectedQuotation.paymentSummary,
+        transactions: res.data?.transactions || selectedQuotation.transactions,
+      };
+      setSelectedQuotation(updatedQuotation);
+      fetchData();
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to record quotation payment.';
+      setError(msg);
+      alert(`Error: ${msg}`);
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
@@ -1749,9 +1793,9 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                             <span
                               key={i}
                               style={{
-                                background: '#eff6ff',
-                                border: '1px solid #bfdbfe',
-                                color: '#1e40af',
+                                background: '#fff5f5',
+                                border: '1px solid #fecdd3',
+                                color: '#7a131a',
                                 borderRadius: 14,
                                 padding: '2px 8px',
                                 fontSize: 11,
@@ -2094,6 +2138,57 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
                 ))}
               </div>
 
+              {/* Payment & Transaction Summary Box */}
+              <div style={{ background: '#fff1f2', padding: 12, borderRadius: 8, border: '1px solid #fecdd3', marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#7a131a', textTransform: 'uppercase' }}>Payment &amp; Transaction Summary</div>
+                  <span style={{ fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 4, background: selectedQuotation.paymentSummary?.paymentStatus === 'PAID' ? '#d1fae5' : selectedQuotation.paymentSummary?.paymentStatus === 'PARTIALLY_PAID' ? '#fef3c7' : '#fee2e2', color: selectedQuotation.paymentSummary?.paymentStatus === 'PAID' ? '#065f46' : selectedQuotation.paymentSummary?.paymentStatus === 'PARTIALLY_PAID' ? '#92400e' : '#991b1b' }}>
+                    {(selectedQuotation.paymentSummary?.paymentStatus || 'UNPAID').replace('_', ' ')}
+                  </span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, fontSize: 12, marginBottom: 8 }}>
+                  <div>Total: <strong>{formatINR(selectedQuotation.paymentSummary?.totalAmount || selectedQuotation.pricing?.grandTotal || selectedQuotation.grandTotal)}</strong></div>
+                  <div style={{ color: '#059669' }}>Paid: <strong>{formatINR(selectedQuotation.paymentSummary?.paidAmount || 0)}</strong></div>
+                  <div style={{ color: '#dc2626' }}>Balance: <strong>{formatINR(selectedQuotation.paymentSummary?.remainingAmount ?? (selectedQuotation.pricing?.grandTotal || selectedQuotation.grandTotal || 0))}</strong></div>
+                </div>
+
+                <button
+                  className="btn btn-primary"
+                  style={{ width: '100%', fontSize: 12, fontWeight: 700, background: '#7a131a', borderColor: '#7a131a', padding: '6px 12px' }}
+                  onClick={() => {
+                    setQuotationPaymentForm({
+                      amount: selectedQuotation.paymentSummary?.remainingAmount || selectedQuotation.pricing?.grandTotal || '',
+                      paymentMethod: 'UPI',
+                      referenceId: '',
+                      notes: '',
+                    });
+                    setShowQuotationPaymentModal(true);
+                  }}
+                >
+                  💳 Record Quotation Payment / Transaction
+                </button>
+
+                {selectedQuotation.transactions && selectedQuotation.transactions.length > 0 && (
+                  <div style={{ marginTop: 10, borderTop: '1px solid #fecdd3', paddingTop: 8 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#7a131a', marginBottom: 4 }}>Transaction History ({selectedQuotation.transactions.length})</div>
+                    <div style={{ maxHeight: 120, overflowY: 'auto' }}>
+                      {selectedQuotation.transactions.map((tx, idx) => (
+                        <div key={tx._id || idx} style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 4, padding: 6, marginBottom: 4, fontSize: 11 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}>
+                            <span>{tx.transactionId || tx.referenceId || `TXN-${idx + 1}`}</span>
+                            <span style={{ color: '#059669' }}>{formatINR(tx.amount)}</span>
+                          </div>
+                          <div style={{ color: '#64748b', fontSize: 10 }}>
+                            {tx.paymentMethod || 'UPI'} • {formatDate(tx.transactionDate || tx.createdAt)} • {tx.status || 'Completed'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                 <button className="btn btn-secondary" onClick={() => printQuotation(selectedQuotation)}>
                   📄 Print / PDF
@@ -2298,6 +2393,85 @@ export default function QuotationModule({ LayoutComponent, title = 'Quotations &
           </div>
         </div>
       )}
+
+      {/* MODAL: RECORD QUOTATION PAYMENT */}
+      {showQuotationPaymentModal && selectedQuotation && (
+        <div style={styles.modalBackdrop}>
+          <div style={styles.modalCard}>
+            <div style={styles.modalHeader}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#0f172a' }}>
+                Record Payment for #{selectedQuotation.quotationNumber}
+              </h3>
+              <button onClick={() => setShowQuotationPaymentModal(false)} style={styles.closeBtn}>✕</button>
+            </div>
+            <form onSubmit={handleRecordQuotationPayment} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
+              <div style={{ background: '#f8fafc', padding: 10, borderRadius: 6, fontSize: 12, border: '1px solid #e2e8f0' }}>
+                <div>Client: <strong>{selectedQuotation.client?.name}</strong></div>
+                <div>Quotation Total: <strong>{formatINR(selectedQuotation.paymentSummary?.totalAmount || selectedQuotation.pricing?.grandTotal || selectedQuotation.grandTotal)}</strong></div>
+                <div>Remaining Balance: <strong style={{ color: '#dc2626' }}>{formatINR(selectedQuotation.paymentSummary?.remainingAmount ?? (selectedQuotation.pricing?.grandTotal || selectedQuotation.grandTotal || 0))}</strong></div>
+              </div>
+
+              <div>
+                <label style={styles.label}>Payment Amount (₹) *</label>
+                <input
+                  type="number"
+                  required
+                  placeholder="e.g. 50000"
+                  value={quotationPaymentForm.amount}
+                  onChange={(e) => setQuotationPaymentForm({ ...quotationPaymentForm, amount: e.target.value })}
+                  style={styles.formInput}
+                />
+              </div>
+
+              <div>
+                <label style={styles.label}>Payment Method *</label>
+                <select
+                  value={quotationPaymentForm.paymentMethod}
+                  onChange={(e) => setQuotationPaymentForm({ ...quotationPaymentForm, paymentMethod: e.target.value })}
+                  style={styles.formInput}
+                >
+                  <option value="UPI">UPI</option>
+                  <option value="Bank Transfer">Bank Transfer (NEFT/RTGS)</option>
+                  <option value="Cash">Cash</option>
+                  <option value="Cheque">Cheque</option>
+                  <option value="Card">Credit/Debit Card</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={styles.label}>Reference / Transaction ID (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. UTR / Cheque No"
+                  value={quotationPaymentForm.referenceId}
+                  onChange={(e) => setQuotationPaymentForm({ ...quotationPaymentForm, referenceId: e.target.value })}
+                  style={styles.formInput}
+                />
+              </div>
+
+              <div>
+                <label style={styles.label}>Notes / Remarks (Optional)</label>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. 10% booking token received"
+                  value={quotationPaymentForm.notes}
+                  onChange={(e) => setQuotationPaymentForm({ ...quotationPaymentForm, notes: e.target.value })}
+                  style={{ ...styles.formInput, resize: 'vertical' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 12 }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowQuotationPaymentModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" style={{ background: '#059669', borderColor: '#059669' }} disabled={isActionLoading}>
+                  {isActionLoading ? 'Saving...' : '✓ Save & Sync Transaction'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </LayoutComponent>
   );
 }
@@ -2439,8 +2613,8 @@ const styles = {
   },
   wizardTabActive: {
     padding: '6px 12px',
-    background: '#0f172a',
-    border: '1px solid #0f172a',
+    background: '#7a131a',
+    border: '1px solid #7a131a',
     borderRadius: 6,
     fontSize: 12,
     fontWeight: 700,
@@ -2460,8 +2634,8 @@ const styles = {
   },
   roomBtnActive: {
     padding: '4px 10px',
-    background: '#0f172a',
-    border: '1px solid #0f172a',
+    background: '#7a131a',
+    border: '1px solid #7a131a',
     borderRadius: 14,
     fontSize: 11,
     fontWeight: 700,
@@ -2481,23 +2655,23 @@ const styles = {
   },
   subItemBtnActive: {
     padding: '5px 12px',
-    background: '#2563eb',
-    border: '1px solid #2563eb',
+    background: '#7a131a',
+    border: '1px solid #7a131a',
     borderRadius: 6,
     fontSize: 11,
     fontWeight: 700,
     color: '#ffffff',
     cursor: 'pointer',
-    boxShadow: '0 1px 3px rgba(37, 99, 235, 0.3)',
+    boxShadow: '0 1px 3px rgba(122, 19, 26, 0.3)',
   },
   subItemAddMoreBtn: {
     padding: '5px 12px',
-    background: '#eff6ff',
-    border: '1px dashed #3b82f6',
+    background: '#fff5f5',
+    border: '1px dashed #7a131a',
     borderRadius: 6,
     fontSize: 11,
     fontWeight: 700,
-    color: '#1d4ed8',
+    color: '#7a131a',
     cursor: 'pointer',
   },
   modalBackdrop: {

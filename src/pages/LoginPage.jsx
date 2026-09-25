@@ -42,7 +42,7 @@ export default function LoginPage() {
         <div style={s.header}>
           <div style={s.logoWrap}>
             <img
-              src="/logo-circle.png"
+              src="/company-logo.png"
               alt="Altera Interior"
               style={s.logoImg}
             />
@@ -118,19 +118,6 @@ export default function LoginPage() {
               'Sign In'
             )}
           </button>
-
-          <button
-            type="button"
-            className="btn btn-secondary btn-md w-full"
-            disabled={loading}
-            onClick={() => {
-              setForm({ email: 'admin@company.com', password: 'admin123' });
-              setError('');
-            }}
-            style={{ marginTop: 8, justifyContent: 'center', backgroundColor: '#f1f5f9', color: '#1e293b' }}
-          >
-            🛡️ Fill Admin Credentials
-          </button>
         </form>
 
         <p style={s.footer}>
@@ -144,22 +131,23 @@ export default function LoginPage() {
 const s = {
   page: {
     minHeight: '100vh',
-    background: 'linear-gradient(135deg, #1e293b 0%, #2563eb 100%)',
+    background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
+    fontFamily: "'Inter', system-ui, sans-serif",
   },
   card: {
     background: '#fff',
     borderRadius: 16,
-    boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+    boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
     width: '100%',
     maxWidth: 420,
     overflow: 'hidden',
   },
   header: {
-    background: 'linear-gradient(135deg, #1e293b, #2563eb)',
+    background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)',
     padding: '36px 32px 28px',
     textAlign: 'center',
   },

@@ -119,7 +119,7 @@ export default function AdminAppLayout({ children, title = "Admin Dashboard" }) 
         <div style={{ ...styles.sidebarLogo, ...(isCompactTablet ? styles.sidebarLogoCompact : {}) }}>
           <div style={styles.logoBadge}>
             <img
-              src="/logo-circle.png"
+              src="/company-logo.png"
               alt="Altera Interior"
               style={styles.logoImg}
               onError={(e) => {
