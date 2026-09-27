@@ -12,6 +12,7 @@ web-build/
 .env
 .env.*
 .env.example
+*.enc
 
 # Backend & Admin Web (Separate Projects)
 backend/
