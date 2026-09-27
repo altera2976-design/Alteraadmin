@@ -13,6 +13,7 @@ build/
 .env.*
 .env.local
 .env.example
+*.enc
 
 # Logs & temporary files
 *.log
