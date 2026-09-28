@@ -6,8 +6,9 @@ const ADMIN_NAV_ITEMS = [
   { to: "/admin/dashboard", label: "Dashboard", key: "dashboard" },
   { to: "/admin/employees", label: "Employees", key: "employees", altKey: "administration" },
   { to: "/admin/attendance", label: "Attendance", key: "attendance" },
-  { to: "/admin/payroll", label: "Payroll", key: "payroll", altKey: "salary" },
   { to: "/admin/bike-tracking", label: "Bike Tracking", key: "tracking" },
+  { to: "/admin/payroll", label: "Payroll", key: "payroll", altKey: "salary" },
+  { to: "/admin/tasks", label: "Tasks", key: "tasks" },
   { to: "/admin/crm", label: "CRM", key: "crm" },
   { to: "/admin/transactions", label: "Transactions", key: "transactions" },
   { to: "/admin/quotations", label: "Quotations", key: "quotations", altKey: "quotation" },
@@ -15,7 +16,6 @@ const ADMIN_NAV_ITEMS = [
   { to: "/admin/reports", label: "Reports", key: "reports" },
   { to: "/admin/notifications", label: "Notifications", key: "notifications" },
   { to: "/admin/profile", label: "Profile", key: "profile" },
-  { to: "/admin/settings", label: "Settings", key: "settings", altKey: "administration" },
 ];
 
 export default function AdminAppLayout({ children, title = "Admin Dashboard" }) {
@@ -40,6 +40,10 @@ export default function AdminAppLayout({ children, title = "Admin Dashboard" }) 
   const isCompactTablet = isTablet && !tabletExpanded;
 
   const hasPermission = (item) => {
+    if (item.superAdminOnly) {
+      return isSuperAdmin || user?.role === 'SUPER_ADMIN';
+    }
+
     if (isSuperAdmin || user?.role === 'SUPER_ADMIN') return true;
     if (!user?.permissions || Object.keys(user.permissions).length === 0) return true;
 

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { io } from 'socket.io-client';
 import AdminAppLayout from '../layouts/AdminAppLayout';
-import api from '../../services/api';
+import api, { SOCKET_URL } from '../../services/api';
 
 export default function AdminEmployeesPage({ subRoute = 'list', employeeId = null }) {
   const navigate = useNavigate();
@@ -29,9 +30,116 @@ export default function AdminEmployeesPage({ subRoute = 'list', employeeId = nul
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [formMsg, setFormMsg] = useState({ type: '', text: '' });
 
+  // Salary Modal State
+  const [salaryModalEmp, setSalaryModalEmp] = useState(null);
+  const [salaryForm, setSalaryForm] = useState({
+    basicSalary: 25000,
+    allowances: 2000,
+    hra: 0,
+    effectiveFrom: new Date().toISOString().split('T')[0],
+  });
+  const [salarySubmitting, setSalarySubmitting] = useState(false);
+
   useEffect(() => {
     fetchEmployees();
+
+    let socket;
+    try {
+      socket = io(SOCKET_URL, { autoConnect: true, reconnectionAttempts: 5 });
+
+      const handleUpdate = () => fetchEmployees();
+      socket.on('user_registered', handleUpdate);
+      socket.on('dashboard_updated', handleUpdate);
+      socket.on('employee_updated', handleUpdate);
+    } catch (err) {
+      console.warn('Socket listener error on AdminEmployeesPage:', err);
+    }
+
+    return () => {
+      if (socket) socket.disconnect();
+    };
   }, []);
+
+  const handleUpdateAccessStatus = async (empId, newStatus) => {
+    try {
+      await api.patch(`/employees/${empId}/access-status`, { accessStatus: newStatus });
+      fetchEmployees();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to update access status.');
+    }
+  };
+
+  const handleOpenSalaryModal = (emp) => {
+    setSalaryModalEmp(emp);
+    setSalaryForm({
+      basicSalary: emp.salaryStructure?.basic || emp.salary || 25000,
+      allowances: emp.salaryStructure?.allowances || 2000,
+      hra: emp.salaryStructure?.hra || 0,
+      effectiveFrom: emp.salaryStructure?.effectiveDate ? new Date(emp.salaryStructure.effectiveDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    });
+  };
+
+  const handleSaveSalarySetup = async (e) => {
+    e.preventDefault();
+    if (!salaryModalEmp) return;
+    setSalarySubmitting(true);
+    try {
+      const empId = salaryModalEmp._id || salaryModalEmp.id || salaryModalEmp.employeeId;
+      await api.post(`/employees/${empId}/salary-setup`, salaryForm);
+      setSalaryModalEmp(null);
+      fetchEmployees();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to update salary.');
+    } finally {
+      setSalarySubmitting(false);
+    }
+  };
+  const [appPermsModalEmp, setAppPermsModalEmp] = useState(null);
+  const [appPermsForm, setAppPermsForm] = useState({
+    dashboard: true,
+    tasks: false,
+    attendance: true,
+    salary: false,
+    crm: false,
+    projects: false,
+    quotation: false,
+    reports: false,
+    bikeTracking: false,
+  });
+  const [appPermsSubmitting, setAppPermsSubmitting] = useState(false);
+
+  const handleOpenAppPermissionsModal = (emp) => {
+    setAppPermsModalEmp(emp);
+    const existing = emp.employeeAppPermissions || {};
+    setAppPermsForm({
+      dashboard: existing.dashboard !== undefined ? Boolean(existing.dashboard) : true,
+      tasks: existing.tasks !== undefined ? Boolean(existing.tasks) : false,
+      attendance: existing.attendance !== undefined ? Boolean(existing.attendance) : true,
+      salary: existing.salary !== undefined ? Boolean(existing.salary) : false,
+      crm: existing.crm !== undefined ? Boolean(existing.crm) : false,
+      projects: existing.projects !== undefined ? Boolean(existing.projects) : false,
+      quotation: existing.quotation !== undefined ? Boolean(existing.quotation) : (existing.quotations !== undefined ? Boolean(existing.quotations) : false),
+      reports: existing.reports !== undefined ? Boolean(existing.reports) : false,
+      bikeTracking: existing.bikeTracking !== undefined ? Boolean(existing.bikeTracking) : false,
+    });
+  };
+
+  const handleSaveAppPermissions = async (e) => {
+    e.preventDefault();
+    if (!appPermsModalEmp) return;
+    setAppPermsSubmitting(true);
+    try {
+      const empId = appPermsModalEmp._id || appPermsModalEmp.id || appPermsModalEmp.employeeId;
+      await api.put(`/employees/${empId}/app-permissions`, { employeeAppPermissions: appPermsForm });
+      alert(`App permissions saved successfully for ${appPermsModalEmp.name}.`);
+      setAppPermsModalEmp(null);
+      fetchEmployees();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to update app permissions.');
+    } finally {
+      setAppPermsSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     if (employeeId && employees.length > 0) {
@@ -252,51 +360,298 @@ export default function AdminEmployeesPage({ subRoute = 'list', employeeId = nul
                     <tr style={styles.thRow}>
                       <th style={styles.th}>Employee</th>
                       <th style={styles.th}>Employee ID</th>
-                      <th style={styles.th}>Department</th>
-                      <th style={styles.th}>Designation</th>
-                      <th style={styles.th}>Joining Date</th>
-                      <th style={styles.th}>Salary</th>
-                      <th style={styles.th}>Status</th>
+                      <th style={styles.th}>Phone</th>
+                      <th style={styles.th}>Reg / Joining Date</th>
+                      <th style={styles.th}>Access Status</th>
+                      <th style={styles.th}>Salary Status</th>
+                      <th style={styles.th}>Current Salary</th>
                       <th style={styles.th}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredEmployees.map((emp) => (
-                      <tr key={emp._id} style={styles.tr}>
-                        <td style={{ ...styles.td, fontWeight: 700, color: '#0F172A' }}>
-                          <div>{emp.name}</div>
-                          <div style={{ fontSize: 11, color: '#64748B', fontWeight: 400 }}>{emp.email}</div>
-                        </td>
-                        <td style={styles.td}>{emp.employeeId || 'EMP-N/A'}</td>
-                        <td style={styles.td}>{emp.department || 'Management'}</td>
-                        <td style={styles.td}>{emp.designation || 'Staff'}</td>
-                        <td style={styles.td}>{new Date(emp.joiningDate || Date.now()).toLocaleDateString('en-IN')}</td>
-                        <td style={{ ...styles.td, fontWeight: 600 }}>₹{(emp.salary || 0).toLocaleString('en-IN')}</td>
-                        <td style={styles.td}>
-                          <span style={{
-                            padding: '3px 8px',
-                            borderRadius: 6,
-                            fontSize: 11,
-                            fontWeight: 700,
-                            background: emp.status === 'ACTIVE' ? '#DCFCE7' : '#FEE2E2',
-                            color: emp.status === 'ACTIVE' ? '#15803D' : '#B91C1C'
-                          }}>
-                            {emp.status || 'ACTIVE'}
-                          </span>
-                        </td>
-                        <td style={styles.td}>
-                          <div style={{ display: 'flex', gap: 6 }}>
-                            <button onClick={() => navigate(`/admin/employees/${emp._id}`)} style={styles.actionBtn}>View</button>
-                            <button onClick={() => navigate(`/admin/employees/${emp._id}/edit`)} style={styles.actionBtn}>Edit</button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredEmployees.map((emp) => {
+                      const isPending = emp.accessStatus === 'PENDING';
+                      const isActiveAccess = emp.accessStatus === 'ACTIVE' || emp.accessStatus === 'APPROVED' || emp.status === 'ACTIVE';
+                      const hasSalary = (emp.salary || 0) > 0 || (emp.salaryStructure?.basic || 0) > 0;
+                      const salStatus = emp.salaryStatus || (hasSalary ? 'ACTIVE' : 'NOT_SET');
+
+                      return (
+                        <tr key={emp._id} style={styles.tr}>
+                          <td style={{ ...styles.td, fontWeight: 700, color: '#0F172A' }}>
+                            <div>{emp.name}</div>
+                            <div style={{ fontSize: 11, color: '#64748B', fontWeight: 400 }}>{emp.email}</div>
+                          </td>
+                          <td style={{ ...styles.td, fontWeight: 700, color: '#2563EB', fontFamily: 'monospace' }}>
+                            {emp.employeeId || 'EMP-N/A'}
+                          </td>
+                          <td style={styles.td}>{emp.phone || '—'}</td>
+                          <td style={styles.td}>{new Date(emp.joiningDate || emp.createdAt || Date.now()).toLocaleDateString('en-IN')}</td>
+                          <td style={styles.td}>
+                            <span style={{
+                              padding: '4px 10px',
+                              borderRadius: 6,
+                              fontSize: 11,
+                              fontWeight: 800,
+                              background: isPending ? '#FEF3C7' : isActiveAccess ? '#DCFCE7' : '#FEE2E2',
+                              color: isPending ? '#B45309' : isActiveAccess ? '#15803D' : '#B91C1C'
+                            }}>
+                              {emp.accessStatus || (emp.status === 'ACTIVE' ? 'ACTIVE' : 'PENDING')}
+                            </span>
+                          </td>
+                          <td style={styles.td}>
+                            <span style={{
+                              padding: '4px 10px',
+                              borderRadius: 6,
+                              fontSize: 11,
+                              fontWeight: 800,
+                              background: salStatus === 'NOT_SET' ? '#F1F5F9' : '#DBEAFE',
+                              color: salStatus === 'NOT_SET' ? '#64748B' : '#1E40AF'
+                            }}>
+                              {salStatus === 'NOT_SET' ? 'Salary Not Set' : salStatus === 'UPDATED' ? 'Salary Updated' : 'Salary Active'}
+                            </span>
+                          </td>
+                          <td style={{ ...styles.td, fontWeight: 700, color: hasSalary ? '#0F172A' : '#94A3B8' }}>
+                            {hasSalary ? `₹${(emp.salary || 0).toLocaleString('en-IN')}` : 'Not Set'}
+                          </td>
+                          <td style={styles.td}>
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                              <button onClick={() => navigate(`/admin/employees/${emp._id}`)} style={styles.actionBtn}>
+                                View
+                              </button>
+
+                              {isPending || !isActiveAccess ? (
+                                <button
+                                  onClick={() => handleUpdateAccessStatus(emp._id, 'ACTIVE')}
+                                  style={{ ...styles.actionBtn, background: '#16A34A', color: '#FFFFFF', borderColor: '#16A34A' }}
+                                >
+                                  Approve Access
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleUpdateAccessStatus(emp._id, 'SUSPENDED')}
+                                  style={{ ...styles.actionBtn, color: '#DC2626' }}
+                                >
+                                  Suspend
+                                </button>
+                              )}
+
+                              <button
+                                onClick={() => handleOpenSalaryModal(emp)}
+                                style={{ ...styles.actionBtn, background: '#2563EB', color: '#FFFFFF', borderColor: '#2563EB' }}
+                              >
+                                {hasSalary ? 'Edit Salary' : 'Set Salary'}
+                              </button>
+
+                              <button
+                                onClick={() => handleOpenAppPermissionsModal(emp)}
+                                style={{ ...styles.actionBtn, background: '#8B5CF6', color: '#FFFFFF', borderColor: '#8B5CF6' }}
+                              >
+                                App Permissions
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
             )}
           </div>
+
+          {/* Set Salary Modal */}
+          {salaryModalEmp && (
+            <div style={{
+              position: 'fixed',
+              inset: 0,
+              backgroundColor: 'rgba(15, 23, 42, 0.65)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000,
+              padding: 20
+            }}>
+              <div style={{
+                background: '#FFFFFF',
+                borderRadius: 16,
+                padding: 24,
+                maxWidth: 480,
+                width: '100%',
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, borderBottom: '1px solid #E2E8F0', paddingBottom: 12 }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#0F172A' }}>Configure Employee Salary</h3>
+                    <p style={{ margin: '4px 0 0 0', fontSize: 12, color: '#64748B' }}>
+                      {salaryModalEmp.name} • {salaryModalEmp.employeeId || 'EMP-ID'}
+                    </p>
+                  </div>
+                  <button onClick={() => setSalaryModalEmp(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#64748B' }}>✕</button>
+                </div>
+
+                <form onSubmit={handleSaveSalarySetup} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div>
+                    <label style={styles.label}>Basic Salary (₹ / month) *</label>
+                    <input
+                      type="number"
+                      value={salaryForm.basicSalary}
+                      onChange={(e) => setSalaryForm({ ...salaryForm, basicSalary: Number(e.target.value) })}
+                      required
+                      min={0}
+                      style={{ ...styles.input, width: '100%' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={styles.label}>Allowances (₹ / month)</label>
+                    <input
+                      type="number"
+                      value={salaryForm.allowances}
+                      onChange={(e) => setSalaryForm({ ...salaryForm, allowances: Number(e.target.value) })}
+                      min={0}
+                      style={{ ...styles.input, width: '100%' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={styles.label}>House Rent Allowance (HRA ₹ / month)</label>
+                    <input
+                      type="number"
+                      value={salaryForm.hra}
+                      onChange={(e) => setSalaryForm({ ...salaryForm, hra: Number(e.target.value) })}
+                      min={0}
+                      style={{ ...styles.input, width: '100%' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={styles.label}>Effective From Date</label>
+                    <input
+                      type="date"
+                      value={salaryForm.effectiveFrom}
+                      onChange={(e) => setSalaryForm({ ...salaryForm, effectiveFrom: e.target.value })}
+                      required
+                      style={{ ...styles.input, width: '100%' }}
+                    />
+                  </div>
+
+                  <div style={{ background: '#F8FAFC', padding: 12, borderRadius: 8, border: '1px solid #E2E8F0', marginTop: 4 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>Calculated Total Salary</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: '#16A34A', marginTop: 2 }}>
+                      ₹{((Number(salaryForm.basicSalary) || 0) + (Number(salaryForm.allowances) || 0) + (Number(salaryForm.hra) || 0)).toLocaleString('en-IN')} / mo
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 10, marginTop: 12, justifyContent: 'flex-end' }}>
+                    <button type="button" onClick={() => setSalaryModalEmp(null)} style={styles.secondaryBtn}>Cancel</button>
+                    <button type="submit" disabled={salarySubmitting} style={styles.primaryBtn}>
+                      {salarySubmitting ? 'Saving...' : 'Save & Link to Employee'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* App Permissions Modal */}
+          {appPermsModalEmp && (
+            <div style={{
+              position: 'fixed',
+              inset: 0,
+              backgroundColor: 'rgba(15, 23, 42, 0.65)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000,
+              padding: 20
+            }}>
+              <div style={{
+                background: '#FFFFFF',
+                borderRadius: 16,
+                padding: 24,
+                maxWidth: 580,
+                width: '100%',
+                maxHeight: '90vh',
+                overflowY: 'auto',
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, borderBottom: '1px solid #E2E8F0', paddingBottom: 12 }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#0F172A' }}>Employee Native App Permissions</h3>
+                    <p style={{ margin: '4px 0 0 0', fontSize: 12, color: '#64748B' }}>
+                      Configure module access for <strong>{appPermsModalEmp.name}</strong> ({appPermsModalEmp.employeeId || 'EMP'})
+                    </p>
+                  </div>
+                  <button onClick={() => setAppPermsModalEmp(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#64748B' }}>✕</button>
+                </div>
+
+                <div style={{ padding: '12px 14px', background: '#F8FAFC', borderRadius: 8, border: '1px solid #E2E8F0', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>{appPermsModalEmp.name}</div>
+                    <div style={{ fontSize: 11, color: '#64748B' }}>ID: {appPermsModalEmp.employeeId || 'EMP'} • Email: {appPermsModalEmp.email}</div>
+                  </div>
+                  <span style={{ padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 800, background: appPermsModalEmp.status === 'ACTIVE' ? '#DCFCE7' : '#FEE2E2', color: appPermsModalEmp.status === 'ACTIVE' ? '#15803D' : '#B91C1C' }}>
+                    {appPermsModalEmp.accessStatus || appPermsModalEmp.status}
+                  </span>
+                </div>
+
+                <form onSubmit={handleSaveAppPermissions} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <p style={{ margin: 0, fontSize: 12, color: '#475569', fontWeight: 600 }}>
+                    Enable or disable each module specifically for this employee's Native Mobile App:
+                  </p>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
+                    {[
+                      { key: 'dashboard', label: 'Dashboard', desc: 'Employee Home Overview' },
+                      { key: 'tasks', label: 'Tasks', desc: 'Assigned Tasks & PDF Attachment' },
+                      { key: 'attendance', label: 'Attendance', desc: 'GPS Check-in & History' },
+                      { key: 'salary', label: 'Salary', desc: 'Salary Details & Payslips' },
+                      { key: 'crm', label: 'CRM', desc: 'Leads & Client Interactions' },
+                      { key: 'projects', label: 'Projects', desc: 'Assigned Projects View' },
+                      { key: 'quotation', label: 'Quotations', desc: 'Quotations & Proposals' },
+                      { key: 'reports', label: 'Reports', desc: 'Daily Work Summaries' },
+                      { key: 'bikeTracking', label: 'Bike Tracking', desc: 'GPS Meter & Trip Tracking' },
+                    ].map((item) => (
+                      <label
+                        key={item.key}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: 10,
+                          padding: 12,
+                          borderRadius: 10,
+                          border: appPermsForm[item.key] ? '2px solid #2563EB' : '1px solid #CBD5E1',
+                          background: appPermsForm[item.key] ? '#EFF6FF' : '#FFFFFF',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={Boolean(appPermsForm[item.key])}
+                          onChange={(e) => setAppPermsForm({ ...appPermsForm, [item.key]: e.target.checked })}
+                          style={{ marginTop: 2, width: 16, height: 16, cursor: 'pointer', accentColor: '#2563EB' }}
+                        />
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: appPermsForm[item.key] ? '#1D4ED8' : '#1E293B' }}>
+                            {item.label} {appPermsForm[item.key] ? '✅ [ON]' : '❌ [OFF]'}
+                          </div>
+                          <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>{item.desc}</div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 10, marginTop: 16, justifyContent: 'flex-end', borderTop: '1px solid #E2E8F0', paddingTop: 14 }}>
+                    <button type="button" onClick={() => setAppPermsModalEmp(null)} style={styles.secondaryBtn}>Cancel</button>
+                    <button type="submit" disabled={appPermsSubmitting} style={{ ...styles.primaryBtn, background: '#16A34A' }}>
+                      {appPermsSubmitting ? 'Saving...' : 'Save App Permissions'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </AdminAppLayout>

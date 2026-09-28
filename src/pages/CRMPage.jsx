@@ -2,10 +2,7 @@ import { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 import AdminLayout from '../layouts/AdminLayout';
 import LoadingSpinner from '../components/LoadingSpinner';
-import api from '../services/api';
-
-const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-const SOCKET_URL = (import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5001' : 'https://alterabackend.onrender.com')).replace('/api', '');
+import api, { SOCKET_URL } from '../services/api';
 
 export default function CRMPage() {
   const [activeTab, setActiveTab] = useState('leads'); // 'leads', 'clients', 'followups', 'consultations', 'pipeline'

@@ -2,7 +2,7 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Admin403 from './Admin403';
 
-export default function AdminProtectedRoute({ children, permissionKey = null, altPermissionKey = null }) {
+export default function AdminProtectedRoute({ children, permissionKey = null, altPermissionKey = null, superAdminOnly = false }) {
   const { user, isAuthenticated, loading, isSuperAdmin } = useAuth();
 
   if (loading) {
@@ -33,7 +33,12 @@ export default function AdminProtectedRoute({ children, permissionKey = null, al
 
   // Admin Panel Access check
   if (!isSuperAdmin && user?.role !== 'SUPER_ADMIN' && user?.isAdminPanelEnabled === false) {
-    return <Admin403 message="Admin Dashboard access has been revoked. Please contact the Super Admin." />;
+    return <Admin403 message="Admin Panel access has not been granted by Super Admin." />;
+  }
+
+  // Super Admin Only Route Check
+  if (superAdminOnly && !isSuperAdmin && user?.role !== 'SUPER_ADMIN') {
+    return <Admin403 message="Access Denied — You don't have permission to access this module." />;
   }
 
   // Permission check if permissionKey provided
@@ -58,7 +63,7 @@ export default function AdminProtectedRoute({ children, permissionKey = null, al
     const finalPerm = res1 !== undefined ? res1 : (res2 !== undefined ? res2 : true);
 
     if (finalPerm === false) {
-      return <Admin403 message={`You do not have permission to access the '${permissionKey}' module.`} />;
+      return <Admin403 message="Access Denied — You don't have permission to access this module." />;
     }
   }
 

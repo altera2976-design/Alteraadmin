@@ -235,26 +235,85 @@ export function buildQuotationHtml(q) {
     })
     .join("");
 
+  // Standalone Accessories
+  const accessoriesList = Array.isArray(q.standaloneAccessories) ? q.standaloneAccessories : [];
+  const accessoriesHtml =
+    accessoriesList.length > 0
+      ? `
+      <div class="section-title">4. Accessories</div>
+      <table class="item-table" style="margin-bottom: 16px;">
+        <thead>
+          <tr>
+            <th class="center" style="width: 5%;">#</th>
+            <th class="center" style="width: 15%;">Image</th>
+            <th style="width: 35%;">Accessory Name &amp; Description</th>
+            <th class="center" style="width: 10%;">Unit</th>
+            <th class="center" style="width: 8%;">Qty</th>
+            <th class="right" style="width: 12%;">Price</th>
+            <th class="right" style="width: 15%;">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${accessoriesList
+            .map(
+              (acc, idx) => `
+            <tr>
+              <td class="center font-bold">${idx + 1}</td>
+              <td class="center" style="vertical-align: middle;">
+                ${
+                  acc.image
+                    ? `<img src="${acc.image}" alt="${escapeHtml(acc.name)}" style="max-width: 55px; max-height: 55px; object-fit: cover; border-radius: 4px; border: 1px solid #CBD5E1; display: inline-block;" />`
+                    : `<span style="font-size: 7.5pt; color: #94A3B8; font-style: italic;">No Image</span>`
+                }
+              </td>
+              <td>
+                <div class="item-name">${escapeHtml(acc.name)}</div>
+                ${acc.description ? `<div class="item-desc">${escapeHtml(acc.description)}</div>` : ""}
+              </td>
+              <td class="center">${escapeHtml(acc.unit || "Pcs")}</td>
+              <td class="center font-bold">${acc.quantity || 1}</td>
+              <td class="right">${formatINR(acc.price || 0)}</td>
+              <td class="right font-bold">${formatINR(acc.total || (acc.quantity || 1) * (acc.price || 0))}</td>
+            </tr>
+          `,
+            )
+            .join("")}
+        </tbody>
+      </table>`
+      : "";
+
   // Financial calculations
   const p = q.pricing || {};
-  const subtotal = p.subtotal !== undefined ? p.subtotal : computedSubtotal;
-  const handlingAmt = p.handlingFeeAmount || 0;
-  const designAmt = p.designFeeAmount || 0;
+  const accessoriesTotal = p.accessoriesTotal !== undefined
+    ? p.accessoriesTotal
+    : accessoriesList.reduce((sum, a) => sum + (Number(a.total) || (Number(a.quantity) || 1) * (Number(a.price) || 0)), 0);
+  const itemsSubtotal = computedSubtotal;
+  const subtotal = p.subtotal !== undefined ? p.subtotal : (itemsSubtotal + accessoriesTotal);
+  const handlingAmt = p.handlingFeeAmount || Math.round(subtotal * ((p.handlingFeePercent || 0) / 100));
+  const designAmt = p.designFeeAmount || Math.round(subtotal * ((p.designFeePercent || 0) / 100));
+  const transportAmt = p.transportCharges || 0;
   const discountAmt = p.discountAmount || 0;
   const taxable =
     p.taxableAmount !== undefined
       ? p.taxableAmount
-      : subtotal + handlingAmt + designAmt - discountAmt;
+      : subtotal + handlingAmt + designAmt + transportAmt - discountAmt;
   const gstAmt = p.totalGstAmount || 0;
+  const cgst = Math.round(gstAmt / 2);
+  const sgst = gstAmt - cgst;
   const grandTotal =
     p.grandTotal !== undefined ? p.grandTotal : taxable + gstAmt;
 
   // Payment milestones
   const milestones = q.paymentMilestones || [];
+  const milestoneSectionNum = accessoriesList.length > 0 ? "5" : "4";
+  const costSummarySectionNum = accessoriesList.length > 0 ? "6" : "5";
+  const paymentHistorySectionNum = accessoriesList.length > 0 ? "7" : "6";
+  const bankSectionNum = accessoriesList.length > 0 ? "8" : "7";
+
   const milestonesHtml =
     milestones.length > 0
       ? `
-      <div class="section-title">4. Payment Milestones</div>
+      <div class="section-title">${milestoneSectionNum}. Payment Milestones</div>
       <table class="standard-table">
         <thead>
           <tr>
@@ -307,7 +366,7 @@ export function buildQuotationHtml(q) {
   };
 
   const paymentSummaryHtml = `
-    <div class="section-title">6. Payment &amp; Transaction History</div>
+    <div class="section-title">${paymentHistorySectionNum}. Payment &amp; Transaction History</div>
     <table class="standard-table">
       <thead>
         <tr>
@@ -739,57 +798,77 @@ export function buildQuotationHtml(q) {
   </table>
 
   <!-- 3. Items / Scope of Work -->
-  <div class="section-title">3. Items / Scope of Work</div>
+  <div class="section-title">3. Scope &amp; Room Items</div>
   ${roomSectionsHtml}
 
-  <!-- 4. Milestones -->
+  <!-- 4. Accessories -->
+  ${accessoriesHtml}
+
+  <!-- Payment Milestones -->
   ${milestonesHtml}
 
-  <!-- 5. Cost Summary -->
-  <div class="section-title">5. Cost Summary</div>
+  <!-- Cost Summary -->
+  <div class="section-title">${costSummarySectionNum}. Cost Summary</div>
   <div class="summary-container">
     <table class="summary-table">
       <tr>
-        <td>Items Subtotal:</td>
+        <td>Subtotal:</td>
         <td class="right font-bold">${formatINR(subtotal)}</td>
       </tr>
       ${
-        handlingAmt > 0
+        designAmt > 0 || (p.designFeePercent || 0) > 0
           ? `
       <tr>
-        <td>Handling Charges (${p.handlingFeePercent || 2}%):</td>
-        <td class="right">${formatINR(handlingAmt)}</td>
-      </tr>`
-          : ""
-      }
-      ${
-        designAmt > 0
-          ? `
-      <tr>
-        <td>Designing / Consultation Fees (${p.designFeePercent || 2}%):</td>
+        <td>Design Fees (${p.designFeePercent || 0}%):</td>
         <td class="right">${formatINR(designAmt)}</td>
       </tr>`
           : ""
       }
       ${
+        handlingAmt > 0 || (p.handlingFeePercent || 0) > 0
+          ? `
+      <tr>
+        <td>Handling Fees (${p.handlingFeePercent || 0}%):</td>
+        <td class="right">${formatINR(handlingAmt)}</td>
+      </tr>`
+          : ""
+      }
+      <tr>
+        <td>Transportation Charges:</td>
+        <td class="right font-bold">${formatINR(transportAmt)}</td>
+      </tr>
+      ${
         discountAmt > 0
           ? `
       <tr>
-        <td style="color: #059669;">Special Discount:</td>
+        <td style="color: #059669;">Discount:</td>
         <td class="right" style="color: #059669;">-${formatINR(discountAmt)}</td>
       </tr>`
           : ""
       }
       <tr style="border-top: 1px solid #CBD5E1;">
-        <td class="font-bold">Taxable Total:</td>
+        <td class="font-bold">Taxable Amount:</td>
         <td class="right font-bold">${formatINR(taxable)}</td>
       </tr>
+      ${
+        p.gstType === "AS_PER_ACTUAL"
+          ? `
       <tr>
-        <td>GST (${p.gstPercent || 18}% ${p.gstType === "AS_PER_ACTUAL" ? "– As per Actuals" : p.gstType || "CGST+SGST"}):</td>
-        <td class="right" style="${p.gstType === "AS_PER_ACTUAL" ? "color: #2563EB; font-weight: 600;" : ""}">${p.gstType === "AS_PER_ACTUAL" ? "18% – As per Actuals" : formatINR(gstAmt)}</td>
+        <td>GST / Taxes (18% – As per Actuals):</td>
+        <td class="right" style="color: #2563EB; font-weight: 600;">As per Actuals</td>
+      </tr>`
+          : `
+      <tr>
+        <td>CGST (${(p.gstPercent || 18) / 2}%):</td>
+        <td class="right">${formatINR(cgst)}</td>
       </tr>
+      <tr>
+        <td>SGST (${(p.gstPercent || 18) / 2}%):</td>
+        <td class="right">${formatINR(sgst)}</td>
+      </tr>`
+      }
       <tr class="grand-row">
-        <td>ESTIMATED GRAND TOTAL:</td>
+        <td>GRAND TOTAL:</td>
         <td class="right">${formatINR(grandTotal)}</td>
       </tr>
     </table>
@@ -829,12 +908,8 @@ export function buildQuotationHtml(q) {
   <!-- 8. Signature Section -->
   <table class="signature-table">
     <tr>
-      <td class="signature-box">
-        <div class="signature-line">Client Acceptance Signature</div>
-        <div class="signature-sub">Name, Date &amp; Official Seal</div>
-      </td>
-      <td style="width: 10%;"></td>
-      <td class="signature-box" style="text-align: right;">
+      <td style="width: 50%;"></td>
+      <td class="signature-box" style="width: 50%; text-align: right;">
         <div class="signature-line" style="margin-left: auto;">For ${escapeHtml(company.name)}</div>
         <div class="signature-sub">Authorized Signatory</div>
       </td>

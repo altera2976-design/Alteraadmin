@@ -9,19 +9,41 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   // Restore session from localStorage on mount
+  // Restore session from localStorage & verify fresh permissions from backend on mount
   useEffect(() => {
-    const storedToken = localStorage.getItem('ems_token');
-    const storedUser  = localStorage.getItem('ems_user');
-    if (storedToken && storedUser) {
-      try {
+    const restoreSession = async () => {
+      const storedToken = localStorage.getItem('ems_token');
+      const storedUser  = localStorage.getItem('ems_user');
+      if (storedToken) {
         setToken(storedToken);
-        setUser(JSON.parse(storedUser));
-      } catch {
-        localStorage.removeItem('ems_token');
-        localStorage.removeItem('ems_user');
+        if (storedUser) {
+          try {
+            setUser(JSON.parse(storedUser));
+          } catch {}
+        }
+        try {
+          const meRes = await api.get('/auth/me');
+          const freshUser = meRes.data?.user || meRes.data;
+          if (freshUser) {
+            const isSuperEmail = freshUser.email?.toLowerCase() === 'admin@alterainterior.com' || freshUser.email?.toLowerCase() === 'admin@company.com';
+            const effectiveRole = isSuperEmail ? 'SUPER_ADMIN' : (freshUser.role || 'EMPLOYEE');
+            const normalized = { ...freshUser, role: effectiveRole };
+            setUser(normalized);
+            localStorage.setItem('ems_user', JSON.stringify(normalized));
+          }
+        } catch (err) {
+          if (err.response?.status === 401 || err.response?.status === 403) {
+            localStorage.removeItem('ems_token');
+            localStorage.removeItem('ems_user');
+            setToken(null);
+            setUser(null);
+          }
+        }
       }
-    }
-    setLoading(false);
+      setLoading(false);
+    };
+
+    restoreSession();
   }, []);
 
   const login = async (email, password) => {
@@ -35,7 +57,7 @@ export function AuthProvider({ children }) {
       throw new Error('Employee accounts are not permitted to access the Admin Panel.');
     }
     if (effectiveRole !== 'SUPER_ADMIN' && newUser?.isAdminPanelEnabled === false) {
-      throw new Error('Admin Panel access has been disabled for your account. Please contact Super Admin.');
+      throw new Error('Admin Panel access has not been granted by Super Admin.');
     }
 
     localStorage.setItem('ems_token', newToken);

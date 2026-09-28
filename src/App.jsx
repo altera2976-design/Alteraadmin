@@ -79,21 +79,47 @@ export default function App() {
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>
         <Routes>
-          {/* Public Super Admin Login */}
-          <Route path="/login" element={<LoginPage />} />
+          {/* ───────────────────────────────────────────────────────────────── */}
+          {/* 1. SUPER ADMIN PANEL ROUTES (/super-admin/*)                      */}
+          {/* ───────────────────────────────────────────────────────────────── */}
 
-          {/* Protected Super Admin Role Portals & Modules (UNTOUCHED) */}
+          {/* Super Admin Login */}
+          <Route path="/super-admin/login" element={<LoginPage />} />
+          <Route path="/login" element={<Navigate to="/super-admin/login" replace />} />
+
+          {/* Super Admin Master Controls */}
+          <Route path="/super-admin" element={<Navigate to="/super-admin/dashboard" replace />} />
+          <Route path="/super-admin/dashboard" element={<ProtectedRoute superAdminOnly={true} permissionKey="dashboard"><DashboardPage /></ProtectedRoute>} />
+          <Route path="/super-admin/admins" element={<ProtectedRoute superAdminOnly={true}><AdminAccessPage /></ProtectedRoute>} />
+          <Route path="/super-admin/admin-access" element={<ProtectedRoute superAdminOnly={true}><AdminAccessPage /></ProtectedRoute>} />
+          <Route path="/super-admin/employees" element={<ProtectedRoute superAdminOnly={true} permissionKey="administration"><EmployeesPage /></ProtectedRoute>} />
+          <Route path="/super-admin/employees/add" element={<ProtectedRoute superAdminOnly={true} permissionKey="administration"><AddEmployeePage /></ProtectedRoute>} />
+          <Route path="/super-admin/employees/:id" element={<ProtectedRoute superAdminOnly={true} permissionKey="administration"><ViewEmployeePage /></ProtectedRoute>} />
+          <Route path="/super-admin/employees/:id/edit" element={<ProtectedRoute superAdminOnly={true} permissionKey="administration"><EditEmployeePage /></ProtectedRoute>} />
+          <Route path="/super-admin/attendance" element={<ProtectedRoute superAdminOnly={true} permissionKey="attendance"><AttendancePage /></ProtectedRoute>} />
+          <Route path="/super-admin/locations" element={<ProtectedRoute superAdminOnly={true} permissionKey="attendance"><LocationsPage /></ProtectedRoute>} />
+          <Route path="/super-admin/bike-tracking" element={<ProtectedRoute superAdminOnly={true} permissionKey="tracking"><AdminBikeTrackingPage activeTab="live" /></ProtectedRoute>} />
+          <Route path="/super-admin/payroll" element={<ProtectedRoute superAdminOnly={true} permissionKey="salary"><PayrollPage /></ProtectedRoute>} />
+          <Route path="/super-admin/tasks" element={<ProtectedRoute superAdminOnly={true} permissionKey="tasks"><TaskManagementPage /></ProtectedRoute>} />
+          <Route path="/super-admin/crm" element={<ProtectedRoute superAdminOnly={true} permissionKey="crm"><CRMPage /></ProtectedRoute>} />
+          <Route path="/super-admin/transactions" element={<ProtectedRoute superAdminOnly={true} permissionKey="transactions"><TransactionHistoryPage /></ProtectedRoute>} />
+          <Route path="/super-admin/quotations" element={<ProtectedRoute superAdminOnly={true} permissionKey="quotation"><QuotationsPage /></ProtectedRoute>} />
+          <Route path="/super-admin/projects" element={<ProtectedRoute superAdminOnly={true} permissionKey="projects"><ProjectsManagementPage /></ProtectedRoute>} />
+          <Route path="/super-admin/finance" element={<ProtectedRoute superAdminOnly={true} permissionKey="reports"><FinancePage /></ProtectedRoute>} />
+          <Route path="/super-admin/reports" element={<ProtectedRoute superAdminOnly={true} permissionKey="reports"><ReportsPage /></ProtectedRoute>} />
+          <Route path="/super-admin/settings" element={<ProtectedRoute superAdminOnly={true} permissionKey="administration"><AdministrationPage /></ProtectedRoute>} />
+
+          {/* Legacy Super Admin aliases for seamless navigation */}
+          <Route path="/admin-panel" element={<Navigate to="/super-admin/dashboard" replace />} />
           <Route path="/admin-portal" element={<ProtectedRoute permissionKey="dashboard"><AdminPortalPage /></ProtectedRoute>} />
           <Route path="/manager-portal" element={<ProtectedRoute permissionKey="dashboard"><ManagerPortalPage /></ProtectedRoute>} />
           <Route path="/staff-portal" element={<ProtectedRoute permissionKey="dashboard"><StaffPortalPage /></ProtectedRoute>} />
-          <Route path="/admin-panel" element={<ProtectedRoute permissionKey="dashboard"><DashboardPage /></ProtectedRoute>} />
-          <Route path="/dashboard" element={<ProtectedRoute permissionKey="dashboard"><DashboardPage /></ProtectedRoute>} />
+          <Route path="/dashboard" element={<Navigate to="/super-admin/dashboard" replace />} />
           <Route path="/tasks" element={<ProtectedRoute permissionKey="tasks"><TaskManagementPage /></ProtectedRoute>} />
-          <Route path="/super-admin/admin-access" element={<ProtectedRoute superAdminOnly={true}><AdminAccessPage /></ProtectedRoute>} />
-          <Route path="/employees" element={<ProtectedRoute permissionKey="administration"><EmployeesPage /></ProtectedRoute>} />
+          <Route path="/employees" element={<ProtectedRoute superAdminOnly={true} permissionKey="administration"><EmployeesPage /></ProtectedRoute>} />
           <Route path="/attendance" element={<ProtectedRoute permissionKey="attendance"><AttendancePage /></ProtectedRoute>} />
           <Route path="/locations" element={<ProtectedRoute permissionKey="attendance"><LocationsPage /></ProtectedRoute>} />
-          <Route path="/payroll" element={<ProtectedRoute permissionKey="salary"><PayrollPage /></ProtectedRoute>} />
+          <Route path="/payroll" element={<ProtectedRoute superAdminOnly={true} permissionKey="salary"><PayrollPage /></ProtectedRoute>} />
           <Route path="/crm" element={<ProtectedRoute permissionKey="crm"><CRMPage /></ProtectedRoute>} />
           <Route path="/transactions" element={<ProtectedRoute permissionKey="transactions"><TransactionHistoryPage /></ProtectedRoute>} />
           <Route path="/quotations" element={<ProtectedRoute permissionKey="quotation"><QuotationsPage /></ProtectedRoute>} />
@@ -101,12 +127,9 @@ export default function App() {
           <Route path="/finance" element={<ProtectedRoute permissionKey="reports"><FinancePage /></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute permissionKey="reports"><ReportsPage /></ProtectedRoute>} />
           <Route path="/administration" element={<ProtectedRoute permissionKey="administration"><AdministrationPage /></ProtectedRoute>} />
-          <Route path="/employees/add" element={<ProtectedRoute permissionKey="administration"><AddEmployeePage /></ProtectedRoute>} />
-          <Route path="/employees/:id" element={<ProtectedRoute permissionKey="administration"><ViewEmployeePage /></ProtectedRoute>} />
-          <Route path="/employees/:id/edit" element={<ProtectedRoute permissionKey="administration"><EditEmployeePage /></ProtectedRoute>} />
 
           {/* ───────────────────────────────────────────────────────────────── */}
-          {/* SEPARATE ADMIN PORTAL ROUTES (/admin/*)                          */}
+          {/* 2. SEPARATE ADMIN PANEL ROUTES (/admin/*)                         */}
           {/* ───────────────────────────────────────────────────────────────── */}
 
           {/* Admin Login */}
@@ -137,6 +160,9 @@ export default function App() {
           <Route path="/admin/bike-tracking" element={<AdminProtectedRoute permissionKey="tracking"><AdminBikeTrackingPage activeTab="live" /></AdminProtectedRoute>} />
           <Route path="/admin/bike-tracking/live" element={<AdminProtectedRoute permissionKey="tracking"><AdminBikeTrackingPage activeTab="live" /></AdminProtectedRoute>} />
           <Route path="/admin/bike-tracking/history" element={<AdminProtectedRoute permissionKey="tracking"><AdminBikeTrackingPage activeTab="history" /></AdminProtectedRoute>} />
+
+          {/* Admin Tasks */}
+          <Route path="/admin/tasks" element={<AdminProtectedRoute permissionKey="tasks"><TaskManagementPage /></AdminProtectedRoute>} />
 
           {/* Admin Transactions */}
           <Route path="/admin/transactions" element={<AdminProtectedRoute permissionKey="transactions"><AdminTransactionsPage /></AdminProtectedRoute>} />
@@ -175,9 +201,9 @@ export default function App() {
           <Route path="/admin/403" element={<Admin403 />} />
           <Route path="/admin/*" element={<Admin404 />} />
 
-          {/* Default redirect for Super Admin / Root */}
-          <Route path="/" element={<Navigate to="/admin-panel" replace />} />
-          <Route path="*" element={<Navigate to="/admin-panel" replace />} />
+          {/* Default redirect to Super Admin Panel */}
+          <Route path="/" element={<Navigate to="/super-admin/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/super-admin/dashboard" replace />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

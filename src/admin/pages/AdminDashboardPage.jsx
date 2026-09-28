@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback, memo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import AdminAppLayout from '../layouts/AdminAppLayout';
-import api from '../../services/api';
-
-const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-const SOCKET_URL = (import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5001' : 'https://alterabackend.onrender.com')).replace('/api', '');
+import api, { SOCKET_URL } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 const Card = memo(function Card({ title, value, color, badge, onClick }) {
   return (
@@ -24,6 +23,10 @@ const Card = memo(function Card({ title, value, color, badge, onClick }) {
 });
 
 export default function AdminDashboardPage() {
+  const { user, isSuperAdmin } = useAuth();
+  const navigate = useNavigate();
+  const isSuper = isSuperAdmin || user?.role === 'SUPER_ADMIN';
+
   const [stats, setStats] = useState(null);
   const [txnSummary, setTxnSummary] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -138,38 +141,88 @@ export default function AdminDashboardPage() {
   const pendingOfferLetters = stats?.pendingOfferLetters || 0;
   const totalTransactionsCount = txnSummary?.totalCompletedCount || 0;
   const totalReceivedAmount = txnSummary?.completedTotalAmount || 0;
+  const upcomingTasks = stats?.upcomingTasks || [];
+
+  const getDynamicGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+  const greetingMessage = `${getDynamicGreeting()}, ${user?.name || 'Administrator'}`;
+
+  const hasPerm = (key, altKey) => {
+    if (isSuper) return true;
+    const check = (k) => {
+      if (!k) return undefined;
+      const val = user?.permissions?.[k];
+      if (typeof val === 'boolean') return val;
+      if (typeof val === 'object' && val !== null) {
+        if (val.view === false) return false;
+        if (val.view === true) return true;
+        return Object.values(val).some((v) => v === true);
+      }
+      return undefined;
+    };
+    const r1 = check(key);
+    if (r1 !== undefined) return r1;
+    const r2 = altKey ? check(altKey) : undefined;
+    if (r2 !== undefined) return r2;
+    return true;
+  };
 
   return (
     <AdminAppLayout title="Dashboard Overview">
-      {/* Action Bar / Controls */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-        <div>
-          <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', margin: 0 }}>Executive Overview</h2>
-          <p style={{ fontSize: 12, color: '#64748B', margin: '2px 0 0 0' }}>Real-time company metrics, attendance, sales &amp; financial operations</p>
+      <div style={styles.dashboardContainer}>
+        {/* Dynamic Greeting Header Banner */}
+        <div style={styles.greetingBanner}>
+          <div>
+            <h1 style={styles.greetingTitle}>{greetingMessage} 👋</h1>
+            <p style={styles.greetingSub}>Real-time company metrics, attendance, sales &amp; financial operations</p>
+          </div>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <button
+              onClick={() => fetchDashboardData(false)}
+              disabled={refreshing}
+              style={styles.refreshBtn}
+            >
+              {refreshing ? '🔄 Syncing...' : '🔄 Refresh Data'}
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => fetchDashboardData(false)}
-          disabled={refreshing}
-          style={styles.refreshBtn}
-        >
-          {refreshing ? '🔄 Syncing...' : '🔄 Refresh Data'}
-        </button>
-      </div>
 
-      {/* 12 Metric KPI Cards */}
-      <div style={styles.grid10}>
-        <Card title="Total Employees" value={totalEmp} color="#2563EB" badge="Active Staff" />
-        <Card title="Present Today" value={presentToday} color="#10B981" badge="Checked In" />
-        <Card title="Absent Today" value={absentToday} color="#EF4444" badge="Not In Office" />
-        <Card title="Late Today" value={lateToday} color="#F59E0B" badge="Late Check-in" />
-        <Card title="Attendance %" value={`${attendancePct}%`} color="#8B5CF6" badge="Today Ratio" />
-        <Card title="Total Payroll" value={`₹${totalPayroll.toLocaleString('en-IN')}`} color="#059669" badge="Salary Paid/Due" />
-        <Card title="Total Transactions" value={`₹${totalReceivedAmount.toLocaleString('en-IN')}`} color="#0288D1" badge={`${totalTransactionsCount} Completed`} />
-        <Card title="Total Leads" value={totalLeads} color="#3B82F6" badge="CRM Pipeline" />
-        <Card title="Pending Quotations" value={pendingQuotations} color="#D97706" badge="Awaiting Approval" />
-        <Card title="Active Bike Tracking" value={activeBikeTracking} color="#EC4899" badge="Live Trips" />
-        <Card title="Pending Offer Letters" value={pendingOfferLetters} color="#6366F1" badge="In Draft/Sent" />
-      </div>
+        {/* Dynamic Permission-Based Metric KPI Cards */}
+        <div style={styles.grid10}>
+          {hasPerm('employees', 'administration') && (
+            <Card title="Total Employees" value={totalEmp} color="#2563EB" badge="Active Staff" onClick={() => navigate('/admin/employees')} />
+          )}
+          {hasPerm('attendance') && (
+            <>
+              <Card title="Present Today" value={presentToday} color="#10B981" badge="Checked In" />
+              <Card title="Absent Today" value={absentToday} color="#EF4444" badge="Not In Office" />
+              <Card title="Late Today" value={lateToday} color="#F59E0B" badge="Late Check-in" />
+              <Card title="Attendance %" value={`${attendancePct}%`} color="#8B5CF6" badge="Today Ratio" />
+            </>
+          )}
+          {hasPerm('payroll', 'salary') && (
+            <Card title="Total Payroll" value={`₹${totalPayroll.toLocaleString('en-IN')}`} color="#059669" badge="Salary Paid/Due" onClick={() => navigate('/admin/payroll')} />
+          )}
+          {hasPerm('transactions') && (
+            <Card title="Total Transactions" value={`₹${totalReceivedAmount.toLocaleString('en-IN')}`} color="#0288D1" badge={`${totalTransactionsCount} Completed`} />
+          )}
+          {hasPerm('crm') && (
+            <Card title="Total Leads" value={totalLeads} color="#3B82F6" badge="CRM Pipeline" />
+          )}
+          {hasPerm('quotations', 'quotation') && (
+            <Card title="Pending Quotations" value={pendingQuotations} color="#D97706" badge="Awaiting Approval" />
+          )}
+          {hasPerm('tracking', 'bikeTracking') && (
+            <Card title="Active Bike Tracking" value={activeBikeTracking} color="#EC4899" badge="Live Trips" onClick={() => navigate('/admin/bike-tracking')} />
+          )}
+          {hasPerm('offer_letters', 'offerLetters') && (
+            <Card title="Pending Offer Letters" value={pendingOfferLetters} color="#6366F1" badge="In Draft/Sent" />
+          )}
+        </div>
 
       {/* Analytics & Charts Summary Section */}
       <div style={styles.sectionTitle}>Analytics &amp; Statistics</div>
@@ -346,11 +399,40 @@ export default function AdminDashboardPage() {
           </div>
         </div>
       </div>
-    </AdminAppLayout>
+    </div>
+  </AdminAppLayout>
   );
 }
 
 const styles = {
+  dashboardContainer: {
+    background: 'linear-gradient(135deg, rgba(248,250,252,0.95) 0%, rgba(241,245,249,0.95) 100%)',
+    borderRadius: 16,
+    padding: 20,
+    boxShadow: '0 1px 4px rgba(0,0,0,0.02)',
+  },
+  greetingBanner: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    background: '#FFFFFF',
+    padding: '16px 20px',
+    borderRadius: 12,
+    border: '1px solid #E2E8F0',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+  },
+  greetingTitle: {
+    fontSize: 20,
+    fontWeight: 800,
+    color: '#0F172A',
+    margin: 0,
+  },
+  greetingSub: {
+    fontSize: 12.5,
+    color: '#64748B',
+    margin: '3px 0 0 0',
+  },
   refreshBtn: {
     background: '#FFFFFF',
     color: '#334155',

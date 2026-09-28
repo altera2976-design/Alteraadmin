@@ -16,11 +16,14 @@ export default function ProtectedRoute({ children, superAdminOnly = false, permi
     return <Navigate to="/login" replace />;
   }
 
-  if (superAdminOnly && !isSuperAdmin) {
+  const isUserSuperAdmin = isSuperAdmin || user?.role === 'SUPER_ADMIN';
+  const requiresSuperAdmin = superAdminOnly || ['employees', 'payroll', 'salary', 'tracking'].includes(permissionKey);
+
+  if (requiresSuperAdmin && !isUserSuperAdmin) {
     return <Navigate to="/admin-panel" replace />;
   }
 
-  if (permissionKey && !isSuperAdmin && user?.permissions && user.permissions[permissionKey] === false) {
+  if (permissionKey && !isUserSuperAdmin && user?.permissions && user.permissions[permissionKey] === false) {
     return <Navigate to="/admin-panel" replace />;
   }
 

@@ -11,6 +11,10 @@ const API_URL = isLocal
   ? "http://localhost:5001/api"
   : (import.meta.env.VITE_API_URL || "http://localhost:5001/api");
 
+export const SOCKET_URL = isLocal
+  ? "http://localhost:5001"
+  : (import.meta.env.VITE_API_URL || "http://localhost:5001/api").replace("/api", "");
+
 const api = axios.create({
   baseURL: API_URL,
   headers: { "Content-Type": "application/json" },
@@ -20,9 +24,17 @@ const api = axios.create({
 // ── Request interceptor: attach JWT token ─────────────────────────────────
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("ems_token");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    const isAuthRoute =
+      config.url?.includes("/auth/login") ||
+      config.url?.includes("/auth/register") ||
+      config.url?.includes("/auth/forgot-password") ||
+      config.url?.includes("/auth/reset-password") ||
+      config.url?.includes("/auth/google");
+    if (!isAuthRoute) {
+      const token = localStorage.getItem("ems_token");
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
     return config;
   },

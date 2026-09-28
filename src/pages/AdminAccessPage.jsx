@@ -1,19 +1,27 @@
 import { useEffect, useState } from 'react';
+import { io } from 'socket.io-client';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
 import AdminLayout from '../layouts/AdminLayout';
-import api from '../services/api';
+import api, { SOCKET_URL } from '../services/api';
 
 const GRANULAR_MODULES = [
   { key: 'dashboard', label: 'Dashboard', actions: ['view'] },
-  { key: 'tasks', label: 'Task Assign', actions: ['view', 'create', 'edit', 'delete', 'assign'] },
-  { key: 'crm', label: 'CRM Management', actions: ['view', 'create', 'edit', 'delete', 'export'] },
-  { key: 'projects', label: 'Projects Management', actions: ['view', 'create', 'edit', 'delete', 'export'] },
-  { key: 'salary', label: 'Salary & Payroll', actions: ['view', 'create', 'edit', 'export'] },
-  { key: 'attendance', label: 'Attendance & Timesheets', actions: ['view', 'create', 'edit', 'export'] },
-  { key: 'quotation', label: 'Quotations & Estimates', actions: ['view', 'create', 'edit', 'delete', 'export'] },
-  { key: 'reports', label: 'Reports & Analytics', actions: ['view', 'export'] },
+  { key: 'employees', label: 'Employees', actions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'attendance', label: 'Attendance', actions: ['view', 'create', 'edit', 'export'] },
+  { key: 'tracking', label: 'Bike Tracking', actions: ['view', 'export'] },
+  { key: 'payroll', label: 'Payroll', actions: ['view', 'create', 'edit', 'export'] },
+  { key: 'tasks', label: 'Tasks', actions: ['view', 'create', 'edit', 'delete', 'assign'] },
+  { key: 'crm', label: 'CRM', actions: ['view', 'create', 'edit', 'delete', 'export'] },
+  { key: 'quotation', label: 'Quotations', actions: ['view', 'create', 'edit', 'delete', 'export'] },
+  { key: 'reports', label: 'Reports', actions: ['view', 'export'] },
   { key: 'notifications', label: 'Notifications', actions: ['view', 'create'] },
+  { key: 'remarks', label: 'Remarks', actions: ['view', 'create', 'edit'] },
+  { key: 'overtime', label: 'Overtime', actions: ['view', 'edit'] },
+  { key: 'salary', label: 'Salary', actions: ['view', 'edit'] },
+  { key: 'transactions', label: 'Transactions', actions: ['view', 'create', 'edit', 'delete', 'export'] },
+  { key: 'profile', label: 'Profile', actions: ['view', 'edit'] },
+  { key: 'projects', label: 'Projects Management', actions: ['view', 'create', 'edit', 'delete', 'export'] },
   { key: 'administration', label: 'System Settings', actions: ['view', 'edit'] },
 ];
 
@@ -90,6 +98,22 @@ export default function AdminAccessPage() {
   useEffect(() => {
     if (isAdminUser) {
       fetchAdminUsers();
+
+      let socket;
+      try {
+        socket = io(SOCKET_URL, { autoConnect: true, reconnectionAttempts: 5 });
+
+        const handleUpdate = () => fetchAdminUsers();
+        socket.on('user_registered', handleUpdate);
+        socket.on('dashboard_updated', handleUpdate);
+        socket.on('employee_updated', handleUpdate);
+      } catch (err) {
+        console.warn('Socket connection error on AdminAccessPage:', err);
+      }
+
+      return () => {
+        if (socket) socket.disconnect();
+      };
     }
   }, [isAdminUser]);
 

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import AdminAppLayout from '../layouts/AdminAppLayout';
 
-export default function Admin403({ message = "You do not have authorization to view this page or perform this action." }) {
+export default function Admin403({ message = "Access Denied — You don't have permission to access this module." }) {
   return (
     <AdminAppLayout title="403 Access Denied">
       <div style={{

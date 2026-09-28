@@ -1,18 +1,8 @@
 import { useEffect, useState } from "react";
 import { io } from "socket.io-client";
 import AdminLayout from "../layouts/AdminLayout";
-import api from "../services/api";
-
-const isLocal =
-  typeof window !== "undefined" &&
-  (window.location.hostname === "localhost" ||
-    window.location.hostname === "127.0.0.1");
-const API_BASE = (
-  import.meta.env.VITE_API_URL ||
-  (isLocal
-    ? "http://localhost:5001/api"
-    : "https://alterabackend.onrender.com/api")
-).replace("/api", "");
+import api, { SOCKET_URL } from "../services/api";
+const API_BASE = SOCKET_URL;
 
 export default function AttendancePage() {
   const [activeTab, setActiveTab] = useState("daily"); // 'daily' | 'monthly' | 'geofence'

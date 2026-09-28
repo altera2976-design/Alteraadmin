@@ -3,18 +3,18 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const NAV_ITEMS = [
-  { to: "/dashboard", label: "Dashboard", key: "dashboard", icon: "📊" },
-  { to: "/tasks", label: "Task Assign", key: "tasks", icon: "📋" },
-  { to: "/crm", label: "CRM", key: "crm", icon: "👥" },
-  { to: "/super-admin/admin-access", label: "Admin Access", superAdminOnly: true, icon: "🛡️" },
-  { to: "/projects", label: "Projects", key: "projects", icon: "📁" },
-  { to: "/payroll", label: "Salary", key: "salary", icon: "💰" },
-  { to: "/attendance", label: "Attendance", key: "attendance", icon: "📅" },
-  { to: "/transactions", label: "Transactions", key: "transactions", icon: "💳" },
-  { to: "/quotations", label: "Quotation", key: "quotation", icon: "🧾" },
-  { to: "/admin/offer-letters", label: "Offer Letters", key: "offer_letters", icon: "📄" },
-  { to: "/admin/reports", label: "Reports", key: "reports", icon: "📈" },
-  { to: "/administration", label: "Settings", key: "administration", icon: "⚙️" },
+  { to: "/super-admin/dashboard", label: "Super Admin Dashboard", key: "dashboard", icon: "👑" },
+  { to: "/super-admin/admins", label: "Admin Management", key: "admins", superAdminOnly: true, icon: "🛡️" },
+  { to: "/super-admin/employees", label: "Employees", key: "employees", superAdminOnly: true, icon: "👥" },
+  { to: "/super-admin/attendance", label: "Attendance", key: "attendance", icon: "📅" },
+  { to: "/super-admin/bike-tracking", label: "Bike Tracking", key: "tracking", superAdminOnly: true, icon: "🏍️" },
+  { to: "/super-admin/payroll", label: "Salary & Payroll", key: "salary", superAdminOnly: true, icon: "💰" },
+  { to: "/super-admin/tasks", label: "Tasks", key: "tasks", icon: "📋" },
+  { to: "/super-admin/crm", label: "CRM", key: "crm", icon: "👥" },
+  { to: "/super-admin/quotations", label: "Quotations", key: "quotation", icon: "🧾" },
+  { to: "/super-admin/projects", label: "Projects", key: "projects", icon: "📁" },
+  { to: "/super-admin/reports", label: "Reports", key: "reports", icon: "📈" },
+  { to: "/super-admin/settings", label: "System Settings", key: "administration", icon: "⚙️" },
 ];
 
 export default function AdminLayout({ children, title }) {
@@ -39,10 +39,10 @@ export default function AdminLayout({ children, title }) {
   const isMobile = windowWidth < 768;
 
   const filteredNavItems = NAV_ITEMS.filter((item) => {
-    if (item.superAdminOnly) {
-      return isSuperAdmin;
+    if (item.superAdminOnly || ['employees', 'payroll', 'salary', 'tracking'].includes(item.key)) {
+      return isSuperAdmin || user?.role === 'SUPER_ADMIN';
     }
-    if (isSuperAdmin) {
+    if (isSuperAdmin || user?.role === 'SUPER_ADMIN') {
       return true;
     }
     if (user?.permissions && item.key) {
@@ -52,8 +52,8 @@ export default function AdminLayout({ children, title }) {
   });
 
   const handleLogout = () => {
-    if (window.confirm("Are you sure you want to logout?")) {
-      logout();
+    if (window.confirm("Are you sure you want to sign out from Super Admin Panel?")) {
+      logout('/super-admin/login');
     }
   };
 
