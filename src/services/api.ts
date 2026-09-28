@@ -17,9 +17,17 @@ const api = axios.create({
 api.interceptors.request.use(
   async (config) => {
     try {
-      const token = await SecureStore.getItemAsync(STORAGE_KEYS.TOKEN);
-      if (token && config.headers) {
-        config.headers.Authorization = `Bearer ${token}`;
+      const isAuthRoute =
+        config.url?.includes('/auth/login') ||
+        config.url?.includes('/auth/register') ||
+        config.url?.includes('/auth/forgot-password') ||
+        config.url?.includes('/auth/reset-password') ||
+        config.url?.includes('/auth/google');
+      if (!isAuthRoute) {
+        const token = await SecureStore.getItemAsync(STORAGE_KEYS.TOKEN);
+        if (token && config.headers) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
       }
     } catch (err) {
       console.log('⚠️ SecureStore access warning during request:', err);

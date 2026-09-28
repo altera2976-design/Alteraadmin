@@ -1,23 +1,23 @@
-import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system/legacy';
-import { PayrollRecord } from './payrollService';
-import { COMPANY_LOGO_DATA_URL } from '../constants/companyLogo';
+import * as FileSystem from "expo-file-system/legacy";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
+import { COMPANY_LOGO_DATA_URL } from "../constants/companyLogo";
+import { PayrollRecord } from "./payrollService";
 
 export function formatINR(val: number | undefined): string {
-  if (val === undefined || isNaN(val)) return '₹0';
+  if (val === undefined || isNaN(val)) return "₹0";
   const isNeg = val < 0;
   const absVal = Math.abs(val);
-  return `${isNeg ? '-' : ''}₹${absVal.toLocaleString('en-IN')}`;
+  return `${isNeg ? "-" : ""}₹${absVal.toLocaleString("en-IN")}`;
 }
 
 function escapeHtml(str: any): string {
-  if (str === null || str === undefined) return '';
+  if (str === null || str === undefined) return "";
   return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 /**
@@ -42,6 +42,7 @@ export function buildPayslipHtml(payroll: PayrollRecord, emp: any): string {
     esi: 0,
     profTax: 0,
     tds: 0,
+    advance: 0,
     otherDeductions: 0,
     totalDeductions: 0,
   };
@@ -61,15 +62,15 @@ export function buildPayslipHtml(payroll: PayrollRecord, emp: any): string {
   };
 
   const payment = payroll.payment || {
-    paymentStatus: 'PENDING',
-    paymentMethod: 'PENDING',
-    transactionId: '',
+    paymentStatus: "PENDING",
+    paymentMethod: "PENDING",
+    transactionId: "",
   };
 
-  const empName = emp?.name || payroll.employee?.name || 'Employee';
-  const empId = emp?.employeeId || payroll.employee?.employeeId || '—';
-  const dept = emp?.department || payroll.employee?.department || 'General';
-  const desig = emp?.designation || payroll.employee?.designation || 'Staff';
+  const empName = emp?.name || payroll.employee?.name || "Employee";
+  const empId = emp?.employeeId || payroll.employee?.employeeId || "—";
+  const dept = emp?.department || payroll.employee?.department || "General";
+  const desig = emp?.designation || payroll.employee?.designation || "Staff";
 
   return `
     <!DOCTYPE html>
@@ -278,7 +279,7 @@ export function buildPayslipHtml(payroll: PayrollRecord, emp: any): string {
         <div class="meta-box">
           <div class="meta-title">SALARY PAYSLIP</div>
           <div class="meta-period">${escapeHtml(payroll.month)}</div>
-          <div class="meta-time">Generated: ${new Date().toLocaleDateString('en-IN')}</div>
+          <div class="meta-time">Generated: ${new Date().toLocaleDateString("en-IN")}</div>
         </div>
       </div>
 
@@ -347,21 +348,33 @@ export function buildPayslipHtml(payroll: PayrollRecord, emp: any): string {
               <td>Special & Travel Allowances</td>
               <td class="amount-col">${formatINR(earnings.allowances)}</td>
             </tr>
-            ${earnings.overtimeAmount > 0 ? `
+            ${
+              earnings.overtimeAmount > 0
+                ? `
             <tr>
               <td>Overtime (${att.overtimeHours} hrs @ ₹${earnings.overtimeRate}/hr)</td>
               <td class="amount-col">${formatINR(earnings.overtimeAmount)}</td>
-            </tr>` : ''}
-            ${earnings.bonus > 0 ? `
+            </tr>`
+                : ""
+            }
+            ${
+              earnings.bonus > 0
+                ? `
             <tr>
               <td>Incentive / Bonus</td>
               <td class="amount-col">${formatINR(earnings.bonus)}</td>
-            </tr>` : ''}
-            ${earnings.otherEarnings > 0 ? `
+            </tr>`
+                : ""
+            }
+            ${
+              earnings.otherEarnings > 0
+                ? `
             <tr>
               <td>Other Earnings</td>
               <td class="amount-col">${formatINR(earnings.otherEarnings)}</td>
-            </tr>` : ''}
+            </tr>`
+                : ""
+            }
             <tr class="subtotal-row">
               <td>Total Gross Earnings</td>
               <td class="amount-col">${formatINR(earnings.grossSalary)}</td>
@@ -373,41 +386,78 @@ export function buildPayslipHtml(payroll: PayrollRecord, emp: any): string {
         <div class="salary-col">
           <div class="col-header">Deductions</div>
           <table>
-            ${deductions.unpaidLeaveDeduction > 0 ? `
+            ${
+              deductions.unpaidLeaveDeduction > 0
+                ? `
             <tr>
               <td>Unpaid Absence Deduction (${att.unpaidLeave} days)</td>
               <td class="amount-col" style="color:#EF4444;">${formatINR(deductions.unpaidLeaveDeduction)}</td>
-            </tr>` : ''}
-            ${deductions.halfDayDeduction > 0 ? `
+            </tr>`
+                : ""
+            }
+            ${
+              deductions.halfDayDeduction > 0
+                ? `
             <tr>
               <td>Half-Day Deduction (${att.halfDays} half-days)</td>
               <td class="amount-col" style="color:#EF4444;">${formatINR(deductions.halfDayDeduction)}</td>
-            </tr>` : ''}
-            ${deductions.pf > 0 ? `
+            </tr>`
+                : ""
+            }
+            ${
+              deductions.pf > 0
+                ? `
             <tr>
               <td>Provident Fund (PF)</td>
               <td class="amount-col">${formatINR(deductions.pf)}</td>
-            </tr>` : ''}
-            ${deductions.esi > 0 ? `
+            </tr>`
+                : ""
+            }
+            ${
+              deductions.esi > 0
+                ? `
             <tr>
               <td>ESI Contribution</td>
               <td class="amount-col">${formatINR(deductions.esi)}</td>
-            </tr>` : ''}
-            ${deductions.profTax > 0 ? `
+            </tr>`
+                : ""
+            }
+            ${
+              deductions.profTax > 0
+                ? `
             <tr>
               <td>Professional Tax (PT)</td>
               <td class="amount-col">${formatINR(deductions.profTax)}</td>
-            </tr>` : ''}
-            ${deductions.tds > 0 ? `
+            </tr>`
+                : ""
+            }
+            ${
+              deductions.tds > 0
+                ? `
             <tr>
               <td>Tax Deducted at Source (TDS)</td>
               <td class="amount-col">${formatINR(deductions.tds)}</td>
-            </tr>` : ''}
-            ${deductions.otherDeductions > 0 ? `
+            </tr>`
+                : ""
+            }
+            ${
+              deductions.advance && deductions.advance > 0
+                ? `
+            <tr>
+              <td>Salary Advance</td>
+              <td class="amount-col" style="color:#EF4444;">${formatINR(deductions.advance)}</td>
+            </tr>`
+                : ""
+            }
+            ${
+              deductions.otherDeductions > 0
+                ? `
             <tr>
               <td>Other Deductions</td>
               <td class="amount-col">${formatINR(deductions.otherDeductions)}</td>
-            </tr>` : ''}
+            </tr>`
+                : ""
+            }
             <tr class="subtotal-row">
               <td>Total Deductions</td>
               <td class="amount-col" style="color:#EF4444;">${formatINR(deductions.totalDeductions)}</td>
@@ -420,7 +470,7 @@ export function buildPayslipHtml(payroll: PayrollRecord, emp: any): string {
         <div>
           <div class="net-pay-title">Net Take-Home Salary</div>
           <div style="font-size: 11px; color: #94A3B8; margin-top: 4px;">
-            ${payroll.proRata?.isProRata ? escapeHtml(payroll.proRata.notes) : 'Standard Full Month Cycle'}
+            ${payroll.proRata?.isProRata ? escapeHtml(payroll.proRata.notes) : "Standard Full Month Cycle"}
           </div>
         </div>
         <div class="net-pay-val">${formatINR(payroll.netSalary)}</div>
@@ -429,15 +479,15 @@ export function buildPayslipHtml(payroll: PayrollRecord, emp: any): string {
       <div class="payment-info">
         <div>
           <strong>Status:</strong>
-          <span class="badge ${payroll.status === 'PAID' ? 'badge-paid' : 'badge-pending'}">
+          <span class="badge ${payroll.status === "PAID" ? "badge-paid" : "badge-pending"}">
             ${escapeHtml(payroll.status)}
           </span>
         </div>
         <div>
-          <strong>Payment Mode:</strong> ${escapeHtml(payment.paymentMethod || 'Direct Deposit')}
+          <strong>Payment Mode:</strong> ${escapeHtml(payment.paymentMethod || "Direct Deposit")}
         </div>
         <div>
-          <strong>Transaction Ref:</strong> ${escapeHtml(payment.transactionId || 'Pending Disbursal')}
+          <strong>Transaction Ref:</strong> ${escapeHtml(payment.transactionId || "Pending Disbursal")}
         </div>
       </div>
 
@@ -455,15 +505,20 @@ export function buildPayslipHtml(payroll: PayrollRecord, emp: any): string {
  */
 export async function generatePayslipPdf(
   payroll: PayrollRecord,
-  employee: any
+  employee: any,
 ): Promise<{ uri: string; base64: string; filename: string }> {
   const html = buildPayslipHtml(payroll, employee);
-  const cleanName = (employee?.name || payroll.employee?.name || 'Employee').replace(/[^a-zA-Z0-9]/g, '_');
+  const cleanName = (
+    employee?.name ||
+    payroll.employee?.name ||
+    "Employee"
+  ).replace(/[^a-zA-Z0-9]/g, "_");
   const filename = `Payslip_${cleanName}_${payroll.month}.pdf`;
 
   const { uri, base64 } = await Print.printToFileAsync({ html, base64: true });
 
-  const baseDir = FileSystem.documentDirectory || FileSystem.cacheDirectory || '';
+  const baseDir =
+    FileSystem.documentDirectory || FileSystem.cacheDirectory || "";
   const destUri = baseDir ? `${baseDir}${filename}` : uri;
   if (base64 && baseDir) {
     try {
@@ -475,7 +530,7 @@ export async function generatePayslipPdf(
     }
   }
 
-  return { uri: destUri, base64: base64 ?? '', filename };
+  return { uri: destUri, base64: base64 ?? "", filename };
 }
 
 /**
@@ -483,14 +538,14 @@ export async function generatePayslipPdf(
  */
 export async function downloadPayslipPdf(
   payroll: PayrollRecord,
-  employee: any
+  employee: any,
 ): Promise<void> {
   const { uri, filename } = await generatePayslipPdf(payroll, employee);
 
   if (await Sharing.isAvailableAsync()) {
     await Sharing.shareAsync(uri, {
-      mimeType: 'application/pdf',
-      UTI: 'com.adobe.pdf',
+      mimeType: "application/pdf",
+      UTI: "com.adobe.pdf",
       dialogTitle: `Download ${filename}`,
     });
   }

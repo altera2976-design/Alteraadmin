@@ -97,6 +97,7 @@ export interface Task {
   dueDate?: string;
   status: 'To Do' | 'In Progress' | 'Blocked' | 'Completed';
   progress: number;
+  pdfUrl?: string;
   comments?: Array<{
     _id?: string;
     authorId: string;
@@ -308,6 +309,11 @@ export const projectApi = {
 
     const queryString = query.toString() ? `?${query.toString()}` : '';
     const res = await api.get(`/tasks${queryString}`);
+    return res.data;
+  },
+
+  getMyTasks: async (): Promise<{ success: boolean; count: number; data: Task[] }> => {
+    const res = await api.get('/tasks/my-tasks');
     return res.data;
   },
 

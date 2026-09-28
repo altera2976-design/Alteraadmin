@@ -158,7 +158,12 @@ export function buildQuotationHtml(q: any): string {
         const baseAmt = Math.round((it.quantity || 1) * (it.rate || 0));
         const accTotal = (it.accessories || []).reduce(
           (sum: number, a: any) => {
-            if (a.name && it.name && a.name.trim().toLowerCase() === it.name.trim().toLowerCase()) return sum;
+            if (
+              a.name &&
+              it.name &&
+              a.name.trim().toLowerCase() === it.name.trim().toLowerCase()
+            )
+              return sum;
             return (
               sum +
               (a.cost !== undefined
@@ -174,10 +179,7 @@ export function buildQuotationHtml(q: any): string {
           : expected;
       };
 
-      const roomTotal = items.reduce(
-        (acc, it) => acc + getItemAmt(it),
-        0,
-      );
+      const roomTotal = items.reduce((acc, it) => acc + getItemAmt(it), 0);
       computedSubtotal += roomTotal;
 
       const itemRows = items
@@ -193,8 +195,8 @@ export function buildQuotationHtml(q: any): string {
           const specsHtml =
             specEntries.length > 0
               ? `<div class="item-specs"><strong>Specifications:</strong> ${specEntries
-                    .map(([k, v]) => `${esc(k)}: ${esc(v)}`)
-                    .join(" | ")}</div>`
+                  .map(([k, v]) => `${esc(k)}: ${esc(v)}`)
+                  .join(" | ")}</div>`
               : "";
 
           // Accessories list
@@ -202,13 +204,14 @@ export function buildQuotationHtml(q: any): string {
           const accsHtml =
             accs.length > 0
               ? `<div class="item-accs"><strong>Accessories:</strong> ${accs
-                    .map((a: any) => {
-                      const qty = a.qty || 1;
-                      const unitPrice = a.unitPrice || (a.cost ? Math.round(a.cost / qty) : 0);
-                      const totalCost = a.cost || qty * unitPrice;
-                      return `${esc(a.name)} (Qty: ${qty}, Unit Price: ${inr(unitPrice)}, Total: ${inr(totalCost)})`;
-                    })
-                    .join("; ")}</div>`
+                  .map((a: any) => {
+                    const qty = a.qty || 1;
+                    const unitPrice =
+                      a.unitPrice || (a.cost ? Math.round(a.cost / qty) : 0);
+                    const totalCost = a.cost || qty * unitPrice;
+                    return `${esc(a.name)} (Qty: ${qty}, Unit Price: ${inr(unitPrice)}, Total: ${inr(totalCost)})`;
+                  })
+                  .join("; ")}</div>`
               : "";
 
           // Dimension info
@@ -265,10 +268,67 @@ export function buildQuotationHtml(q: any): string {
     })
     .join("");
 
+  // ── Standalone Accessories ─────────────────────────────────────────────
+  const standaloneAccessories = Array.isArray(q.standaloneAccessories)
+    ? q.standaloneAccessories
+    : [];
+  const accessoriesTotal = standaloneAccessories.reduce(
+    (sum: number, a: any) =>
+      sum +
+      (Number(a.total) || (Number(a.quantity) || 1) * (Number(a.price) || 0)),
+    0,
+  );
+
+  const standaloneAccHtml =
+    standaloneAccessories.length > 0
+      ? `
+      <div class="section-title">4. Standalone Accessories</div>
+      <table class="item-table">
+        <thead>
+          <tr>
+            <th class="center" style="width: 5%;">#</th>
+            <th class="center" style="width: 12%;">Image</th>
+            <th style="width: 45%;">Accessory Name &amp; Description</th>
+            <th class="center" style="width: 8%;">Qty</th>
+            <th class="center" style="width: 8%;">Unit</th>
+            <th class="right" style="width: 10%;">Unit Price</th>
+            <th class="right" style="width: 12%;">Total Price</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${standaloneAccessories
+            .map((acc: any, idx: number) => {
+              const accTotal =
+                Number(acc.total) ||
+                (Number(acc.quantity) || 1) * (Number(acc.price) || 0);
+              return `
+            <tr>
+              <td class="center font-bold">${idx + 1}</td>
+              <td class="center">
+                ${acc.image ? `<img src="${esc(acc.image)}" style="width: 55px; height: 55px; object-fit: cover; border-radius: 4px; border: 1px solid #CBD5E1;" />` : '<span style="color: #94A3B8; font-size: 7.5pt;">No Image</span>'}
+              </td>
+              <td>
+                <div class="item-name">${esc(acc.name)}</div>
+                ${acc.description ? `<div class="item-desc">${esc(acc.description)}</div>` : ""}
+              </td>
+              <td class="center font-bold">${acc.quantity || 1}</td>
+              <td class="center">${esc(acc.unit || "Nos")}</td>
+              <td class="right">${inr(acc.price || 0)}</td>
+              <td class="right font-bold">${inr(accTotal)}</td>
+            </tr>
+          `;
+            })
+            .join("")}
+        </tbody>
+      </table>`
+      : "";
+
   // ── Pricing Breakdown ──────────────────────────────────────────────────────
   const pricing = q.pricing || {};
   const subtotal =
-    pricing.subtotal !== undefined ? pricing.subtotal : computedSubtotal;
+    pricing.subtotal !== undefined
+      ? pricing.subtotal
+      : computedSubtotal + accessoriesTotal;
   const handlingFee =
     pricing.handlingFeeAmount !== undefined
       ? pricing.handlingFeeAmount
@@ -277,15 +337,18 @@ export function buildQuotationHtml(q: any): string {
     pricing.designFeeAmount !== undefined
       ? pricing.designFeeAmount
       : Math.round(subtotal * 0.02);
+  const transportCharges = pricing.transportCharges || 0;
   const discount = pricing.discountAmount || 0;
   const taxable =
     pricing.taxableAmount !== undefined
       ? pricing.taxableAmount
-      : subtotal + handlingFee + designFee - discount;
+      : subtotal + handlingFee + designFee + transportCharges - discount;
   const totalGst =
     pricing.totalGstAmount !== undefined
       ? pricing.totalGstAmount
       : Math.round(taxable * 0.18);
+  const cgst = Math.round(totalGst / 2);
+  const sgst = totalGst - cgst;
   const grandTotal =
     pricing.grandTotal !== undefined ? pricing.grandTotal : taxable + totalGst;
   const amountInWords = pricing.amountInWords || "";
@@ -295,7 +358,7 @@ export function buildQuotationHtml(q: any): string {
   const milestonesHtml =
     milestones.length > 0
       ? `
-      <div class="section-title">4. Payment Milestones</div>
+      <div class="section-title">5. Payment Milestones</div>
       <table class="standard-table">
         <thead>
           <tr>
@@ -411,7 +474,8 @@ export function buildQuotationHtml(q: any): string {
     accountNumber: "201002880175",
     ifscCode: "INDB0000518",
     branch: "Sector-31, Gurgaon Branch",
-    bankAddress: "SCO-8, Sector 31/32A HUDA Market, Gurgaon – 122 002, Haryana, India",
+    bankAddress:
+      "SCO-8, Sector 31/32A HUDA Market, Gurgaon – 122 002, Haryana, India",
   };
 
   // ── Terms & Conditions ─────────────────────────────────────────────────────
@@ -765,7 +829,7 @@ export function buildQuotationHtml(q: any): string {
         </div>
       </td>
       <td style="width: 45%; vertical-align: top;" class="header-right">
-        <div class="doc-title">OFFICIAL QUOTATION</div>
+        <div class="doc-title"> QUOTATION</div>
         <div class="doc-meta">
           <strong>Quotation No:</strong> ${esc(quotationNumber)}${q.revision ? ` (Rev ${q.revision})` : ""}<br />
           <strong>Date:</strong> ${qDate}<br />
@@ -802,6 +866,9 @@ export function buildQuotationHtml(q: any): string {
   <div class="section-title">3. Items / Scope of Work</div>
   ${roomSectionsHtml}
 
+  <!-- 4. Standalone Accessories -->
+  ${standaloneAccHtml}
+
   <!-- 4. Milestones -->
   ${milestonesHtml}
 
@@ -832,6 +899,15 @@ export function buildQuotationHtml(q: any): string {
           : ""
       }
       ${
+        transportCharges > 0
+          ? `
+      <tr>
+        <td>Transport / Freight Charges:</td>
+        <td class="right">${inr(transportCharges)}</td>
+      </tr>`
+          : ""
+      }
+      ${
         discount > 0
           ? `
       <tr>
@@ -841,13 +917,26 @@ export function buildQuotationHtml(q: any): string {
           : ""
       }
       <tr style="border-top: 1px solid #CBD5E1;">
-        <td class="font-bold">Taxable Total:</td>
+        <td class="font-bold">Subtotal / Taxable Amount:</td>
         <td class="right font-bold">${inr(taxable)}</td>
       </tr>
+      ${
+        pricing.gstType === "AS_PER_ACTUAL"
+          ? `
       <tr>
-        <td>GST (${pricing.gstPercent || 18}% ${pricing.gstType === "AS_PER_ACTUAL" ? "– As per Actuals" : pricing.gstType || "CGST+SGST"}):</td>
-        <td class="right" style="${pricing.gstType === "AS_PER_ACTUAL" ? "color: #2563EB; font-weight: 600;" : ""}">${pricing.gstType === "AS_PER_ACTUAL" ? "18% – As per Actuals" : inr(totalGst)}</td>
+        <td>GST (18% – As per Actuals):</td>
+        <td class="right" style="color: #2563EB; font-weight: 600;">As per Actuals</td>
+      </tr>`
+          : `
+      <tr>
+        <td>CGST (${(pricing.gstPercent || 18) / 2}%):</td>
+        <td class="right">${inr(cgst)}</td>
       </tr>
+      <tr>
+        <td>SGST (${(pricing.gstPercent || 18) / 2}%):</td>
+        <td class="right">${inr(sgst)}</td>
+      </tr>`
+      }
       <tr class="grand-row">
         <td>ESTIMATED GRAND TOTAL:</td>
         <td class="right">${inr(grandTotal)}</td>
@@ -894,12 +983,8 @@ export function buildQuotationHtml(q: any): string {
   <!-- 8. Signature Section -->
   <table class="signature-table">
     <tr>
-      <td class="signature-box">
-        <div class="signature-line">Client Acceptance Signature</div>
-        <div class="signature-sub">Name, Date &amp; Official Seal</div>
-      </td>
-      <td style="width: 10%;"></td>
-      <td class="signature-box" style="text-align: right;">
+      <td style="width: 50%;"></td>
+      <td class="signature-box" style="width: 50%; text-align: right;">
         <div class="signature-line" style="margin-left: auto;">For ${esc(company.name)}</div>
         <div class="signature-sub">Authorized Signatory</div>
       </td>

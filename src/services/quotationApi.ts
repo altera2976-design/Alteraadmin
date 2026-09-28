@@ -25,6 +25,17 @@ export interface QuotationAccessory {
   cost: number;
 }
 
+export interface QuotationStandaloneAccessory {
+  _id?: string;
+  name: string;
+  description?: string;
+  image?: string;
+  quantity: number;
+  unit?: string;
+  price: number;
+  total: number;
+}
+
 export interface QuotationItemDoc {
   _id?: string;
   itemNumber: number;
@@ -49,6 +60,8 @@ export interface QuotationPricing {
   handlingFeeAmount: number;
   designFeePercent: number;
   designFeeAmount: number;
+  transportCharges?: number;
+  accessoriesTotal?: number;
   discountType: 'PERCENT' | 'FIXED';
   discountValue: number;
   discountAmount: number;
@@ -127,6 +140,7 @@ export interface QuotationDoc {
   quotationDate: string;
   validUntil: string;
   items: QuotationItemDoc[];
+  standaloneAccessories?: QuotationStandaloneAccessory[];
   pricing: QuotationPricing;
   paymentMilestones: QuotationMilestone[];
   termsAndConditions: string[];

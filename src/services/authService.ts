@@ -1,5 +1,17 @@
 import api from './api';
 
+export interface EmployeeAppPermissions {
+  dashboard: boolean;
+  tasks: boolean;
+  attendance: boolean;
+  salary: boolean;
+  crm: boolean;
+  projects: boolean;
+  quotation: boolean;
+  reports: boolean;
+  bikeTracking: boolean;
+}
+
 export interface User {
   _id: string;
   name: string;
@@ -13,6 +25,16 @@ export interface User {
   salary: number;
   workingHours: number;
   status: 'ACTIVE' | 'INACTIVE';
+  accessStatus?: 'PENDING' | 'APPROVED' | 'ACTIVE' | 'SUSPENDED' | 'REJECTED';
+  salaryStatus?: 'NOT_SET' | 'ACTIVE' | 'UPDATED' | 'INACTIVE';
+  employeeAppPermissions?: EmployeeAppPermissions;
+  salaryStructure?: {
+    basic?: number;
+    hra?: number;
+    allowances?: number;
+    bonus?: number;
+    effectiveDate?: string;
+  };
   createdAt: string;
 }
 
@@ -52,6 +74,16 @@ export const authService = {
     return res.data.user;
   },
 
+  getMyAppPermissions: async (): Promise<{
+    success: boolean;
+    permissions: EmployeeAppPermissions;
+    accessStatus?: string;
+    status?: string;
+  }> => {
+    const res = await api.get('/employee/permissions');
+    return res.data;
+  },
+
   updateProfile: async (data: {
     name?: string;
     phone?: string;
@@ -78,4 +110,5 @@ export const authService = {
     return res.data;
   },
 };
+
 

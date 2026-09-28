@@ -34,6 +34,7 @@ export interface PayrollDeductions {
   esi: number;
   profTax: number;
   tds: number;
+  advance?: number;
   otherDeductions: number;
   totalDeductions: number;
 }

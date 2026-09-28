@@ -1,59 +1,70 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { Stack, useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
   ActivityIndicator,
-  RefreshControl,
-  Modal,
-  TextInput,
   Alert,
   Dimensions,
   Image,
-} from 'react-native';
-import { THEME } from '../../constants/theme';
-import { Ionicons } from '@expo/vector-icons';
-import { Stack, useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAuth } from '../../context/AuthContext';
-import {
-  payrollService,
-  PayrollRecord,
-  PayrollSummary,
-  PayrollConfig,
-} from '../../services/payrollService';
-import {
-  formatINR,
-  downloadPayslipPdf,
-  generatePayslipPdf,
-} from '../../services/payslipExport';
+  Modal,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { COMPANY_LOGO_DATA_URL } from "../../constants/companyLogo";
+import { THEME } from "../../constants/theme";
+import { useAuth } from "../../context/AuthContext";
 import {
   OfferLetterData,
-  downloadOfferLetterPdf,
-  shareOfferLetterPdf,
-} from '../../services/offerLetterPdf';
-import { COMPANY_LOGO_DATA_URL } from '../../constants/companyLogo';
+  downloadOfferLetterPdf
+} from "../../services/offerLetterPdf";
+import {
+  PayrollConfig,
+  PayrollRecord,
+  PayrollSummary,
+  payrollService,
+} from "../../services/payrollService";
+import {
+  downloadPayslipPdf,
+  formatINR,
+  generatePayslipPdf,
+} from "../../services/payslipExport";
 
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window");
 
 const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
 export default function SalaryScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
-  const isAdmin = user?.role === 'ADMIN';
+  const isAdmin = user?.role === "ADMIN";
 
   // ── Mode Switch: 'my' | 'admin' ────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState<'my' | 'admin'>(isAdmin ? 'admin' : 'my');
+  const [activeTab, setActiveTab] = useState<"my" | "admin">(
+    isAdmin ? "admin" : "my",
+  );
 
   // ── Month Selection ────────────────────────────────────────────────────────
   const today = new Date();
-  const defaultMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  const defaultMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
   const [selectedMonth, setSelectedMonth] = useState<string>(defaultMonth);
   const [isMonthModalOpen, setIsMonthModalOpen] = useState(false);
 
@@ -67,25 +78,30 @@ export default function SalaryScreen() {
   // ── UI States ───────────────────────────────────────────────────────────────
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
 
   // ── Detail Modal State ─────────────────────────────────────────────────────
-  const [selectedDetail, setSelectedDetail] = useState<PayrollRecord | null>(null);
+  const [selectedDetail, setSelectedDetail] = useState<PayrollRecord | null>(
+    null,
+  );
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   // ── Pay Salary Modal State ─────────────────────────────────────────────────
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'BANK_TRANSFER' | 'CASH' | 'UPI' | 'CHEQUE'>('BANK_TRANSFER');
-  const [transactionId, setTransactionId] = useState('');
-  const [payNotes, setPayNotes] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<
+    "BANK_TRANSFER" | "CASH" | "UPI" | "CHEQUE"
+  >("BANK_TRANSFER");
+  const [transactionId, setTransactionId] = useState("");
+  const [payNotes, setPayNotes] = useState("");
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
 
   // ── Email Modal State ──────────────────────────────────────────────────────
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
-  const [emailTargetRecord, setEmailTargetRecord] = useState<PayrollRecord | null>(null);
-  const [emailRecipient, setEmailRecipient] = useState('');
-  const [emailMessage, setEmailMessage] = useState('');
+  const [emailTargetRecord, setEmailTargetRecord] =
+    useState<PayrollRecord | null>(null);
+  const [emailRecipient, setEmailRecipient] = useState("");
+  const [emailMessage, setEmailMessage] = useState("");
   const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   // ── Settings Modal State ───────────────────────────────────────────────────
@@ -96,20 +112,21 @@ export default function SalaryScreen() {
 
   // ── Offer Letter Modal State ───────────────────────────────────────────────
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
-  const [offerCandidateName, setOfferCandidateName] = useState('');
-  const [offerDesignation, setOfferDesignation] = useState('Interior Designer');
-  const [offerDepartment, setOfferDepartment] = useState('Design & Execution');
-  const [offerMonthlySalary, setOfferMonthlySalary] = useState('45000');
-  const [offerAnnualCTC, setOfferAnnualCTC] = useState('540000');
+  const [offerCandidateName, setOfferCandidateName] = useState("");
+  const [offerDesignation, setOfferDesignation] = useState("Interior Designer");
+  const [offerDepartment, setOfferDepartment] = useState("Design & Execution");
+  const [offerMonthlySalary, setOfferMonthlySalary] = useState("45000");
+  const [offerAnnualCTC, setOfferAnnualCTC] = useState("540000");
   const [offerJoiningDate, setOfferJoiningDate] = useState(
-    new Date().toISOString().split('T')[0]
+    new Date().toISOString().split("T")[0],
   );
-  const [offerWorkLocation, setOfferWorkLocation] = useState('Gurugram, Haryana');
+  const [offerWorkLocation, setOfferWorkLocation] =
+    useState("Gurugram, Haryana");
   const [isGeneratingOffer, setIsGeneratingOffer] = useState(false);
 
   const handleDownloadOfferLetter = async () => {
     if (!offerCandidateName.trim()) {
-      Alert.alert('Validation Error', 'Please enter candidate name.');
+      Alert.alert("Validation Error", "Please enter candidate name.");
       return;
     }
     setIsGeneratingOffer(true);
@@ -117,74 +134,96 @@ export default function SalaryScreen() {
       const offerData: OfferLetterData = {
         offerLetterNumber: `OL-${Date.now().toString().slice(-6)}`,
         candidateName: offerCandidateName.trim(),
-        designation: offerDesignation.trim() || 'Staff',
-        department: offerDepartment.trim() || 'General',
+        designation: offerDesignation.trim() || "Staff",
+        department: offerDepartment.trim() || "General",
         monthlySalary: Number(offerMonthlySalary) || 0,
-        annualCTC: Number(offerAnnualCTC) || (Number(offerMonthlySalary) || 0) * 12,
+        annualCTC:
+          Number(offerAnnualCTC) || (Number(offerMonthlySalary) || 0) * 12,
         joiningDate: offerJoiningDate,
-        workLocation: offerWorkLocation.trim() || 'Gurugram, Haryana',
+        workLocation: offerWorkLocation.trim() || "Gurugram, Haryana",
       };
       await downloadOfferLetterPdf(offerData);
       setIsOfferModalOpen(false);
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to generate Offer Letter.');
+      Alert.alert("Error", err?.message || "Failed to generate Offer Letter.");
     } finally {
       setIsGeneratingOffer(false);
     }
   };
 
-  const handleAuthError = useCallback((error: any) => {
-    const status = error?.status || error?.response?.status;
-    if (status === 401) {
-      Alert.alert(
-        'Session Expired',
-        'Your session has expired. Please login again.',
-        [
-          {
-            text: 'OK',
-            onPress: async () => {
-              if (logout) await logout();
-              router.replace('/(auth)/login');
+  const handleAuthError = useCallback(
+    (error: any) => {
+      const status = error?.status || error?.response?.status;
+      if (status === 401) {
+        Alert.alert(
+          "Session Expired",
+          "Your session has expired. Please login again.",
+          [
+            {
+              text: "OK",
+              onPress: async () => {
+                if (logout) await logout();
+                router.replace("/(auth)/login");
+              },
             },
-          },
-        ]
-      );
-      return true;
-    }
-    return false;
-  }, [logout, router]);
+          ],
+        );
+        return true;
+      }
+      return false;
+    },
+    [logout, router],
+  );
 
   // ── Load Payroll Data ──────────────────────────────────────────────────────
-  const loadPayroll = useCallback(async (forceRecalculate = false) => {
-    try {
-      const res = await payrollService.calculate(selectedMonth, forceRecalculate);
-      if (res?.success) {
-        setPayrollList(res.payroll || []);
-        setSummary(res.summary || null);
+  const loadPayroll = useCallback(
+    async (forceRecalculate = false) => {
+      try {
+        const res = await payrollService.calculate(
+          selectedMonth,
+          forceRecalculate,
+        );
+        if (res?.success) {
+          setPayrollList(res.payroll || []);
+          setSummary(res.summary || null);
 
-        // Find current user's record
-        if (user?._id) {
-          const userRec = res.payroll.find(
-            p => (p.userId?._id || p.userId) === user._id || (p.employee?._id === user._id)
+          // Find current user's record
+          if (user?._id) {
+            const userRec = res.payroll.find(
+              (p) =>
+                (p.userId?._id || p.userId) === user._id ||
+                p.employee?._id === user._id,
+            );
+            setMyRecord(
+              userRec || (res.payroll.length === 1 ? res.payroll[0] : null),
+            );
+          }
+        }
+      } catch (error: any) {
+        if (!handleAuthError(error)) {
+          console.warn(
+            "Payroll notice:",
+            error?.response?.data?.message ||
+              error?.message ||
+              "Unable to load payroll.",
           );
-          setMyRecord(userRec || (res.payroll.length === 1 ? res.payroll[0] : null));
         }
       }
-    } catch (error: any) {
-      if (!handleAuthError(error)) {
-        console.warn('Payroll notice:', error?.response?.data?.message || error?.message || 'Unable to load payroll.');
-      }
-    }
-  }, [selectedMonth, user?._id, handleAuthError]);
+    },
+    [selectedMonth, user?._id, handleAuthError],
+  );
 
   // Load config on mount
   useEffect(() => {
-    payrollService.getConfig().then(res => {
-      if (res?.success) {
-        setConfig(res.data);
-        setEditConfig(res.data);
-      }
-    }).catch(err => console.error('Config fetch error:', err));
+    payrollService
+      .getConfig()
+      .then((res) => {
+        if (res?.success) {
+          setConfig(res.data);
+          setEditConfig(res.data);
+        }
+      })
+      .catch((err) => console.error("Config fetch error:", err));
   }, []);
 
   useEffect(() => {
@@ -204,7 +243,7 @@ export default function SalaryScreen() {
     const now = new Date();
     for (let i = 0; i < 12; i++) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       const label = `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
       months.push({ value: val, label });
     }
@@ -212,54 +251,60 @@ export default function SalaryScreen() {
   }, []);
 
   const currentMonthLabel = useMemo(() => {
-    const found = availableMonths.find(m => m.value === selectedMonth);
+    const found = availableMonths.find((m) => m.value === selectedMonth);
     if (found) return found.label;
-    const [y, m] = selectedMonth.split('-');
+    const [y, m] = selectedMonth.split("-");
     return `${MONTH_NAMES[parseInt(m, 10) - 1] || m} ${y}`;
   }, [selectedMonth, availableMonths]);
 
   // ── Actions ────────────────────────────────────────────────────────────────
   const handleApprovePayroll = async () => {
     Alert.alert(
-      'Approve Monthly Payroll',
+      "Approve Monthly Payroll",
       `Are you sure you want to approve payroll for ${currentMonthLabel}? This will lock the calculated salaries for disbursal.`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: "Cancel", style: "cancel" },
         {
-          text: 'Approve & Lock',
-          style: 'default',
+          text: "Approve & Lock",
+          style: "default",
           onPress: async () => {
             try {
               const res = await payrollService.approve(selectedMonth);
               if (res?.success) {
-                Alert.alert('Success', res.message || 'Payroll approved successfully.');
+                Alert.alert(
+                  "Success",
+                  res.message || "Payroll approved successfully.",
+                );
                 loadPayroll(false);
               }
             } catch (err: any) {
-              Alert.alert('Error', err?.response?.data?.message || 'Failed to approve payroll.');
+              Alert.alert(
+                "Error",
+                err?.response?.data?.message || "Failed to approve payroll.",
+              );
             }
           },
         },
-      ]
+      ],
     );
   };
 
   const handleRecalculateAll = async () => {
     Alert.alert(
-      'Recalculate Payroll',
+      "Recalculate Payroll",
       `This will recalculate all employees' salaries for ${currentMonthLabel} based on their latest attendance records.`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: "Cancel", style: "cancel" },
         {
-          text: 'Recalculate',
-          style: 'default',
+          text: "Recalculate",
+          style: "default",
           onPress: async () => {
             setIsLoading(true);
             await loadPayroll(true);
             setIsLoading(false);
           },
         },
-      ]
+      ],
     );
   };
 
@@ -275,13 +320,19 @@ export default function SalaryScreen() {
       });
 
       if (res?.success) {
-        Alert.alert('Payment Recorded', `Salary marked as paid for ${selectedDetail.employee?.name || 'Employee'}.`);
+        Alert.alert(
+          "Payment Recorded",
+          `Salary marked as paid for ${selectedDetail.employee?.name || "Employee"}.`,
+        );
         setIsPaymentModalOpen(false);
         setSelectedDetail(res.payroll);
         loadPayroll(false);
       }
     } catch (err: any) {
-      Alert.alert('Error', err?.response?.data?.message || 'Failed to record payment.');
+      Alert.alert(
+        "Error",
+        err?.response?.data?.message || "Failed to record payment.",
+      );
     } finally {
       setIsSubmittingPayment(false);
     }
@@ -291,7 +342,10 @@ export default function SalaryScreen() {
     if (!emailTargetRecord?._id) return;
     setIsSendingEmail(true);
     try {
-      const pdf = await generatePayslipPdf(emailTargetRecord, emailTargetRecord.employee);
+      const pdf = await generatePayslipPdf(
+        emailTargetRecord,
+        emailTargetRecord.employee,
+      );
       const res = await payrollService.sendPayslip({
         payrollId: emailTargetRecord._id,
         recipientEmail: emailRecipient.trim(),
@@ -300,11 +354,19 @@ export default function SalaryScreen() {
       });
 
       if (res?.success) {
-        Alert.alert('Payslip Dispatched', res.message || 'Email sent successfully.');
+        Alert.alert(
+          "Payslip Dispatched",
+          res.message || "Email sent successfully.",
+        );
         setIsEmailModalOpen(false);
       }
     } catch (err: any) {
-      Alert.alert('Sending Failed', err?.response?.data?.message || err?.message || 'Failed to send payslip email.');
+      Alert.alert(
+        "Sending Failed",
+        err?.response?.data?.message ||
+          err?.message ||
+          "Failed to send payslip email.",
+      );
     } finally {
       setIsSendingEmail(false);
     }
@@ -316,8 +378,9 @@ export default function SalaryScreen() {
       const res = await payrollService.updateConfig({
         standardWorkingHours: Number(editConfig.standardWorkingHours) || 8,
         workingDaysPerWeek: Number(editConfig.workingDaysPerWeek) || 6,
-        defaultOvertimeRatePerHour: Number(editConfig.defaultOvertimeRatePerHour) || 200,
-        calculationMethod: editConfig.calculationMethod || 'CALENDAR_DAYS',
+        defaultOvertimeRatePerHour:
+          Number(editConfig.defaultOvertimeRatePerHour) || 200,
+        calculationMethod: editConfig.calculationMethod || "CALENDAR_DAYS",
         deductionRules: {
           pfPercentage: Number(editConfig.pfPercentage) || 12,
           esiPercentage: Number(editConfig.esiPercentage) || 0.75,
@@ -329,11 +392,17 @@ export default function SalaryScreen() {
       if (res?.success) {
         setConfig(res.data);
         setIsSettingsModalOpen(false);
-        Alert.alert('Settings Saved', 'Payroll calculation rules updated successfully.');
+        Alert.alert(
+          "Settings Saved",
+          "Payroll calculation rules updated successfully.",
+        );
         loadPayroll(true);
       }
     } catch (err: any) {
-      Alert.alert('Error', err?.response?.data?.message || 'Failed to update settings.');
+      Alert.alert(
+        "Error",
+        err?.response?.data?.message || "Failed to update settings.",
+      );
     } finally {
       setIsSavingConfig(false);
     }
@@ -341,51 +410,56 @@ export default function SalaryScreen() {
 
   // ── Filtered Payroll for Admin ─────────────────────────────────────────────
   const filteredPayroll = useMemo(() => {
-    return payrollList.filter(item => {
-      const name = (item.employee?.name || '').toLowerCase();
-      const empId = (item.employee?.employeeId || '').toLowerCase();
+    return payrollList.filter((item) => {
+      const name = (item.employee?.name || "").toLowerCase();
+      const empId = (item.employee?.employeeId || "").toLowerCase();
       const s = searchQuery.toLowerCase();
       const matchesSearch = name.includes(s) || empId.includes(s);
-      const matchesStatus = statusFilter === 'ALL' || item.status.toUpperCase() === statusFilter.toUpperCase();
+      const matchesStatus =
+        statusFilter === "ALL" ||
+        item.status.toUpperCase() === statusFilter.toUpperCase();
       return matchesSearch && matchesStatus;
     });
   }, [payrollList, searchQuery, statusFilter]);
 
   const getStatusColor = (status: string) => {
     switch (status?.toUpperCase()) {
-      case 'PAID':
-        return '#10B981';
-      case 'APPROVED':
-        return '#3B82F6';
-      case 'CALCULATED':
-        return '#F59E0B';
-      case 'DRAFT':
-        return '#6B7280';
+      case "PAID":
+        return "#10B981";
+      case "APPROVED":
+        return "#3B82F6";
+      case "CALCULATED":
+        return "#F59E0B";
+      case "DRAFT":
+        return "#6B7280";
       default:
-        return '#6B7280';
+        return "#6B7280";
     }
   };
 
   const getStatusBg = (status: string) => {
     switch (status?.toUpperCase()) {
-      case 'PAID':
-        return 'rgba(16, 185, 129, 0.12)';
-      case 'APPROVED':
-        return 'rgba(59, 130, 246, 0.12)';
-      case 'CALCULATED':
-        return 'rgba(245, 158, 11, 0.12)';
+      case "PAID":
+        return "rgba(16, 185, 129, 0.12)";
+      case "APPROVED":
+        return "rgba(59, 130, 246, 0.12)";
+      case "CALCULATED":
+        return "rgba(245, 158, 11, 0.12)";
       default:
-        return '#F3F4F6';
+        return "#F3F4F6";
     }
   };
 
   return (
-    <SafeAreaView style={styles.root} edges={['top']}>
+    <SafeAreaView style={styles.root} edges={["top"]}>
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* ── HEADER ──────────────────────────────────────────────────────────── */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.headerBtn}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.headerBtn}
+        >
           <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Salary & Payroll</Text>
@@ -397,7 +471,8 @@ export default function SalaryScreen() {
                 pfPercentage: config?.deductionRules?.pfPercentage ?? 12,
                 esiPercentage: config?.deductionRules?.esiPercentage ?? 0.75,
                 profTaxFixed: config?.deductionRules?.profTaxFixed ?? 200,
-                tdsDefaultPercentage: config?.deductionRules?.tdsDefaultPercentage ?? 0,
+                tdsDefaultPercentage:
+                  config?.deductionRules?.tdsDefaultPercentage ?? 0,
               });
               setIsSettingsModalOpen(true);
             }}
@@ -414,28 +489,41 @@ export default function SalaryScreen() {
       {isAdmin && (
         <View style={styles.tabBar}>
           <TouchableOpacity
-            style={[styles.tabItem, activeTab === 'admin' && styles.tabItemActive]}
-            onPress={() => setActiveTab('admin')}
+            style={[
+              styles.tabItem,
+              activeTab === "admin" && styles.tabItemActive,
+            ]}
+            onPress={() => setActiveTab("admin")}
           >
             <Ionicons
               name="grid-outline"
               size={18}
-              color={activeTab === 'admin' ? THEME.colors.primary : '#6B7280'}
+              color={activeTab === "admin" ? THEME.colors.primary : "#6B7280"}
             />
-            <Text style={[styles.tabText, activeTab === 'admin' && styles.tabTextActive]}>
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "admin" && styles.tabTextActive,
+              ]}
+            >
               Admin Payroll
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.tabItem, activeTab === 'my' && styles.tabItemActive]}
-            onPress={() => setActiveTab('my')}
+            style={[styles.tabItem, activeTab === "my" && styles.tabItemActive]}
+            onPress={() => setActiveTab("my")}
           >
             <Ionicons
               name="person-outline"
               size={18}
-              color={activeTab === 'my' ? THEME.colors.primary : '#6B7280'}
+              color={activeTab === "my" ? THEME.colors.primary : "#6B7280"}
             />
-            <Text style={[styles.tabText, activeTab === 'my' && styles.tabTextActive]}>
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "my" && styles.tabTextActive,
+              ]}
+            >
               My Payslip
             </Text>
           </TouchableOpacity>
@@ -454,19 +542,30 @@ export default function SalaryScreen() {
           <Ionicons name="chevron-down" size={16} color="#6B7280" />
         </TouchableOpacity>
 
-        {activeTab === 'admin' && isAdmin && (
+        {activeTab === "admin" && isAdmin && (
           <View style={styles.quickActions}>
             <TouchableOpacity
-              style={[styles.iconBtn, { backgroundColor: '#FEE2E2', borderColor: '#FECDD3' }]}
+              style={[
+                styles.iconBtn,
+                { backgroundColor: "#FEE2E2", borderColor: "#FECDD3" },
+              ]}
               onPress={() => setIsOfferModalOpen(true)}
               accessibilityLabel="Offer Letter"
             >
               <Ionicons name="document-text" size={18} color="#7A131A" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.iconBtn} onPress={handleRecalculateAll} accessibilityLabel="Recalculate">
+            <TouchableOpacity
+              style={styles.iconBtn}
+              onPress={handleRecalculateAll}
+              accessibilityLabel="Recalculate"
+            >
               <Ionicons name="refresh" size={18} color="#374151" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.iconBtnPrimary} onPress={handleApprovePayroll} accessibilityLabel="Approve">
+            <TouchableOpacity
+              style={styles.iconBtnPrimary}
+              onPress={handleApprovePayroll}
+              accessibilityLabel="Approve"
+            >
               <Ionicons name="checkmark-done" size={18} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
@@ -477,14 +576,22 @@ export default function SalaryScreen() {
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
-        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={THEME.colors.primary} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            tintColor={THEME.colors.primary}
+          />
+        }
       >
         {isLoading ? (
           <View style={styles.loaderWrap}>
             <ActivityIndicator size="large" color={THEME.colors.primary} />
-            <Text style={styles.loaderText}>Calculating salary from attendance records...</Text>
+            <Text style={styles.loaderText}>
+              Calculating salary from attendance records...
+            </Text>
           </View>
-        ) : activeTab === 'my' ? (
+        ) : activeTab === "my" ? (
           /* ═════════════════════════════════════════════════════════════════════
              EMPLOYEE VIEW: MY PAYSLIP
           ═════════════════════════════════════════════════════════════════════ */
@@ -493,7 +600,9 @@ export default function SalaryScreen() {
               {/* Red Total Salary Card */}
               <View style={styles.redCard}>
                 <View style={styles.redCardHeader}>
-                  <Text style={styles.redCardSubtitle}>Net Take-Home Salary</Text>
+                  <Text style={styles.redCardSubtitle}>
+                    Net Take-Home Salary
+                  </Text>
                   <View
                     style={[
                       styles.statusBadge,
@@ -510,7 +619,9 @@ export default function SalaryScreen() {
                     </Text>
                   </View>
                 </View>
-                <Text style={styles.redCardValue}>{formatINR(myRecord.netSalary)}</Text>
+                <Text style={styles.redCardValue}>
+                  {formatINR(myRecord.netSalary)}
+                </Text>
                 <Text style={styles.redCardSub}>
                   {myRecord.proRata?.isProRata
                     ? myRecord.proRata.notes
@@ -523,7 +634,8 @@ export default function SalaryScreen() {
                 <View style={styles.warningBanner}>
                   <Ionicons name="warning" size={20} color="#B45309" />
                   <Text style={styles.warningBannerText}>
-                    Attendance records changed after payroll approval. Contact Admin for review.
+                    Attendance records changed after payroll approval. Contact
+                    Admin for review.
                   </Text>
                 </View>
               )}
@@ -533,35 +645,39 @@ export default function SalaryScreen() {
                 <Text style={styles.cardTitle}>Attendance Performance</Text>
                 <View style={styles.attGrid}>
                   <View style={styles.attBox}>
-                    <Text style={styles.attVal}>{myRecord.attendanceSummary?.totalCalendarDays ?? 30}</Text>
+                    <Text style={styles.attVal}>
+                      {myRecord.attendanceSummary?.totalCalendarDays ?? 30}
+                    </Text>
                     <Text style={styles.attLbl}>Days in Month</Text>
                   </View>
                   <View style={styles.attBox}>
-                    <Text style={[styles.attVal, { color: '#10B981' }]}>
+                    <Text style={[styles.attVal, { color: "#10B981" }]}>
                       {myRecord.attendanceSummary?.presentDays ?? 0}
                     </Text>
                     <Text style={styles.attLbl}>Present Days</Text>
                   </View>
                   <View style={styles.attBox}>
-                    <Text style={[styles.attVal, { color: '#F59E0B' }]}>
+                    <Text style={[styles.attVal, { color: "#F59E0B" }]}>
                       {myRecord.attendanceSummary?.halfDays ?? 0}
                     </Text>
                     <Text style={styles.attLbl}>Half Days</Text>
                   </View>
                   <View style={styles.attBox}>
-                    <Text style={[styles.attVal, { color: '#EF4444' }]}>
+                    <Text style={[styles.attVal, { color: "#EF4444" }]}>
                       {myRecord.attendanceSummary?.unpaidLeave ?? 0}
                     </Text>
                     <Text style={styles.attLbl}>Unpaid Leave</Text>
                   </View>
                   <View style={styles.attBox}>
-                    <Text style={[styles.attVal, { color: '#3B82F6' }]}>
+                    <Text style={[styles.attVal, { color: "#3B82F6" }]}>
                       {myRecord.attendanceSummary?.paidLeave ?? 0}
                     </Text>
                     <Text style={styles.attLbl}>Paid Leave</Text>
                   </View>
                   <View style={styles.attBox}>
-                    <Text style={styles.attVal}>{myRecord.attendanceSummary?.overtimeHours ?? 0} hrs</Text>
+                    <Text style={styles.attVal}>
+                      {myRecord.attendanceSummary?.overtimeHours ?? 0} hrs
+                    </Text>
                     <Text style={styles.attLbl}>Overtime</Text>
                   </View>
                 </View>
@@ -572,22 +688,33 @@ export default function SalaryScreen() {
                 <Text style={styles.cardTitle}>Earnings Breakdown</Text>
                 <View style={styles.tableRow}>
                   <Text style={styles.tableLbl}>Basic Salary</Text>
-                  <Text style={styles.tableVal}>{formatINR(myRecord.earnings?.basic)}</Text>
+                  <Text style={styles.tableVal}>
+                    {formatINR(myRecord.earnings?.basic)}
+                  </Text>
                 </View>
                 <View style={styles.tableRow}>
-                  <Text style={styles.tableLbl}>House Rent Allowance (HRA)</Text>
-                  <Text style={styles.tableVal}>{formatINR(myRecord.earnings?.hra)}</Text>
+                  <Text style={styles.tableLbl}>
+                    House Rent Allowance (HRA)
+                  </Text>
+                  <Text style={styles.tableVal}>
+                    {formatINR(myRecord.earnings?.hra)}
+                  </Text>
                 </View>
                 <View style={styles.tableRow}>
-                  <Text style={styles.tableLbl}>Special & Travel Allowances</Text>
-                  <Text style={styles.tableVal}>{formatINR(myRecord.earnings?.allowances)}</Text>
+                  <Text style={styles.tableLbl}>
+                    Special & Travel Allowances
+                  </Text>
+                  <Text style={styles.tableVal}>
+                    {formatINR(myRecord.earnings?.allowances)}
+                  </Text>
                 </View>
                 {(myRecord.earnings?.overtimeAmount || 0) > 0 && (
                   <View style={styles.tableRow}>
                     <Text style={styles.tableLbl}>
-                      Overtime ({myRecord.attendanceSummary?.overtimeHours} hrs @ ₹{myRecord.earnings?.overtimeRate}/hr)
+                      Overtime ({myRecord.attendanceSummary?.overtimeHours} hrs
+                      @ ₹{myRecord.earnings?.overtimeRate}/hr)
                     </Text>
-                    <Text style={[styles.tableVal, { color: '#10B981' }]}>
+                    <Text style={[styles.tableVal, { color: "#10B981" }]}>
                       +{formatINR(myRecord.earnings?.overtimeAmount)}
                     </Text>
                   </View>
@@ -595,12 +722,16 @@ export default function SalaryScreen() {
                 {(myRecord.earnings?.bonus || 0) > 0 && (
                   <View style={styles.tableRow}>
                     <Text style={styles.tableLbl}>Performance Bonus</Text>
-                    <Text style={[styles.tableVal, { color: '#10B981' }]}>+{formatINR(myRecord.earnings?.bonus)}</Text>
+                    <Text style={[styles.tableVal, { color: "#10B981" }]}>
+                      +{formatINR(myRecord.earnings?.bonus)}
+                    </Text>
                   </View>
                 )}
                 <View style={[styles.tableRow, styles.subtotalRow]}>
                   <Text style={styles.subtotalLbl}>Total Gross Earnings</Text>
-                  <Text style={styles.subtotalVal}>{formatINR(myRecord.earnings?.grossSalary)}</Text>
+                  <Text style={styles.subtotalVal}>
+                    {formatINR(myRecord.earnings?.grossSalary)}
+                  </Text>
                 </View>
               </View>
 
@@ -609,9 +740,10 @@ export default function SalaryScreen() {
                 {(myRecord.deductions?.unpaidLeaveDeduction || 0) > 0 && (
                   <View style={styles.tableRow}>
                     <Text style={styles.tableLbl}>
-                      Unpaid Absence ({myRecord.attendanceSummary?.unpaidLeave} days)
+                      Unpaid Absence ({myRecord.attendanceSummary?.unpaidLeave}{" "}
+                      days)
                     </Text>
-                    <Text style={[styles.tableVal, { color: '#EF4444' }]}>
+                    <Text style={[styles.tableVal, { color: "#EF4444" }]}>
                       -{formatINR(myRecord.deductions?.unpaidLeaveDeduction)}
                     </Text>
                   </View>
@@ -619,9 +751,10 @@ export default function SalaryScreen() {
                 {(myRecord.deductions?.halfDayDeduction || 0) > 0 && (
                   <View style={styles.tableRow}>
                     <Text style={styles.tableLbl}>
-                      Half-Day Penalty ({myRecord.attendanceSummary?.halfDays} half days)
+                      Half-Day Penalty ({myRecord.attendanceSummary?.halfDays}{" "}
+                      half days)
                     </Text>
-                    <Text style={[styles.tableVal, { color: '#EF4444' }]}>
+                    <Text style={[styles.tableVal, { color: "#EF4444" }]}>
                       -{formatINR(myRecord.deductions?.halfDayDeduction)}
                     </Text>
                   </View>
@@ -629,30 +762,48 @@ export default function SalaryScreen() {
                 {(myRecord.deductions?.pf || 0) > 0 && (
                   <View style={styles.tableRow}>
                     <Text style={styles.tableLbl}>Provident Fund (PF)</Text>
-                    <Text style={styles.tableVal}>-{formatINR(myRecord.deductions?.pf)}</Text>
+                    <Text style={styles.tableVal}>
+                      -{formatINR(myRecord.deductions?.pf)}
+                    </Text>
                   </View>
                 )}
                 {(myRecord.deductions?.esi || 0) > 0 && (
                   <View style={styles.tableRow}>
                     <Text style={styles.tableLbl}>ESI Contribution</Text>
-                    <Text style={styles.tableVal}>-{formatINR(myRecord.deductions?.esi)}</Text>
+                    <Text style={styles.tableVal}>
+                      -{formatINR(myRecord.deductions?.esi)}
+                    </Text>
                   </View>
                 )}
                 {(myRecord.deductions?.profTax || 0) > 0 && (
                   <View style={styles.tableRow}>
                     <Text style={styles.tableLbl}>Professional Tax (PT)</Text>
-                    <Text style={styles.tableVal}>-{formatINR(myRecord.deductions?.profTax)}</Text>
+                    <Text style={styles.tableVal}>
+                      -{formatINR(myRecord.deductions?.profTax)}
+                    </Text>
                   </View>
                 )}
                 {(myRecord.deductions?.tds || 0) > 0 && (
                   <View style={styles.tableRow}>
                     <Text style={styles.tableLbl}>TDS Withholding</Text>
-                    <Text style={styles.tableVal}>-{formatINR(myRecord.deductions?.tds)}</Text>
+                    <Text style={styles.tableVal}>
+                      -{formatINR(myRecord.deductions?.tds)}
+                    </Text>
+                  </View>
+                )}
+                {(myRecord.deductions?.advance || 0) > 0 && (
+                  <View style={styles.tableRow}>
+                    <Text style={styles.tableLbl}>Salary Advance</Text>
+                    <Text style={[styles.tableVal, { color: "#EF4444" }]}>
+                      -{formatINR(myRecord.deductions?.advance)}
+                    </Text>
                   </View>
                 )}
                 <View style={[styles.tableRow, styles.subtotalRow]}>
-                  <Text style={[styles.subtotalLbl, { color: '#EF4444' }]}>Total Deductions</Text>
-                  <Text style={[styles.subtotalVal, { color: '#EF4444' }]}>
+                  <Text style={[styles.subtotalLbl, { color: "#EF4444" }]}>
+                    Total Deductions
+                  </Text>
+                  <Text style={[styles.subtotalVal, { color: "#EF4444" }]}>
                     -{formatINR(myRecord.deductions?.totalDeductions)}
                   </Text>
                 </View>
@@ -665,29 +816,59 @@ export default function SalaryScreen() {
                   onPress={() => downloadPayslipPdf(myRecord, user)}
                   activeOpacity={0.8}
                 >
-                  <Ionicons name="document-text-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
-                  <Text style={styles.downloadPdfBtnText}>Download PDF Payslip</Text>
+                  <Ionicons
+                    name="document-text-outline"
+                    size={18}
+                    color="#FFFFFF"
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text style={styles.downloadPdfBtnText}>
+                    Download PDF Payslip
+                  </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={styles.emailPdfBtn}
                   onPress={() => {
                     setEmailTargetRecord(myRecord);
-                    setEmailRecipient(user?.email || '');
-                    setEmailMessage('');
+                    setEmailRecipient(user?.email || "");
+                    setEmailMessage("");
                     setIsEmailModalOpen(true);
                   }}
                   activeOpacity={0.8}
                 >
-                  <Ionicons name="mail-outline" size={18} color={THEME.colors.primary} style={{ marginRight: 6 }} />
+                  <Ionicons
+                    name="mail-outline"
+                    size={18}
+                    color={THEME.colors.primary}
+                    style={{ marginRight: 6 }}
+                  />
                   <Text style={styles.emailPdfBtnText}>Email Payslip</Text>
                 </TouchableOpacity>
               </View>
             </>
+          ) : user?.accessStatus === 'PENDING' ? (
+            <View style={styles.emptyCard}>
+              <Ionicons name="time-outline" size={48} color="#F59E0B" />
+              <Text style={styles.emptyTitle}>Account Approval Pending</Text>
+              <Text style={styles.emptySub}>
+                Your registered account is awaiting Super Admin approval. Once approved, your salary and payslips will be visible here.
+              </Text>
+            </View>
+          ) : (user?.salaryStatus === 'NOT_SET' || ((user?.salary || 0) === 0 && !(user?.salaryStructure?.basic))) ? (
+            <View style={styles.emptyCard}>
+              <Ionicons name="information-circle-outline" size={48} color="#6B7280" />
+              <Text style={styles.emptyTitle}>Salary Not Configured</Text>
+              <Text style={styles.emptySub}>
+                Salary information has not been configured yet. Please contact Super Admin.
+              </Text>
+            </View>
           ) : (
             <View style={styles.emptyCard}>
               <Ionicons name="wallet-outline" size={48} color="#D1D5DB" />
-              <Text style={styles.emptyTitle}>No Payslip for {currentMonthLabel}</Text>
+              <Text style={styles.emptyTitle}>
+                No Payslip for {currentMonthLabel}
+              </Text>
               <Text style={styles.emptySub}>
                 Salary will appear once attendance is recorded for this month.
               </Text>
@@ -700,20 +881,33 @@ export default function SalaryScreen() {
           <>
             {/* KPI Summary Cards */}
             <View style={styles.kpiGrid}>
-              <View style={[styles.kpiCard, { borderLeftColor: THEME.colors.primary }]}>
-                <Text style={styles.kpiVal}>{summary?.totalEmployees ?? 0}</Text>
+              <View
+                style={[
+                  styles.kpiCard,
+                  { borderLeftColor: THEME.colors.primary },
+                ]}
+              >
+                <Text style={styles.kpiVal}>
+                  {summary?.totalEmployees ?? 0}
+                </Text>
                 <Text style={styles.kpiLbl}>Total Staff</Text>
               </View>
-              <View style={[styles.kpiCard, { borderLeftColor: '#3B82F6' }]}>
-                <Text style={styles.kpiVal}>{formatINR(summary?.totalGrossSalary)}</Text>
+              <View style={[styles.kpiCard, { borderLeftColor: "#3B82F6" }]}>
+                <Text style={styles.kpiVal}>
+                  {formatINR(summary?.totalGrossSalary)}
+                </Text>
                 <Text style={styles.kpiLbl}>Gross Payroll</Text>
               </View>
-              <View style={[styles.kpiCard, { borderLeftColor: '#EF4444' }]}>
-                <Text style={styles.kpiVal}>{formatINR(summary?.totalDeductions)}</Text>
+              <View style={[styles.kpiCard, { borderLeftColor: "#EF4444" }]}>
+                <Text style={styles.kpiVal}>
+                  {formatINR(summary?.totalDeductions)}
+                </Text>
                 <Text style={styles.kpiLbl}>Deductions</Text>
               </View>
-              <View style={[styles.kpiCard, { borderLeftColor: '#10B981' }]}>
-                <Text style={[styles.kpiVal, { color: '#10B981' }]}>{formatINR(summary?.totalNetSalary)}</Text>
+              <View style={[styles.kpiCard, { borderLeftColor: "#10B981" }]}>
+                <Text style={[styles.kpiVal, { color: "#10B981" }]}>
+                  {formatINR(summary?.totalNetSalary)}
+                </Text>
                 <Text style={styles.kpiLbl}>Net Payable</Text>
               </View>
             </View>
@@ -730,7 +924,7 @@ export default function SalaryScreen() {
                   placeholderTextColor="#9CA3AF"
                 />
                 {searchQuery.length > 0 && (
-                  <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <TouchableOpacity onPress={() => setSearchQuery("")}>
                     <Ionicons name="close-circle" size={16} color="#9CA3AF" />
                   </TouchableOpacity>
                 )}
@@ -741,7 +935,7 @@ export default function SalaryScreen() {
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={{ gap: 8, paddingVertical: 4 }}
               >
-                {['ALL', 'CALCULATED', 'APPROVED', 'PAID'].map(st => (
+                {["ALL", "CALCULATED", "APPROVED", "PAID"].map((st) => (
                   <TouchableOpacity
                     key={st}
                     style={[
@@ -766,17 +960,21 @@ export default function SalaryScreen() {
             {/* Employee Payroll List */}
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Employee Payroll Roster</Text>
-              <Text style={styles.sectionSub}>{filteredPayroll.length} records</Text>
+              <Text style={styles.sectionSub}>
+                {filteredPayroll.length} records
+              </Text>
             </View>
 
             {filteredPayroll.length === 0 ? (
               <View style={styles.emptyCard}>
                 <Ionicons name="cash-outline" size={44} color="#D1D5DB" />
                 <Text style={styles.emptyTitle}>No Payroll Records Found</Text>
-                <Text style={styles.emptySub}>No active employees or matches for {currentMonthLabel}.</Text>
+                <Text style={styles.emptySub}>
+                  No active employees or matches for {currentMonthLabel}.
+                </Text>
               </View>
             ) : (
-              filteredPayroll.map(item => (
+              filteredPayroll.map((item) => (
                 <TouchableOpacity
                   key={item._id}
                   style={styles.payrollCard}
@@ -786,13 +984,16 @@ export default function SalaryScreen() {
                   <View style={styles.payrollCardTop}>
                     <View style={styles.avatarWrap}>
                       <Text style={styles.avatarText}>
-                        {item.employee?.name?.charAt(0) || 'E'}
+                        {item.employee?.name?.charAt(0) || "E"}
                       </Text>
                     </View>
                     <View style={{ flex: 1, marginLeft: 12 }}>
-                      <Text style={styles.empNameText}>{item.employee?.name || 'Employee'}</Text>
+                      <Text style={styles.empNameText}>
+                        {item.employee?.name || "Employee"}
+                      </Text>
                       <Text style={styles.empIdText}>
-                        {item.employee?.employeeId || 'ID Pending'} • {item.employee?.department || 'General'}
+                        {item.employee?.employeeId || "ID Pending"} •{" "}
+                        {item.employee?.department || "General"}
                       </Text>
                     </View>
                     <View
@@ -815,7 +1016,9 @@ export default function SalaryScreen() {
                   {item.attendanceChangedAfterApproval && (
                     <View style={styles.cardWarningBadge}>
                       <Ionicons name="alert-circle" size={14} color="#B45309" />
-                      <Text style={styles.cardWarningText}>Attendance changed after approval</Text>
+                      <Text style={styles.cardWarningText}>
+                        Attendance changed after approval
+                      </Text>
                     </View>
                   )}
 
@@ -823,20 +1026,32 @@ export default function SalaryScreen() {
                     <View style={styles.detailCol}>
                       <Text style={styles.detailColLbl}>Present / Total</Text>
                       <Text style={styles.detailColVal}>
-                        {item.attendanceSummary?.presentDays ?? 0} / {item.attendanceSummary?.workingDays ?? 26}d
+                        {item.attendanceSummary?.presentDays ?? 0} /{" "}
+                        {item.attendanceSummary?.workingDays ?? 26}d
                       </Text>
                     </View>
                     <View style={styles.detailCol}>
                       <Text style={styles.detailColLbl}>Overtime</Text>
-                      <Text style={styles.detailColVal}>{item.attendanceSummary?.overtimeHours ?? 0} hrs</Text>
+                      <Text style={styles.detailColVal}>
+                        {item.attendanceSummary?.overtimeHours ?? 0} hrs
+                      </Text>
                     </View>
                     <View style={styles.detailCol}>
                       <Text style={styles.detailColLbl}>Gross Pay</Text>
-                      <Text style={styles.detailColVal}>{formatINR(item.earnings?.grossSalary)}</Text>
+                      <Text style={styles.detailColVal}>
+                        {formatINR(item.earnings?.grossSalary)}
+                      </Text>
                     </View>
-                    <View style={[styles.detailCol, { alignItems: 'flex-end' }]}>
+                    <View
+                      style={[styles.detailCol, { alignItems: "flex-end" }]}
+                    >
                       <Text style={styles.detailColLbl}>Net Salary</Text>
-                      <Text style={[styles.detailColVal, { color: '#10B981', fontWeight: '800' }]}>
+                      <Text
+                        style={[
+                          styles.detailColVal,
+                          { color: "#10B981", fontWeight: "800" },
+                        ]}
+                      >
                         {formatINR(item.netSalary)}
                       </Text>
                     </View>
@@ -862,7 +1077,7 @@ export default function SalaryScreen() {
             </View>
 
             <ScrollView style={{ maxHeight: 360 }}>
-              {availableMonths.map(m => (
+              {availableMonths.map((m) => (
                 <TouchableOpacity
                   key={m.value}
                   style={[
@@ -883,7 +1098,11 @@ export default function SalaryScreen() {
                     {m.label}
                   </Text>
                   {selectedMonth === m.value && (
-                    <Ionicons name="checkmark-circle" size={20} color={THEME.colors.primary} />
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={20}
+                      color={THEME.colors.primary}
+                    />
                   )}
                 </TouchableOpacity>
               ))}
@@ -911,13 +1130,16 @@ export default function SalaryScreen() {
                 <View style={styles.detailEmpHeader}>
                   <View style={styles.avatarWrap}>
                     <Text style={styles.avatarText}>
-                      {selectedDetail.employee?.name?.charAt(0) || 'E'}
+                      {selectedDetail.employee?.name?.charAt(0) || "E"}
                     </Text>
                   </View>
                   <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text style={styles.detailEmpName}>{selectedDetail.employee?.name}</Text>
+                    <Text style={styles.detailEmpName}>
+                      {selectedDetail.employee?.name}
+                    </Text>
                     <Text style={styles.detailEmpSub}>
-                      {selectedDetail.employee?.employeeId || 'ID Pending'} • {selectedDetail.employee?.designation || 'Staff'}
+                      {selectedDetail.employee?.employeeId || "ID Pending"} •{" "}
+                      {selectedDetail.employee?.designation || "Staff"}
                     </Text>
                   </View>
                   <View
@@ -940,39 +1162,51 @@ export default function SalaryScreen() {
                 {/* Net Pay Highlight Banner */}
                 <View style={styles.netHighlightBanner}>
                   <div>
-                    <Text style={styles.netHighlightLbl}>Net Payable Salary</Text>
-                    <Text style={styles.netHighlightPeriod}>Month: {currentMonthLabel}</Text>
+                    <Text style={styles.netHighlightLbl}>
+                      Net Payable Salary
+                    </Text>
+                    <Text style={styles.netHighlightPeriod}>
+                      Month: {currentMonthLabel}
+                    </Text>
                   </div>
-                  <Text style={styles.netHighlightVal}>{formatINR(selectedDetail.netSalary)}</Text>
+                  <Text style={styles.netHighlightVal}>
+                    {formatINR(selectedDetail.netSalary)}
+                  </Text>
                 </View>
 
                 {/* Attendance Summary */}
-                <Text style={styles.fieldSectionTitle}>Attendance Breakdown</Text>
+                <Text style={styles.fieldSectionTitle}>
+                  Attendance Breakdown
+                </Text>
                 <View style={styles.attGridMini}>
                   <View style={styles.attBoxMini}>
-                    <Text style={styles.attValMini}>{selectedDetail.attendanceSummary?.presentDays ?? 0}</Text>
+                    <Text style={styles.attValMini}>
+                      {selectedDetail.attendanceSummary?.presentDays ?? 0}
+                    </Text>
                     <Text style={styles.attLblMini}>Present</Text>
                   </View>
                   <View style={styles.attBoxMini}>
-                    <Text style={[styles.attValMini, { color: '#F59E0B' }]}>
+                    <Text style={[styles.attValMini, { color: "#F59E0B" }]}>
                       {selectedDetail.attendanceSummary?.halfDays ?? 0}
                     </Text>
                     <Text style={styles.attLblMini}>Half Day</Text>
                   </View>
                   <View style={styles.attBoxMini}>
-                    <Text style={[styles.attValMini, { color: '#EF4444' }]}>
+                    <Text style={[styles.attValMini, { color: "#EF4444" }]}>
                       {selectedDetail.attendanceSummary?.unpaidLeave ?? 0}
                     </Text>
                     <Text style={styles.attLblMini}>Unpaid</Text>
                   </View>
                   <View style={styles.attBoxMini}>
-                    <Text style={[styles.attValMini, { color: '#3B82F6' }]}>
+                    <Text style={[styles.attValMini, { color: "#3B82F6" }]}>
                       {selectedDetail.attendanceSummary?.paidLeave ?? 0}
                     </Text>
                     <Text style={styles.attLblMini}>Paid Leave</Text>
                   </View>
                   <View style={styles.attBoxMini}>
-                    <Text style={styles.attValMini}>{selectedDetail.attendanceSummary?.overtimeHours ?? 0} hrs</Text>
+                    <Text style={styles.attValMini}>
+                      {selectedDetail.attendanceSummary?.overtimeHours ?? 0} hrs
+                    </Text>
                     <Text style={styles.attLblMini}>Overtime</Text>
                   </View>
                 </View>
@@ -982,89 +1216,121 @@ export default function SalaryScreen() {
                 <View style={styles.breakdownCard}>
                   <View style={styles.tableRow}>
                     <Text style={styles.tableLbl}>Basic Salary</Text>
-                    <Text style={styles.tableVal}>{formatINR(selectedDetail.earnings?.basic)}</Text>
+                    <Text style={styles.tableVal}>
+                      {formatINR(selectedDetail.earnings?.basic)}
+                    </Text>
                   </View>
                   <View style={styles.tableRow}>
                     <Text style={styles.tableLbl}>HRA</Text>
-                    <Text style={styles.tableVal}>{formatINR(selectedDetail.earnings?.hra)}</Text>
+                    <Text style={styles.tableVal}>
+                      {formatINR(selectedDetail.earnings?.hra)}
+                    </Text>
                   </View>
                   <View style={styles.tableRow}>
                     <Text style={styles.tableLbl}>Allowances</Text>
-                    <Text style={styles.tableVal}>{formatINR(selectedDetail.earnings?.allowances)}</Text>
+                    <Text style={styles.tableVal}>
+                      {formatINR(selectedDetail.earnings?.allowances)}
+                    </Text>
                   </View>
                   {(selectedDetail.earnings?.overtimeAmount || 0) > 0 && (
                     <View style={styles.tableRow}>
                       <Text style={styles.tableLbl}>
-                        Overtime ({selectedDetail.attendanceSummary?.overtimeHours}h @ ₹{selectedDetail.earnings?.overtimeRate}/h)
+                        Overtime (
+                        {selectedDetail.attendanceSummary?.overtimeHours}h @ ₹
+                        {selectedDetail.earnings?.overtimeRate}/h)
                       </Text>
-                      <Text style={[styles.tableVal, { color: '#10B981' }]}>
+                      <Text style={[styles.tableVal, { color: "#10B981" }]}>
                         +{formatINR(selectedDetail.earnings?.overtimeAmount)}
                       </Text>
                     </View>
                   )}
                   <View style={[styles.tableRow, styles.subtotalRow]}>
                     <Text style={styles.subtotalLbl}>Gross Salary</Text>
-                    <Text style={styles.subtotalVal}>{formatINR(selectedDetail.earnings?.grossSalary)}</Text>
+                    <Text style={styles.subtotalVal}>
+                      {formatINR(selectedDetail.earnings?.grossSalary)}
+                    </Text>
                   </View>
                 </View>
 
                 {/* Deductions List */}
                 <Text style={styles.fieldSectionTitle}>Deductions</Text>
                 <View style={styles.breakdownCard}>
-                  {(selectedDetail.deductions?.unpaidLeaveDeduction || 0) > 0 && (
+                  {(selectedDetail.deductions?.unpaidLeaveDeduction || 0) >
+                    0 && (
                     <View style={styles.tableRow}>
                       <Text style={styles.tableLbl}>
-                        Unpaid Absence ({selectedDetail.attendanceSummary?.unpaidLeave}d)
+                        Unpaid Absence (
+                        {selectedDetail.attendanceSummary?.unpaidLeave}d)
                       </Text>
-                      <Text style={[styles.tableVal, { color: '#EF4444' }]}>
-                        -{formatINR(selectedDetail.deductions?.unpaidLeaveDeduction)}
+                      <Text style={[styles.tableVal, { color: "#EF4444" }]}>
+                        -
+                        {formatINR(
+                          selectedDetail.deductions?.unpaidLeaveDeduction,
+                        )}
                       </Text>
                     </View>
                   )}
                   {(selectedDetail.deductions?.halfDayDeduction || 0) > 0 && (
                     <View style={styles.tableRow}>
                       <Text style={styles.tableLbl}>
-                        Half-Day Deduction ({selectedDetail.attendanceSummary?.halfDays}d)
+                        Half-Day Deduction (
+                        {selectedDetail.attendanceSummary?.halfDays}d)
                       </Text>
-                      <Text style={[styles.tableVal, { color: '#EF4444' }]}>
-                        -{formatINR(selectedDetail.deductions?.halfDayDeduction)}
+                      <Text style={[styles.tableVal, { color: "#EF4444" }]}>
+                        -
+                        {formatINR(selectedDetail.deductions?.halfDayDeduction)}
                       </Text>
                     </View>
                   )}
                   {(selectedDetail.deductions?.pf || 0) > 0 && (
                     <View style={styles.tableRow}>
                       <Text style={styles.tableLbl}>PF (Provident Fund)</Text>
-                      <Text style={styles.tableVal}>-{formatINR(selectedDetail.deductions?.pf)}</Text>
+                      <Text style={styles.tableVal}>
+                        -{formatINR(selectedDetail.deductions?.pf)}
+                      </Text>
                     </View>
                   )}
                   {(selectedDetail.deductions?.esi || 0) > 0 && (
                     <View style={styles.tableRow}>
                       <Text style={styles.tableLbl}>ESI</Text>
-                      <Text style={styles.tableVal}>-{formatINR(selectedDetail.deductions?.esi)}</Text>
+                      <Text style={styles.tableVal}>
+                        -{formatINR(selectedDetail.deductions?.esi)}
+                      </Text>
                     </View>
                   )}
                   {(selectedDetail.deductions?.profTax || 0) > 0 && (
                     <View style={styles.tableRow}>
                       <Text style={styles.tableLbl}>Professional Tax</Text>
-                      <Text style={styles.tableVal}>-{formatINR(selectedDetail.deductions?.profTax)}</Text>
+                      <Text style={styles.tableVal}>
+                        -{formatINR(selectedDetail.deductions?.profTax)}
+                      </Text>
                     </View>
                   )}
                   <View style={[styles.tableRow, styles.subtotalRow]}>
-                    <Text style={[styles.subtotalLbl, { color: '#EF4444' }]}>Total Deductions</Text>
-                    <Text style={[styles.subtotalVal, { color: '#EF4444' }]}>
+                    <Text style={[styles.subtotalLbl, { color: "#EF4444" }]}>
+                      Total Deductions
+                    </Text>
+                    <Text style={[styles.subtotalVal, { color: "#EF4444" }]}>
                       -{formatINR(selectedDetail.deductions?.totalDeductions)}
                     </Text>
                   </View>
                 </View>
 
                 {/* Payment Information if Paid */}
-                {selectedDetail.status === 'PAID' && (
+                {selectedDetail.status === "PAID" && (
                   <View style={styles.paidInfoBox}>
-                    <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={20}
+                      color="#10B981"
+                    />
                     <View style={{ flex: 1, marginLeft: 10 }}>
                       <Text style={styles.paidInfoTitle}>Salary Disbursed</Text>
                       <Text style={styles.paidInfoSub}>
-                        Method: {selectedDetail.payment?.paymentMethod || 'Bank Transfer'} • Ref: {selectedDetail.payment?.transactionId || '—'}
+                        Method:{" "}
+                        {selectedDetail.payment?.paymentMethod ||
+                          "Bank Transfer"}{" "}
+                        • Ref: {selectedDetail.payment?.transactionId || "—"}
                       </Text>
                     </View>
                   </View>
@@ -1072,36 +1338,60 @@ export default function SalaryScreen() {
 
                 {/* Action Buttons */}
                 <View style={styles.modalActionCol}>
-                  {selectedDetail.status !== 'PAID' && (
+                  {selectedDetail.status !== "PAID" && (
                     <TouchableOpacity
                       style={styles.markPaidBtn}
                       onPress={() => setIsPaymentModalOpen(true)}
                     >
-                      <Ionicons name="cash" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                      <Ionicons
+                        name="cash"
+                        size={18}
+                        color="#FFFFFF"
+                        style={{ marginRight: 6 }}
+                      />
                       <Text style={styles.markPaidBtnText}>Mark as Paid</Text>
                     </TouchableOpacity>
                   )}
 
-                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <View style={{ flexDirection: "row", gap: 10 }}>
                     <TouchableOpacity
                       style={styles.modalSecondaryBtn}
-                      onPress={() => downloadPayslipPdf(selectedDetail, selectedDetail.employee)}
+                      onPress={() =>
+                        downloadPayslipPdf(
+                          selectedDetail,
+                          selectedDetail.employee,
+                        )
+                      }
                     >
-                      <Ionicons name="download-outline" size={16} color="#374151" style={{ marginRight: 4 }} />
-                      <Text style={styles.modalSecondaryBtnText}>PDF Payslip</Text>
+                      <Ionicons
+                        name="download-outline"
+                        size={16}
+                        color="#374151"
+                        style={{ marginRight: 4 }}
+                      />
+                      <Text style={styles.modalSecondaryBtnText}>
+                        PDF Payslip
+                      </Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
                       style={styles.modalSecondaryBtn}
                       onPress={() => {
                         setEmailTargetRecord(selectedDetail);
-                        setEmailRecipient(selectedDetail.employee?.email || '');
-                        setEmailMessage('');
+                        setEmailRecipient(selectedDetail.employee?.email || "");
+                        setEmailMessage("");
                         setIsEmailModalOpen(true);
                       }}
                     >
-                      <Ionicons name="mail-outline" size={16} color="#374151" style={{ marginRight: 4 }} />
-                      <Text style={styles.modalSecondaryBtnText}>Email Staff</Text>
+                      <Ionicons
+                        name="mail-outline"
+                        size={16}
+                        color="#374151"
+                        style={{ marginRight: 4 }}
+                      />
+                      <Text style={styles.modalSecondaryBtnText}>
+                        Email Staff
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -1133,11 +1423,11 @@ export default function SalaryScreen() {
               <Text style={styles.fieldSectionTitle}>Payment Mode</Text>
               <View style={styles.paymentMethodRow}>
                 {[
-                  { id: 'BANK_TRANSFER', label: 'Bank Transfer' },
-                  { id: 'UPI', label: 'UPI' },
-                  { id: 'CASH', label: 'Cash' },
-                  { id: 'CHEQUE', label: 'Cheque' },
-                ].map(m => (
+                  { id: "BANK_TRANSFER", label: "Bank Transfer" },
+                  { id: "UPI", label: "UPI" },
+                  { id: "CASH", label: "Cash" },
+                  { id: "CHEQUE", label: "Cheque" },
+                ].map((m) => (
                   <TouchableOpacity
                     key={m.id}
                     style={[
@@ -1158,7 +1448,9 @@ export default function SalaryScreen() {
                 ))}
               </View>
 
-              <Text style={styles.fieldSectionTitle}>Transaction / Reference ID</Text>
+              <Text style={styles.fieldSectionTitle}>
+                Transaction / Reference ID
+              </Text>
               <TextInput
                 style={styles.textInput}
                 placeholder="e.g. UTR / NEFT / Cheque #..."
@@ -1175,7 +1467,9 @@ export default function SalaryScreen() {
                 {isSubmittingPayment ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.confirmPayBtnText}>Confirm Payment & Disburse</Text>
+                  <Text style={styles.confirmPayBtnText}>
+                    Confirm Payment & Disburse
+                  </Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -1197,7 +1491,9 @@ export default function SalaryScreen() {
             </View>
 
             <View style={{ padding: 20 }}>
-              <Text style={styles.fieldSectionTitle}>Recipient Email Address</Text>
+              <Text style={styles.fieldSectionTitle}>
+                Recipient Email Address
+              </Text>
               <TextInput
                 style={styles.textInput}
                 placeholder="employee@company.com"
@@ -1209,7 +1505,10 @@ export default function SalaryScreen() {
 
               <Text style={styles.fieldSectionTitle}>Optional Note</Text>
               <TextInput
-                style={[styles.textInput, { height: 70, textAlignVertical: 'top' }]}
+                style={[
+                  styles.textInput,
+                  { height: 70, textAlignVertical: "top" },
+                ]}
                 placeholder="Add a custom note to the employee..."
                 value={emailMessage}
                 onChangeText={setEmailMessage}
@@ -1239,58 +1538,87 @@ export default function SalaryScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.detailModalContainer}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalHeaderTitle}>Payroll Policy Settings</Text>
+              <Text style={styles.modalHeaderTitle}>
+                Payroll Policy Settings
+              </Text>
               <TouchableOpacity onPress={() => setIsSettingsModalOpen(false)}>
                 <Ionicons name="close" size={24} color="#374151" />
               </TouchableOpacity>
             </View>
 
             <ScrollView contentContainerStyle={{ padding: 20 }}>
-              <Text style={styles.fieldSectionTitle}>Standard Working Hours / Day</Text>
+              <Text style={styles.fieldSectionTitle}>
+                Standard Working Hours / Day
+              </Text>
               <TextInput
                 style={styles.textInput}
                 value={String(editConfig.standardWorkingHours ?? 8)}
-                onChangeText={t => setEditConfig((p: any) => ({ ...p, standardWorkingHours: t }))}
+                onChangeText={(t) =>
+                  setEditConfig((p: any) => ({ ...p, standardWorkingHours: t }))
+                }
                 keyboardType="numeric"
               />
 
-              <Text style={styles.fieldSectionTitle}>Working Days Per Week</Text>
+              <Text style={styles.fieldSectionTitle}>
+                Working Days Per Week
+              </Text>
               <TextInput
                 style={styles.textInput}
                 value={String(editConfig.workingDaysPerWeek ?? 6)}
-                onChangeText={t => setEditConfig((p: any) => ({ ...p, workingDaysPerWeek: t }))}
+                onChangeText={(t) =>
+                  setEditConfig((p: any) => ({ ...p, workingDaysPerWeek: t }))
+                }
                 keyboardType="numeric"
               />
 
-              <Text style={styles.fieldSectionTitle}>Overtime Rate (₹ / hour)</Text>
+              <Text style={styles.fieldSectionTitle}>
+                Overtime Rate (₹ / hour)
+              </Text>
               <TextInput
                 style={styles.textInput}
                 value={String(editConfig.defaultOvertimeRatePerHour ?? 200)}
-                onChangeText={t => setEditConfig((p: any) => ({ ...p, defaultOvertimeRatePerHour: t }))}
+                onChangeText={(t) =>
+                  setEditConfig((p: any) => ({
+                    ...p,
+                    defaultOvertimeRatePerHour: t,
+                  }))
+                }
                 keyboardType="numeric"
               />
 
-              <Text style={styles.fieldSectionTitle}>Statutory PF Percentage (%)</Text>
+              <Text style={styles.fieldSectionTitle}>
+                Statutory PF Percentage (%)
+              </Text>
               <TextInput
                 style={styles.textInput}
                 value={String(editConfig.pfPercentage ?? 12)}
-                onChangeText={t => setEditConfig((p: any) => ({ ...p, pfPercentage: t }))}
+                onChangeText={(t) =>
+                  setEditConfig((p: any) => ({ ...p, pfPercentage: t }))
+                }
                 keyboardType="numeric"
               />
 
-              <Text style={styles.fieldSectionTitle}>Statutory ESI Percentage (%)</Text>
+              <Text style={styles.fieldSectionTitle}>
+                Statutory ESI Percentage (%)
+              </Text>
               <TextInput
                 style={styles.textInput}
                 value={String(editConfig.esiPercentage ?? 0.75)}
-                onChangeText={t => setEditConfig((p: any) => ({ ...p, esiPercentage: t }))}
+                onChangeText={(t) =>
+                  setEditConfig((p: any) => ({ ...p, esiPercentage: t }))
+                }
                 keyboardType="numeric"
               />
 
-              <Text style={styles.fieldSectionTitle}>Monthly Professional Tax (₹)</Text>
+              <Text style={styles.fieldSectionTitle}>
+                Monthly Professional Tax (₹)
+              </Text>
               <TextInput
                 style={styles.textInput}
                 value={String(editConfig.profTaxFixed ?? 200)}
-                onChangeText={t => setEditConfig((p: any) => ({ ...p, profTaxFixed: t }))}
+                onChangeText={(t) =>
+                  setEditConfig((p: any) => ({ ...p, profTaxFixed: t }))
+                }
                 keyboardType="numeric"
               />
 
@@ -1302,7 +1630,9 @@ export default function SalaryScreen() {
                 {isSavingConfig ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.confirmPayBtnText}>Save Configuration</Text>
+                  <Text style={styles.confirmPayBtnText}>
+                    Save Configuration
+                  </Text>
                 )}
               </TouchableOpacity>
             </ScrollView>
@@ -1320,22 +1650,37 @@ export default function SalaryScreen() {
         onRequestClose={() => setIsOfferModalOpen(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.monthModalContent, { maxHeight: '85%' }]}>
+          <View style={[styles.monthModalContent, { maxHeight: "85%" }]}>
             <View style={styles.modalHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+              >
                 <Image
                   source={{ uri: COMPANY_LOGO_DATA_URL }}
-                  style={{ width: 110, height: 26, resizeMode: 'contain' }}
+                  style={{ width: 110, height: 26, resizeMode: "contain" }}
                 />
-                <Text style={styles.modalHeaderTitle}>Generate Offer Letter</Text>
+                <Text style={styles.modalHeaderTitle}>
+                  Generate Offer Letter
+                </Text>
               </View>
               <TouchableOpacity onPress={() => setIsOfferModalOpen(false)}>
                 <Ionicons name="close" size={24} color="#6B7280" />
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={{ padding: 16 }} showsVerticalScrollIndicator={false}>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: '#6B7280', marginBottom: 4, textTransform: 'uppercase' }}>
+            <ScrollView
+              style={{ padding: 16 }}
+              showsVerticalScrollIndicator={false}
+            >
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: "700",
+                  color: "#6B7280",
+                  marginBottom: 4,
+                  textTransform: "uppercase",
+                }}
+              >
                 Candidate Full Name *
               </Text>
               <TextInput
@@ -1346,9 +1691,17 @@ export default function SalaryScreen() {
                 placeholderTextColor="#9CA3AF"
               />
 
-              <View style={{ flexDirection: 'row', gap: 10 }}>
+              <View style={{ flexDirection: "row", gap: 10 }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#6B7280', marginBottom: 4, textTransform: 'uppercase' }}>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "700",
+                      color: "#6B7280",
+                      marginBottom: 4,
+                      textTransform: "uppercase",
+                    }}
+                  >
                     Designation
                   </Text>
                   <TextInput
@@ -1360,7 +1713,15 @@ export default function SalaryScreen() {
                   />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#6B7280', marginBottom: 4, textTransform: 'uppercase' }}>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "700",
+                      color: "#6B7280",
+                      marginBottom: 4,
+                      textTransform: "uppercase",
+                    }}
+                  >
                     Department
                   </Text>
                   <TextInput
@@ -1373,9 +1734,17 @@ export default function SalaryScreen() {
                 </View>
               </View>
 
-              <View style={{ flexDirection: 'row', gap: 10 }}>
+              <View style={{ flexDirection: "row", gap: 10 }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#6B7280', marginBottom: 4, textTransform: 'uppercase' }}>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "700",
+                      color: "#6B7280",
+                      marginBottom: 4,
+                      textTransform: "uppercase",
+                    }}
+                  >
                     Monthly Salary (₹)
                   </Text>
                   <TextInput
@@ -1392,7 +1761,15 @@ export default function SalaryScreen() {
                   />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#6B7280', marginBottom: 4, textTransform: 'uppercase' }}>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "700",
+                      color: "#6B7280",
+                      marginBottom: 4,
+                      textTransform: "uppercase",
+                    }}
+                  >
                     Annual CTC (₹)
                   </Text>
                   <TextInput
@@ -1406,9 +1783,17 @@ export default function SalaryScreen() {
                 </View>
               </View>
 
-              <View style={{ flexDirection: 'row', gap: 10 }}>
+              <View style={{ flexDirection: "row", gap: 10 }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#6B7280', marginBottom: 4, textTransform: 'uppercase' }}>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "700",
+                      color: "#6B7280",
+                      marginBottom: 4,
+                      textTransform: "uppercase",
+                    }}
+                  >
                     Joining Date (YYYY-MM-DD)
                   </Text>
                   <TextInput
@@ -1420,7 +1805,15 @@ export default function SalaryScreen() {
                   />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#6B7280', marginBottom: 4, textTransform: 'uppercase' }}>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "700",
+                      color: "#6B7280",
+                      marginBottom: 4,
+                      textTransform: "uppercase",
+                    }}
+                  >
                     Work Location
                   </Text>
                   <TextInput
@@ -1434,16 +1827,31 @@ export default function SalaryScreen() {
               </View>
 
               <TouchableOpacity
-                style={[styles.confirmPayBtn, { backgroundColor: '#7A131A', marginTop: 12 }]}
+                style={[
+                  styles.confirmPayBtn,
+                  { backgroundColor: "#7A131A", marginTop: 12 },
+                ]}
                 onPress={handleDownloadOfferLetter}
                 disabled={isGeneratingOffer}
               >
                 {isGeneratingOffer ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Ionicons name="document-text-outline" size={18} color="#FFFFFF" />
-                    <Text style={styles.confirmPayBtnText}>Download Branded Offer Letter (PDF)</Text>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <Ionicons
+                      name="document-text-outline"
+                      size={18}
+                      color="#FFFFFF"
+                    />
+                    <Text style={styles.confirmPayBtnText}>
+                      Download Branded Offer Letter (PDF)
+                    </Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -1459,12 +1867,12 @@ export default function SalaryScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: "#F8F9FA",
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     backgroundColor: THEME.colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -1473,56 +1881,56 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontWeight: "700",
+    color: "#FFFFFF",
     letterSpacing: 0.5,
   },
   tabBar: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
+    flexDirection: "row",
+    backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: "#E5E7EB",
   },
   tabItem: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 12,
     gap: 6,
     borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+    borderBottomColor: "transparent",
   },
   tabItemActive: {
     borderBottomColor: THEME.colors.primary,
   },
   tabText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#6B7280',
+    fontWeight: "600",
+    color: "#6B7280",
   },
   tabTextActive: {
     color: THEME.colors.primary,
   },
   periodBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: "#E5E7EB",
   },
   monthSelectorBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F3F4F6',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F3F4F6",
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
@@ -1530,28 +1938,28 @@ const styles = StyleSheet.create({
   },
   monthSelectorText: {
     fontSize: 13,
-    fontWeight: '700',
-    color: '#1F2937',
+    fontWeight: "700",
+    color: "#1F2937",
   },
   quickActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
   iconBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#F3F4F6",
+    justifyContent: "center",
+    alignItems: "center",
   },
   iconBtnPrimary: {
     width: 36,
     height: 36,
     borderRadius: 18,
     backgroundColor: THEME.colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   scroll: {
     flex: 1,
@@ -1562,12 +1970,12 @@ const styles = StyleSheet.create({
   },
   loaderWrap: {
     paddingVertical: 60,
-    alignItems: 'center',
+    alignItems: "center",
   },
   loaderText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#6B7280',
+    color: "#6B7280",
   },
 
   // Red Card
@@ -1583,26 +1991,26 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   redCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 6,
   },
   redCardSubtitle: {
-    color: 'rgba(255,255,255,0.85)',
+    color: "rgba(255,255,255,0.85)",
     fontSize: 13,
-    fontWeight: '600',
-    textTransform: 'uppercase',
+    fontWeight: "600",
+    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   redCardValue: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 34,
-    fontWeight: '800',
+    fontWeight: "800",
     marginVertical: 4,
   },
   redCardSub: {
-    color: 'rgba(255,255,255,0.75)',
+    color: "rgba(255,255,255,0.75)",
     fontSize: 12,
     marginTop: 2,
   },
@@ -1613,16 +2021,16 @@ const styles = StyleSheet.create({
   },
   statusBadgeText: {
     fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
+    fontWeight: "700",
+    textTransform: "uppercase",
   },
 
   warningBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FEF3C7',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FEF3C7",
     borderWidth: 1,
-    borderColor: '#FDE68A',
+    borderColor: "#FDE68A",
     borderRadius: 10,
     padding: 12,
     marginBottom: 16,
@@ -1631,114 +2039,114 @@ const styles = StyleSheet.create({
   warningBannerText: {
     flex: 1,
     fontSize: 12,
-    color: '#92400E',
-    fontWeight: '600',
+    color: "#92400E",
+    fontWeight: "600",
   },
 
   // Card general
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 14,
     padding: 18,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: "#E5E7EB",
     marginBottom: 14,
   },
   cardTitle: {
     fontSize: 15,
-    fontWeight: '700',
-    color: '#111827',
+    fontWeight: "700",
+    color: "#111827",
     marginBottom: 14,
   },
   tableRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingVertical: 9,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: "#F3F4F6",
   },
   tableLbl: {
     fontSize: 13,
-    color: '#4B5563',
+    color: "#4B5563",
   },
   tableVal: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: "600",
+    color: "#111827",
   },
   subtotalRow: {
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: "#E5E7EB",
     borderBottomWidth: 0,
     paddingTop: 12,
     marginTop: 4,
   },
   subtotalLbl: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#111827',
+    fontWeight: "700",
+    color: "#111827",
   },
   subtotalVal: {
     fontSize: 15,
-    fontWeight: '800',
-    color: '#111827',
+    fontWeight: "800",
+    color: "#111827",
   },
 
   // Attendance Grid
   attGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 10,
   },
   attBox: {
     flex: 1,
     minWidth: (width - 72) / 3,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: "#F9FAFB",
     borderRadius: 10,
     padding: 10,
-    alignItems: 'center',
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: "#E5E7EB",
   },
   attVal: {
     fontSize: 16,
-    fontWeight: '800',
-    color: '#111827',
+    fontWeight: "800",
+    color: "#111827",
   },
   attLbl: {
     fontSize: 10,
-    color: '#6B7280',
-    textTransform: 'uppercase',
+    color: "#6B7280",
+    textTransform: "uppercase",
     marginTop: 2,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 
   employeeActionRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
     marginTop: 6,
     marginBottom: 20,
   },
   downloadPdfBtn: {
     flex: 1.3,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: THEME.colors.primary,
     paddingVertical: 14,
     borderRadius: 12,
   },
   downloadPdfBtnText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   emailPdfBtn: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: THEME.colors.primary,
     paddingVertical: 14,
@@ -1747,35 +2155,35 @@ const styles = StyleSheet.create({
   emailPdfBtnText: {
     color: THEME.colors.primary,
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: "700",
   },
 
   // KPI Grid (Admin)
   kpiGrid: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
     marginBottom: 16,
   },
   kpiCard: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 10,
     padding: 10,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: "#E5E7EB",
     borderLeftWidth: 4,
-    alignItems: 'center',
+    alignItems: "center",
   },
   kpiVal: {
     fontSize: 15,
-    fontWeight: '800',
-    color: '#111827',
+    fontWeight: "800",
+    color: "#111827",
   },
   kpiLbl: {
     fontSize: 9,
-    fontWeight: '600',
-    color: '#6B7280',
-    textTransform: 'uppercase',
+    fontWeight: "600",
+    color: "#6B7280",
+    textTransform: "uppercase",
     marginTop: 2,
   },
 
@@ -1783,11 +2191,11 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: "#E5E7EB",
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -1797,83 +2205,83 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 13,
-    color: '#111827',
+    color: "#111827",
   },
   filterChip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: "#E5E7EB",
   },
   filterChipActive: {
     backgroundColor: THEME.colors.primary,
   },
   filterChipText: {
     fontSize: 11,
-    fontWeight: '600',
-    color: '#4B5563',
+    fontWeight: "600",
+    color: "#4B5563",
   },
   filterChipTextActive: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
   },
 
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "baseline",
     marginBottom: 12,
     marginTop: 4,
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
+    fontWeight: "700",
+    color: "#111827",
   },
   sectionSub: {
     fontSize: 12,
-    color: '#6B7280',
+    color: "#6B7280",
   },
 
   // Payroll Card
   payrollCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 12,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: "#E5E7EB",
     marginBottom: 10,
   },
   payrollCardTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 8,
   },
   avatarWrap: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(122, 19, 26, 0.12)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(122, 19, 26, 0.12)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   avatarText: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: "700",
     color: THEME.colors.primary,
   },
   empNameText: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#111827',
+    fontWeight: "700",
+    color: "#111827",
   },
   empIdText: {
     fontSize: 11,
-    color: '#6B7280',
+    color: "#6B7280",
   },
   cardWarningBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FEF3C7',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FEF3C7",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
@@ -1882,13 +2290,13 @@ const styles = StyleSheet.create({
   },
   cardWarningText: {
     fontSize: 10,
-    fontWeight: '600',
-    color: '#92400E',
+    fontWeight: "600",
+    color: "#92400E",
   },
   payrollCardDetails: {
-    flexDirection: 'row',
+    flexDirection: "row",
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    borderTopColor: "#F3F4F6",
     paddingTop: 8,
   },
   detailCol: {
@@ -1896,191 +2304,191 @@ const styles = StyleSheet.create({
   },
   detailColLbl: {
     fontSize: 10,
-    color: '#9CA3AF',
-    textTransform: 'uppercase',
+    color: "#9CA3AF",
+    textTransform: "uppercase",
   },
   detailColVal: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: "600",
+    color: "#111827",
     marginTop: 2,
   },
 
   emptyCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 14,
     padding: 30,
-    alignItems: 'center',
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: "#E5E7EB",
     marginVertical: 12,
   },
   emptyTitle: {
     fontSize: 15,
-    fontWeight: '700',
-    color: '#374151',
+    fontWeight: "700",
+    color: "#374151",
     marginTop: 10,
   },
   emptySub: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: "#9CA3AF",
     marginTop: 4,
-    textAlign: 'center',
+    textAlign: "center",
   },
 
   // Modal General
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
   },
   monthModalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingBottom: 24,
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: "#E5E7EB",
   },
   modalHeaderTitle: {
     fontSize: 17,
-    fontWeight: '700',
-    color: '#111827',
+    fontWeight: "700",
+    color: "#111827",
   },
   monthItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: "#F3F4F6",
   },
   monthItemActive: {
-    backgroundColor: '#FFF5F5',
+    backgroundColor: "#FFF5F5",
   },
   monthItemText: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#374151',
+    fontWeight: "500",
+    color: "#374151",
   },
   monthItemTextActive: {
     color: THEME.colors.primary,
-    fontWeight: '700',
+    fontWeight: "700",
   },
 
   // Detail Modal
   detailModalContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: height * 0.90,
+    maxHeight: height * 0.9,
   },
   detailEmpHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 16,
   },
   detailEmpName: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
+    fontWeight: "700",
+    color: "#111827",
   },
   detailEmpSub: {
     fontSize: 12,
-    color: '#6B7280',
+    color: "#6B7280",
   },
   netHighlightBanner: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#0F172A',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#0F172A",
     borderRadius: 10,
     padding: 16,
     marginBottom: 16,
   },
   netHighlightLbl: {
     fontSize: 12,
-    color: '#94A3B8',
-    fontWeight: '600',
-    textTransform: 'uppercase',
+    color: "#94A3B8",
+    fontWeight: "600",
+    textTransform: "uppercase",
   },
   netHighlightPeriod: {
     fontSize: 11,
-    color: '#CBD5E1',
+    color: "#CBD5E1",
     marginTop: 2,
   },
   netHighlightVal: {
     fontSize: 22,
-    fontWeight: '800',
-    color: '#10B981',
+    fontWeight: "800",
+    color: "#10B981",
   },
   fieldSectionTitle: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#374151',
-    textTransform: 'uppercase',
+    fontWeight: "700",
+    color: "#374151",
+    textTransform: "uppercase",
     letterSpacing: 0.5,
     marginTop: 12,
     marginBottom: 8,
   },
   attGridMini: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 6,
     marginBottom: 12,
   },
   attBoxMini: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: "#F8FAFC",
     borderRadius: 8,
     padding: 8,
-    alignItems: 'center',
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: "#E2E8F0",
   },
   attValMini: {
     fontSize: 14,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontWeight: "800",
+    color: "#0F172A",
   },
   attLblMini: {
     fontSize: 9,
-    color: '#64748B',
-    textTransform: 'uppercase',
+    color: "#64748B",
+    textTransform: "uppercase",
     marginTop: 2,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   breakdownCard: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: "#F8FAFC",
     borderRadius: 10,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: "#E2E8F0",
     marginBottom: 10,
   },
   paidInfoBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#DEF7EC',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#DEF7EC",
     borderRadius: 8,
     padding: 12,
     marginVertical: 10,
   },
   paidInfoTitle: {
     fontSize: 13,
-    fontWeight: '700',
-    color: '#03543F',
+    fontWeight: "700",
+    color: "#03543F",
   },
   paidInfoSub: {
     fontSize: 11,
-    color: '#046C4E',
+    color: "#046C4E",
   },
   modalActionCol: {
     gap: 10,
@@ -2088,51 +2496,51 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   markPaidBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#10B981',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#10B981",
     paddingVertical: 14,
     borderRadius: 12,
   },
   markPaidBtnText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   modalSecondaryBtn: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F3F4F6',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F3F4F6",
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: "#E5E7EB",
     paddingVertical: 12,
     borderRadius: 10,
   },
   modalSecondaryBtnText: {
-    color: '#374151',
+    color: "#374151",
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 
   // Payment Modal
   paymentModalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingBottom: 24,
   },
   paymentAmountVal: {
     fontSize: 28,
-    fontWeight: '800',
-    color: '#10B981',
+    fontWeight: "800",
+    color: "#10B981",
     marginBottom: 10,
   },
   paymentMethodRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
     marginBottom: 12,
   },
@@ -2140,9 +2548,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: "#F3F4F6",
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: "#E5E7EB",
   },
   methodChipActive: {
     backgroundColor: THEME.colors.primary,
@@ -2150,33 +2558,33 @@ const styles = StyleSheet.create({
   },
   methodChipText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#4B5563',
+    fontWeight: "600",
+    color: "#4B5563",
   },
   methodChipTextActive: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
   },
   textInput: {
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: "#E5E7EB",
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
-    color: '#111827',
+    color: "#111827",
     marginBottom: 12,
   },
   confirmPayBtn: {
     backgroundColor: THEME.colors.primary,
     paddingVertical: 14,
     borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginTop: 8,
   },
   confirmPayBtnText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: "700",
   },
 });

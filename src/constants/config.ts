@@ -11,7 +11,7 @@ let apiUrl = 'http://192.168.1.52:5001/api';
 if (__DEV__) {
   if (process.env.EXPO_PUBLIC_API_URL) {
     apiUrl = process.env.EXPO_PUBLIC_API_URL;
-  } else if (extraApiUrl) {
+  } else if (extraApiUrl && !extraApiUrl.includes("alterabackend.onrender.com")) {
     apiUrl = extraApiUrl;
   } else if (Platform.OS === 'web') {
     const host = typeof window !== 'undefined' && window.location?.hostname ? window.location.hostname : 'localhost';

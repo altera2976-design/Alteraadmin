@@ -1,10 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { Stack, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -23,6 +25,7 @@ import {
   QuotationDoc,
   QuotationItemDoc,
   QuotationMilestone,
+  QuotationStandaloneAccessory,
   QuotationSummaryKpis,
 } from "../../services/quotationApi";
 import {
@@ -320,7 +323,7 @@ export default function QuotationScreen() {
   };
 
   // ── Form State for New / Edit Quotation ────────────────────────────────────
-  const [formStep, setFormStep] = useState<1 | 2 | 3 | 4>(1);
+  const [formStep, setFormStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [editingQuotationId, setEditingQuotationId] = useState<string | null>(
     null,
   );
@@ -348,6 +351,70 @@ export default function QuotationScreen() {
   const [showCustomSubItemInput, setShowCustomSubItemInput] = useState(false);
   const [customSubItemName, setCustomSubItemName] = useState("");
   const [items, setItems] = useState<QuotationItemDoc[]>([]);
+
+  // Step 3: Standalone Accessories
+  const [standaloneAccessories, setStandaloneAccessories] = useState<QuotationStandaloneAccessory[]>([]);
+  const [stAccName, setStAccName] = useState("");
+  const [stAccDesc, setStAccDesc] = useState("");
+  const [stAccImage, setStAccImage] = useState("");
+  const [stAccQty, setStAccQty] = useState("1");
+  const [stAccUnit, setStAccUnit] = useState("Nos");
+  const [stAccPrice, setStAccPrice] = useState("");
+
+  const handlePickAccImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        quality: 0.6,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        if (asset.base64) {
+          setStAccImage(`data:image/jpeg;base64,${asset.base64}`);
+        } else if (asset.uri) {
+          setStAccImage(asset.uri);
+        }
+      }
+    } catch (error) {
+      Alert.alert("Image Error", "Could not pick image.");
+    }
+  };
+
+  const handleAddStandaloneAccessory = () => {
+    const name = stAccName.trim();
+    if (!name) {
+      Alert.alert("Validation Error", "Please enter accessory name.");
+      return;
+    }
+    const qty = Math.max(1, parseInt(stAccQty, 10) || 1);
+    const price = Math.max(0, parseFloat(stAccPrice) || 0);
+    const total = Math.round(qty * price);
+
+    const newAcc: QuotationStandaloneAccessory = {
+      name,
+      description: stAccDesc.trim(),
+      image: stAccImage || undefined,
+      quantity: qty,
+      unit: stAccUnit || "Nos",
+      price,
+      total,
+    };
+
+    setStandaloneAccessories((prev) => [...prev, newAcc]);
+    setStAccName("");
+    setStAccDesc("");
+    setStAccImage("");
+    setStAccQty("1");
+    setStAccUnit("Nos");
+    setStAccPrice("");
+  };
+
+  const handleRemoveStandaloneAccessory = (index: number) => {
+    setStandaloneAccessories((prev) => prev.filter((_, i) => i !== index));
+  };
 
   // Item Sub-form
   const DEFAULT_UNITS = ["Sq Ft", "Lumpsum", "Pieces", "+ Add More"];
@@ -410,9 +477,10 @@ export default function QuotationScreen() {
   >([]);
   const [itemRemarks, setItemRemarks] = useState("");
 
-  // Step 3: Charges, GST, Discount
+  // Step 4: Charges, GST, Discount
   const [handlingPercent, setHandlingPercent] = useState("2");
   const [designPercent, setDesignPercent] = useState("2");
+  const [transportCharges, setTransportCharges] = useState("0");
   const [discountType, setDiscountType] = useState<"PERCENT" | "FIXED">(
     "PERCENT",
   );
@@ -422,7 +490,7 @@ export default function QuotationScreen() {
     "AS_PER_ACTUAL" | "CGST_SGST" | "IGST"
   >("AS_PER_ACTUAL");
 
-  // Step 4: Milestones & Notes
+  // Step 5: Milestones & Notes
   const [milestones, setMilestones] = useState<QuotationMilestone[]>(
     DEFAULT_MILESTONES_INPUT,
   );
@@ -501,13 +569,19 @@ export default function QuotationScreen() {
     );
     const currentDraftAmt = draftBaseAmt + draftAccAmt;
 
-    const rawSubtotal = addedSub + currentDraftAmt;
+    const standaloneAccTotal = standaloneAccessories.reduce(
+      (sum, a) => sum + (Number(a.total) || (Number(a.quantity) || 1) * (Number(a.price) || 0)),
+      0
+    );
+
+    const rawSubtotal = addedSub + currentDraftAmt + standaloneAccTotal;
     const handlingFee = Math.round(
       rawSubtotal * ((parseFloat(handlingPercent) || 0) / 100),
     );
     const designFee = Math.round(
       rawSubtotal * ((parseFloat(designPercent) || 0) / 100),
     );
+    const transportAmt = Math.max(0, parseFloat(transportCharges) || 0);
 
     const discVal = parseFloat(discountValue) || 0;
     const discountAmt =
@@ -517,7 +591,7 @@ export default function QuotationScreen() {
 
     const taxable = Math.max(
       0,
-      rawSubtotal + handlingFee + designFee - discountAmt,
+      rawSubtotal + handlingFee + designFee + transportAmt - discountAmt,
     );
     const gstPct = parseFloat(gstPercent) || 0;
     const gstAmt =
@@ -534,8 +608,10 @@ export default function QuotationScreen() {
       rawSubtotal,
       addedSub,
       currentDraftAmt,
+      standaloneAccTotal,
       handlingFee,
       designFee,
+      transportAmt,
       discountAmt,
       taxable,
       gstAmt,
@@ -548,8 +624,10 @@ export default function QuotationScreen() {
     itemSize,
     itemRate,
     itemAccessories,
+    standaloneAccessories,
     handlingPercent,
     designPercent,
+    transportCharges,
     discountType,
     discountValue,
     gstPercent,
@@ -1017,10 +1095,12 @@ export default function QuotationScreen() {
       setCustomRoomName("");
       setHandlingPercent(String(existing.pricing?.handlingFeePercent || 2));
       setDesignPercent(String(existing.pricing?.designFeePercent || 2));
+      setTransportCharges(String(existing.pricing?.transportCharges || 0));
       setDiscountType(existing.pricing?.discountType || "PERCENT");
       setDiscountValue(String(existing.pricing?.discountValue || 0));
       setGstPercent(String(existing.pricing?.gstPercent || 18));
       setGstType(existing.pricing?.gstType || "AS_PER_ACTUAL");
+      setStandaloneAccessories(existing.standaloneAccessories || []);
       setMilestones(
         existing.paymentMilestones && existing.paymentMilestones.length > 0
           ? existing.paymentMilestones
@@ -1045,10 +1125,12 @@ export default function QuotationScreen() {
       setCustomRoomName("");
       setHandlingPercent("2");
       setDesignPercent("2");
+      setTransportCharges("0");
       setDiscountType("PERCENT");
       setDiscountValue("0");
       setGstPercent("18");
       setGstType("AS_PER_ACTUAL");
+      setStandaloneAccessories([]);
       setMilestones(DEFAULT_MILESTONES_INPUT);
       setQuotationNotes("");
     }
@@ -1107,10 +1189,10 @@ export default function QuotationScreen() {
       currentItems = [autoItem];
       setItems(currentItems);
     }
-    if (currentItems.length === 0) {
+    if (currentItems.length === 0 && standaloneAccessories.length === 0) {
       Alert.alert(
         "Validation Error",
-        "Please add at least one quotation work item.",
+        "Please add at least one quotation work item or accessory.",
       );
       setFormStep(2);
       return;
@@ -1120,7 +1202,7 @@ export default function QuotationScreen() {
         "Validation Error",
         `Milestone percentages must equal 100%. Currently: ${liveCalculation.totalMilestonePct}%`,
       );
-      setFormStep(4);
+      setFormStep(5);
       return;
     }
 
@@ -1140,9 +1222,11 @@ export default function QuotationScreen() {
         projectType,
         siteLocation: siteLocation.trim() || clientAddress.trim(),
         items: currentItems,
+        standaloneAccessories,
         pricing: {
           handlingFeePercent: parseFloat(handlingPercent) || 0,
           designFeePercent: parseFloat(designPercent) || 0,
+          transportCharges: parseFloat(transportCharges) || 0,
           discountType,
           discountValue: parseFloat(discountValue) || 0,
           gstPercent: parseFloat(gstPercent) || 18,
@@ -1641,6 +1725,14 @@ export default function QuotationScreen() {
                         {formatINR(selectedQuotation.pricing?.subtotal)}
                       </Text>
                     </View>
+                    {selectedQuotation.standaloneAccessories && selectedQuotation.standaloneAccessories.length > 0 && (
+                      <View style={styles.priceRow}>
+                        <Text style={styles.priceLabel}>Accessories Total:</Text>
+                        <Text style={styles.priceVal}>
+                          {formatINR(selectedQuotation.pricing?.accessoriesTotal || selectedQuotation.standaloneAccessories.reduce((s, a) => s + (a.total || a.quantity * a.price), 0))}
+                        </Text>
+                      </View>
+                    )}
                     <View style={styles.priceRow}>
                       <Text style={styles.priceLabel}>
                         Handling Charges (
@@ -1661,7 +1753,15 @@ export default function QuotationScreen() {
                         {formatINR(selectedQuotation.pricing?.designFeeAmount)}
                       </Text>
                     </View>
-                    {selectedQuotation.pricing?.discountAmount > 0 && (
+                    {(selectedQuotation.pricing?.transportCharges || 0) > 0 && (
+                      <View style={styles.priceRow}>
+                        <Text style={styles.priceLabel}>Transportation Charges:</Text>
+                        <Text style={styles.priceVal}>
+                          {formatINR(selectedQuotation.pricing?.transportCharges)}
+                        </Text>
+                      </View>
+                    )}
+                    {(selectedQuotation.pricing?.discountAmount || 0) > 0 && (
                       <View style={styles.priceRow}>
                         <Text style={[styles.priceLabel, { color: "#059669" }]}>
                           Special Discount:
@@ -2011,6 +2111,41 @@ export default function QuotationScreen() {
                     ))}
                   </View>
 
+                  {/* Standalone Accessories List in Detail Modal */}
+                  {selectedQuotation.standaloneAccessories && selectedQuotation.standaloneAccessories.length > 0 && (
+                    <View style={styles.sectionBox}>
+                      <Text style={styles.boxTitle}>
+                        Accessories ({selectedQuotation.standaloneAccessories.length})
+                      </Text>
+                      {selectedQuotation.standaloneAccessories.map((acc, idx) => (
+                        <View key={idx} style={[styles.itemCard, { flexDirection: "row", alignItems: "center", gap: 10 }]}>
+                          {acc.image ? (
+                            <Image
+                              source={{ uri: acc.image }}
+                              style={{ width: 50, height: 50, borderRadius: 6, borderWidth: 1, borderColor: "#CBD5E1" }}
+                            />
+                          ) : (
+                            <View style={{ width: 50, height: 50, borderRadius: 6, backgroundColor: "#F1F5F9", alignItems: "center", justifyContent: "center" }}>
+                              <Ionicons name="cube-outline" size={20} color="#94A3B8" />
+                            </View>
+                          )}
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.itemCardName}>{acc.name}</Text>
+                            {acc.description ? (
+                              <Text style={styles.itemCardSpecs}>{acc.description}</Text>
+                            ) : null}
+                            <Text style={styles.itemCardQty}>
+                              {acc.quantity} {acc.unit || "Nos"} @ {formatINR(acc.price)}
+                            </Text>
+                          </View>
+                          <Text style={[styles.boldText, { fontSize: 14, color: "#0F172A" }]}>
+                            {formatINR(acc.total || (acc.quantity * acc.price))}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
                   {/* Payment Milestones */}
                   {selectedQuotation.paymentMilestones &&
                     selectedQuotation.paymentMilestones.length > 0 && (
@@ -2254,9 +2389,10 @@ export default function QuotationScreen() {
             <View style={styles.stepTabs}>
               {[
                 { num: 1, label: "Client" },
-                { num: 2, label: "Items & Rooms" },
-                { num: 3, label: "Pricing & GST" },
-                { num: 4, label: "Milestones" },
+                { num: 2, label: "Scope & Items" },
+                { num: 3, label: "Accessories" },
+                { num: 4, label: "Pricing & GST" },
+                { num: 5, label: "Milestones" },
               ].map((s) => (
                 <TouchableOpacity
                   key={s.num}
@@ -3492,14 +3628,233 @@ export default function QuotationScreen() {
                     onPress={() => setFormStep(3)}
                   >
                     <Text style={styles.nextStepBtnText}>
-                      Next: Charges, Tax &amp; GST →
+                      Next: Accessories →
                     </Text>
                   </TouchableOpacity>
                 </View>
               )}
 
-              {/* STEP 3: CHARGES, GST & SUMMARY */}
+              {/* STEP 3: ACCESSORIES */}
               {formStep === 3 && (
+                <View>
+                  <Text style={styles.formSectionTitle}>
+                    Add Standalone Accessories
+                  </Text>
+                  <Text style={{ fontSize: 12, color: "#64748B", marginBottom: 16 }}>
+                    Add hardware accessories, appliances, or fittings with images to include in quotation.
+                  </Text>
+
+                  <View style={styles.itemComposerCard}>
+                    <Text style={styles.composerHeader}>
+                      New Accessory Item
+                    </Text>
+
+                    {/* Image Picker */}
+                    <Text style={styles.inputLabel}>Accessory Image</Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12 }}>
+                      {stAccImage ? (
+                        <View style={{ position: "relative" }}>
+                          <Image
+                            source={{ uri: stAccImage }}
+                            style={{ width: 64, height: 64, borderRadius: 8, borderWidth: 1, borderColor: "#CBD5E1" }}
+                          />
+                          <TouchableOpacity
+                            style={{
+                              position: "absolute",
+                              top: -6,
+                              right: -6,
+                              backgroundColor: "#EF4444",
+                              borderRadius: 10,
+                              width: 20,
+                              height: 20,
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                            onPress={() => setStAccImage("")}
+                          >
+                            <Ionicons name="close" size={14} color="#FFFFFF" />
+                          </TouchableOpacity>
+                        </View>
+                      ) : (
+                        <TouchableOpacity
+                          style={{
+                            width: 64,
+                            height: 64,
+                            borderRadius: 8,
+                            borderWidth: 1.5,
+                            borderColor: "#CBD5E1",
+                            borderStyle: "dashed",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            backgroundColor: "#F8FAFC",
+                          }}
+                          onPress={handlePickAccImage}
+                        >
+                          <Ionicons name="camera-outline" size={24} color="#64748B" />
+                        </TouchableOpacity>
+                      )}
+                      <TouchableOpacity
+                        style={[styles.smallPill, { backgroundColor: "#7A131A", paddingHorizontal: 12, paddingVertical: 8 }]}
+                        onPress={handlePickAccImage}
+                      >
+                        <Ionicons name="image-outline" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
+                        <Text style={{ color: "#FFFFFF", fontWeight: "700", fontSize: 12 }}>
+                          {stAccImage ? "Change Image" : "Upload Image"}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    <Text style={styles.inputLabel}>Accessory Name *</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. Hafele Soft Close Hinges / Cutlery Baskets"
+                      value={stAccName}
+                      onChangeText={setStAccName}
+                    />
+
+                    <Text style={styles.inputLabel}>Description (Optional)</Text>
+                    <TextInput
+                      style={[styles.textInput, { height: 48 }]}
+                      placeholder="Specification or brand details..."
+                      multiline
+                      value={stAccDesc}
+                      onChangeText={setStAccDesc}
+                    />
+
+                    <View style={{ flexDirection: "row", gap: 10, marginBottom: 12 }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.inputLabel}>Qty *</Text>
+                        <TextInput
+                          style={styles.textInput}
+                          keyboardType="numeric"
+                          value={stAccQty}
+                          onChangeText={setStAccQty}
+                        />
+                      </View>
+
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.inputLabel}>Unit</Text>
+                        <TextInput
+                          style={styles.textInput}
+                          placeholder="Nos / Sets"
+                          value={stAccUnit}
+                          onChangeText={setStAccUnit}
+                        />
+                      </View>
+
+                      <View style={{ flex: 1.2 }}>
+                        <Text style={styles.inputLabel}>Unit Price (₹) *</Text>
+                        <TextInput
+                          style={styles.textInput}
+                          keyboardType="numeric"
+                          placeholder="0"
+                          value={stAccPrice}
+                          onChangeText={setStAccPrice}
+                        />
+                      </View>
+                    </View>
+
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                      <Text style={{ fontSize: 12, color: "#64748B", fontWeight: "600" }}>Total Amount:</Text>
+                      <Text style={{ fontSize: 15, fontWeight: "800", color: "#7A131A" }}>
+                        {formatINR(Math.round((parseInt(stAccQty, 10) || 1) * (parseFloat(stAccPrice) || 0)))}
+                      </Text>
+                    </View>
+
+                    <TouchableOpacity
+                      style={styles.addItemSubmitBtn}
+                      onPress={handleAddStandaloneAccessory}
+                    >
+                      <Ionicons name="add-circle-outline" size={18} color="#FFFFFF" />
+                      <Text style={styles.addItemSubmitText}>Add Accessory</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Standalone Accessories Added List */}
+                  <Text style={[styles.formSectionTitle, { marginTop: 20 }]}>
+                    Accessories Added ({standaloneAccessories.length})
+                  </Text>
+
+                  {standaloneAccessories.length === 0 ? (
+                    <Text style={{ color: "#94A3B8", fontStyle: "italic", marginBottom: 20 }}>
+                      No standalone accessories added yet. Add one using the form above.
+                    </Text>
+                  ) : (
+                    standaloneAccessories.map((acc, index) => (
+                      <View key={index} style={[styles.addedItemRow, { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10 }]}>
+                        {acc.image ? (
+                          <Image
+                            source={{ uri: acc.image }}
+                            style={{ width: 48, height: 48, borderRadius: 6, borderWidth: 1, borderColor: "#CBD5E1" }}
+                          />
+                        ) : (
+                          <View style={{ width: 48, height: 48, borderRadius: 6, backgroundColor: "#F1F5F9", alignItems: "center", justifyContent: "center" }}>
+                            <Ionicons name="cube-outline" size={20} color="#94A3B8" />
+                          </View>
+                        )}
+
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.addedItemName}>{acc.name}</Text>
+                          {acc.description ? (
+                            <Text style={{ fontSize: 11, color: "#64748B" }}>{acc.description}</Text>
+                          ) : null}
+                          <Text style={{ fontSize: 11, color: "#475569", marginTop: 2 }}>
+                            {acc.quantity} {acc.unit || "Nos"} × {formatINR(acc.price)}
+                          </Text>
+                        </View>
+
+                        <View style={{ alignItems: "flex-end", gap: 4 }}>
+                          <Text style={[styles.boldText, { fontSize: 13, color: "#0F172A" }]}>
+                            {formatINR(acc.total || acc.quantity * acc.price)}
+                          </Text>
+                          <TouchableOpacity
+                            onPress={() => handleRemoveStandaloneAccessory(index)}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ))
+                  )}
+
+                  {/* Accessories Subtotal Card */}
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      backgroundColor: "#FFF5F5",
+                      paddingVertical: 12,
+                      paddingHorizontal: 14,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: "#FECDD3",
+                      marginTop: 12,
+                      marginBottom: 16,
+                    }}
+                  >
+                    <Text style={{ fontWeight: "700", fontSize: 13, color: "#7A131A" }}>
+                      Accessories Subtotal ({standaloneAccessories.length} items):
+                    </Text>
+                    <Text style={{ fontWeight: "800", fontSize: 16, color: "#7A131A" }}>
+                      {formatINR(liveCalculation.standaloneAccTotal)}
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.nextStepBtn}
+                    onPress={() => setFormStep(4)}
+                  >
+                    <Text style={styles.nextStepBtnText}>
+                      Next: Pricing &amp; Taxes →
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* STEP 4: CHARGES, GST & SUMMARY */}
+              {formStep === 4 && (
                 <View>
                   <Text style={styles.formSectionTitle}>
                     Additional Fees &amp; Discounts
@@ -3528,7 +3883,21 @@ export default function QuotationScreen() {
                     </View>
                   </View>
 
-                  <View style={{ flexDirection: "row", gap: 12, marginTop: 8 }}>
+                  <View style={{ marginTop: 12 }}>
+                    <Text style={styles.inputLabel}>Transportation Charges (₹ Fixed)</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="0"
+                      keyboardType="numeric"
+                      value={transportCharges}
+                      onChangeText={setTransportCharges}
+                    />
+                    <Text style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}>
+                      Fixed amount in Rupees (NOT percentage)
+                    </Text>
+                  </View>
+
+                  <View style={{ flexDirection: "row", gap: 12, marginTop: 12 }}>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.inputLabel}>Discount Type</Text>
                       <View
@@ -3789,7 +4158,7 @@ export default function QuotationScreen() {
                     </View>
                   )}
 
-                  {/* Live Computed Summary Box */}
+                  {/* Final Quotation Summary Box */}
                   <View
                     style={[
                       styles.sectionBox,
@@ -3801,28 +4170,34 @@ export default function QuotationScreen() {
                     ]}
                   >
                     <Text style={[styles.boxTitle, { color: "#7A131A" }]}>
-                      Live Calculation Summary
+                      Final Quotation Summary
                     </Text>
                     <View style={styles.priceRow}>
-                      <Text style={styles.priceLabel}>Items Subtotal:</Text>
+                      <Text style={styles.priceLabel}>Subtotal:</Text>
                       <Text style={styles.priceVal}>
                         {formatINR(liveCalculation.rawSubtotal)}
                       </Text>
                     </View>
                     <View style={styles.priceRow}>
                       <Text style={styles.priceLabel}>
-                        Handling Charges ({handlingPercent}%):
+                        Design Fees ({designPercent}%):
+                      </Text>
+                      <Text style={styles.priceVal}>
+                        {formatINR(liveCalculation.designFee)}
+                      </Text>
+                    </View>
+                    <View style={styles.priceRow}>
+                      <Text style={styles.priceLabel}>
+                        Handling Fees ({handlingPercent}%):
                       </Text>
                       <Text style={styles.priceVal}>
                         {formatINR(liveCalculation.handlingFee)}
                       </Text>
                     </View>
                     <View style={styles.priceRow}>
-                      <Text style={styles.priceLabel}>
-                        Designing Fees ({designPercent}%):
-                      </Text>
+                      <Text style={styles.priceLabel}>Transportation Charges:</Text>
                       <Text style={styles.priceVal}>
-                        {formatINR(liveCalculation.designFee)}
+                        {formatINR(liveCalculation.transportAmt)}
                       </Text>
                     </View>
                     {liveCalculation.discountAmt > 0 && (
@@ -3836,20 +4211,14 @@ export default function QuotationScreen() {
                       </View>
                     )}
                     <View style={styles.priceRow}>
-                      <Text style={styles.priceLabel}>Taxable Total:</Text>
-                      <Text style={styles.priceVal}>
-                        {formatINR(liveCalculation.taxable)}
-                      </Text>
-                    </View>
-                    <View style={styles.priceRow}>
                       <Text style={styles.priceLabel}>
-                        GST ({gstPercent}%
+                        GST/Taxes ({gstPercent}%
                         {gstType === "AS_PER_ACTUAL" ? " – As per Actuals" : ""}
                         ):
                       </Text>
                       <Text style={styles.priceVal}>
                         {gstType === "AS_PER_ACTUAL"
-                          ? "18% – As per Actuals (Not included)"
+                          ? "18% – As per Actuals"
                           : formatINR(liveCalculation.gstAmt)}
                       </Text>
                     </View>
@@ -3861,7 +4230,7 @@ export default function QuotationScreen() {
                       ]}
                     >
                       <Text style={styles.grandTotalLabel}>
-                        Estimated Grand Total:
+                        Grand Total:
                       </Text>
                       <Text style={styles.grandTotalVal}>
                         {formatINR(liveCalculation.grandTotal)}
@@ -3871,7 +4240,7 @@ export default function QuotationScreen() {
 
                   <TouchableOpacity
                     style={styles.nextStepBtn}
-                    onPress={() => setFormStep(4)}
+                    onPress={() => setFormStep(5)}
                   >
                     <Text style={styles.nextStepBtnText}>
                       Next: Milestones &amp; Notes →
@@ -3880,8 +4249,8 @@ export default function QuotationScreen() {
                 </View>
               )}
 
-              {/* STEP 4: MILESTONES & FINALIZE */}
-              {formStep === 4 && (
+              {/* STEP 5: MILESTONES & FINALIZE */}
+              {formStep === 5 && (
                 <View>
                   <Text style={styles.formSectionTitle}>
                     Payment Milestones Schedule

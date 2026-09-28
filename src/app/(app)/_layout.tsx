@@ -173,30 +173,70 @@ function CustomDrawerContent(props: any) {
             </>
           ) : (
             <>
-              <DrawerItem
-                icon="briefcase"
-                label="My Projects"
-                isActive={isItemActive("/(app)/tabs/projects")}
-                onPress={() => navigateTo("/(app)/tabs/projects")}
-              />
-              <DrawerItem
-                icon="cash"
-                label="My Salary"
-                isActive={isItemActive("/(app)/salary")}
-                onPress={() => navigateTo("/(app)/salary")}
-              />
-              <DrawerItem
-                icon="calendar"
-                label="Selfie Attendance"
-                isActive={isItemActive("/(app)/attendance")}
-                onPress={() => navigateTo("/(app)/attendance")}
-              />
-              <DrawerItem
-                icon="bicycle"
-                label="Bike Tracking"
-                isActive={isItemActive("/(app)/tabs/bike")}
-                onPress={() => navigateTo("/(app)/tabs/bike")}
-              />
+              {(user?.employeeAppPermissions?.projects ?? true) && (
+                <DrawerItem
+                  icon="briefcase"
+                  label="My Projects"
+                  isActive={isItemActive("/(app)/tabs/projects")}
+                  onPress={() => navigateTo("/(app)/tabs/projects")}
+                />
+              )}
+              {user?.employeeAppPermissions?.tasks === true && (
+                <DrawerItem
+                  icon="checkbox"
+                  label="My Tasks"
+                  isActive={isItemActive("/(app)/tabs/projects")}
+                  onPress={() => navigateTo("/(app)/tabs/projects")}
+                />
+              )}
+              {user?.employeeAppPermissions?.salary === true && (
+                <DrawerItem
+                  icon="cash"
+                  label="My Salary"
+                  isActive={isItemActive("/(app)/salary")}
+                  onPress={() => navigateTo("/(app)/salary")}
+                />
+              )}
+              {(user?.employeeAppPermissions?.attendance ?? true) && (
+                <DrawerItem
+                  icon="calendar"
+                  label="Selfie Attendance"
+                  isActive={isItemActive("/(app)/attendance")}
+                  onPress={() => navigateTo("/(app)/attendance")}
+                />
+              )}
+              {user?.employeeAppPermissions?.bikeTracking === true && (
+                <DrawerItem
+                  icon="bicycle"
+                  label="Bike Tracking"
+                  isActive={isItemActive("/(app)/tabs/bike")}
+                  onPress={() => navigateTo("/(app)/tabs/bike")}
+                />
+              )}
+              {user?.employeeAppPermissions?.crm === true && (
+                <DrawerItem
+                  icon="people"
+                  label="CRM"
+                  isActive={isItemActive("/(app)/tabs/crm")}
+                  onPress={() => navigateTo("/(app)/tabs/crm")}
+                />
+              )}
+              {user?.employeeAppPermissions?.quotation === true && (
+                <DrawerItem
+                  icon="document-text"
+                  label="Quotation"
+                  isActive={isItemActive("/(app)/quotation")}
+                  onPress={() => navigateTo("/(app)/quotation")}
+                />
+              )}
+              {user?.employeeAppPermissions?.reports === true && (
+                <DrawerItem
+                  icon="stats-chart"
+                  label="Reports"
+                  isActive={isItemActive("/(app)/tabs/reports")}
+                  onPress={() => navigateTo("/(app)/tabs/reports")}
+                />
+              )}
               <DrawerItem
                 icon="settings"
                 label="Settings"

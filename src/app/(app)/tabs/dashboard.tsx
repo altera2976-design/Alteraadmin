@@ -315,10 +315,12 @@ export default function DashboardScreen() {
           /* 2. EMPLOYEE DASHBOARD VIEW */
           /* ========================================================================= */
           <>
-            {/* Welcome Banner */}
+            {/* Welcome Banner with Dynamic Time-Based Greeting */}
             <View style={styles.empWelcomeCard}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.empWelcomeGreet}>Welcome Back,</Text>
+                <Text style={styles.empWelcomeGreet}>
+                  {new Date().getHours() < 12 ? 'Good Morning' : new Date().getHours() < 17 ? 'Good Afternoon' : 'Good Evening'},
+                </Text>
                 <Text style={styles.empWelcomeName}>{dashboardData?.welcomeName || user?.name || 'Employee'}</Text>
                 <View style={styles.empBadge}>
                   <Text style={styles.empBadgeText}>{dashboardData?.designation || user?.designation || 'Team Member'}</Text>
@@ -329,6 +331,42 @@ export default function DashboardScreen() {
               </View>
               <View style={styles.empAvatarCircle}>
                 <Text style={styles.empAvatarText}>{(dashboardData?.welcomeName || user?.name || 'E').charAt(0)}</Text>
+              </View>
+            </View>
+
+            {/* My Salary & Overtime Card (Own Salary Only) */}
+            <View style={styles.section}>
+              <View style={styles.salaryCardContainer}>
+                <View style={styles.salaryCardHeader}>
+                  <View>
+                    <Text style={styles.salaryCardTitle}>My Salary &amp; Overtime</Text>
+                    <Text style={styles.salaryCardSub}>Monthly Base + Overtime Earnings</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => router.push('/(app)/salary')}>
+                    <Text style={styles.seeAllText}>View Payslips</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.salaryRow}>
+                  <View style={styles.salaryItem}>
+                    <Text style={styles.salaryItemLabel}>Base Salary</Text>
+                    <Text style={styles.salaryItemVal}>₹{Number(dashboardData?.mySalary?.basicSalary || user?.salary || 0).toLocaleString('en-IN')}</Text>
+                  </View>
+                  <View style={styles.salaryItem}>
+                    <Text style={styles.salaryItemLabel}>Overtime</Text>
+                    <Text style={[styles.salaryItemVal, { color: '#D97706' }]}>{dashboardData?.mySalary?.overtimeHours || 0} hrs</Text>
+                  </View>
+                  <View style={styles.salaryItem}>
+                    <Text style={styles.salaryItemLabel}>OT Payment</Text>
+                    <Text style={[styles.salaryItemVal, { color: '#10B981' }]}>+₹{Number(dashboardData?.mySalary?.overtimePayment || 0).toLocaleString('en-IN')}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.salaryTotalDivider} />
+                <View style={styles.salaryTotalRow}>
+                  <Text style={styles.salaryTotalLabel}>Total Payable Salary</Text>
+                  <Text style={styles.salaryTotalVal}>₹{Number(dashboardData?.mySalary?.netSalary || user?.salary || 0).toLocaleString('en-IN')}</Text>
+                </View>
               </View>
             </View>
 
@@ -652,6 +690,84 @@ const styles = StyleSheet.create({
   loadingText: { marginTop: 12, fontSize: 14, color: '#666', fontWeight: '500' },
   scroll: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 40 },
+
+  // Salary Card Styles
+  salaryCardContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  salaryCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  salaryCardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  salaryCardSub: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  salaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 12,
+  },
+  salaryItem: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    padding: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  salaryItemLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#64748B',
+    textTransform: 'uppercase',
+  },
+  salaryItemVal: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginTop: 4,
+  },
+  salaryTotalDivider: {
+    height: 1,
+    backgroundColor: '#E2E8F0',
+    marginVertical: 8,
+  },
+  salaryTotalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  salaryTotalLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  salaryTotalVal: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: THEME.colors.primary,
+  },
 
   // Admin Header Card
   redCard: {

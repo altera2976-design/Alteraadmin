@@ -31,6 +31,7 @@ export default function ProjectsScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
+  const hasTaskPermission = isAdmin || user?.employeeAppPermissions?.tasks === true;
 
   const [activeTab, setActiveTab] = useState<'projects' | 'tasks'>('projects');
   const [projects, setProjects] = useState<Project[]>([]);
@@ -53,6 +54,12 @@ export default function ProjectsScreen() {
     }).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    if (!hasTaskPermission && activeTab === 'tasks') {
+      setActiveTab('projects');
+    }
+  }, [hasTaskPermission, activeTab]);
+
   // Create Project Modal (Admin Only)
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -70,19 +77,24 @@ export default function ProjectsScreen() {
 
   const loadData = useCallback(async () => {
     try {
-      const [projRes, tasksRes] = await Promise.all([
-        projectApi.getProjects({
-          search: searchQuery.trim() || undefined,
-          status: selectedStatus !== 'All' ? selectedStatus : undefined,
-        }).catch(() => null),
-        projectApi.getTasks({}).catch(() => null),
-      ]);
+      const projPromise = projectApi.getProjects({
+        search: searchQuery.trim() || undefined,
+        status: selectedStatus !== 'All' ? selectedStatus : undefined,
+      }).catch(() => null);
+
+      const taskPromise = hasTaskPermission
+        ? (isAdmin ? projectApi.getTasks({}) : projectApi.getMyTasks()).catch(() => null)
+        : Promise.resolve(null);
+
+      const [projRes, tasksRes] = await Promise.all([projPromise, taskPromise]);
 
       if (projRes?.success) {
         setProjects(projRes.data || []);
       }
       if (tasksRes?.success) {
         setTasks(tasksRes.data || []);
+      } else {
+        setTasks([]);
       }
     } catch (error) {
       console.error('Error fetching projects/tasks:', error);
@@ -90,7 +102,7 @@ export default function ProjectsScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [searchQuery, selectedStatus]);
+  }, [searchQuery, selectedStatus, hasTaskPermission, isAdmin]);
 
   useEffect(() => {
     loadData();
@@ -361,15 +373,17 @@ Local file URI: ${downloadRes.uri}`);
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.tabToggleBtn, activeTab === 'tasks' && styles.tabToggleBtnActive]}
-          onPress={() => setActiveTab('tasks')}
-        >
-          <Ionicons name="checkbox-outline" size={16} color={activeTab === 'tasks' ? '#fff' : '#555'} />
-          <Text style={[styles.tabToggleText, activeTab === 'tasks' && styles.tabToggleTextActive]}>
-            My Tasks ({tasks.length})
-          </Text>
-        </TouchableOpacity>
+        {hasTaskPermission && (
+          <TouchableOpacity
+            style={[styles.tabToggleBtn, activeTab === 'tasks' && styles.tabToggleBtnActive]}
+            onPress={() => setActiveTab('tasks')}
+          >
+            <Ionicons name="checkbox-outline" size={16} color={activeTab === 'tasks' ? '#fff' : '#555'} />
+            <Text style={[styles.tabToggleText, activeTab === 'tasks' && styles.tabToggleTextActive]}>
+              My Tasks ({tasks.length})
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Main Content View: Projects or Tasks */}
@@ -601,6 +615,18 @@ Local file URI: ${downloadRes.uri}`);
                     </Text>
                     <Ionicons name="chevron-forward" size={14} color="#94a3b8" style={{ marginLeft: 'auto' }} />
                   </TouchableOpacity>
+
+                  {t.pdfUrl ? (
+                    <TouchableOpacity
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#eff6ff', borderRadius: 6, borderWidth: 1, borderColor: '#bfdbfe' }}
+                      onPress={() => Linking.openURL(t.pdfUrl!).catch(() => Alert.alert('Error', 'Could not open Task PDF'))}
+                    >
+                      <Ionicons name="document-text" size={16} color="#2563eb" />
+                      <Text style={{ fontSize: 12, color: '#2563eb', fontWeight: '700' }}>
+                        View / Download Task PDF
+                      </Text>
+                    </TouchableOpacity>
+                  ) : null}
 
                   {/* Status Picker Buttons */}
                   <View style={styles.statusActionRow}>
@@ -905,6 +931,18 @@ Local file URI: ${downloadRes.uri}`);
               </View>
 
               {/* Attachments Section */}
+              {selectedTask?.pdfUrl ? (
+                <TouchableOpacity
+                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 16, padding: 12, backgroundColor: '#2563eb', borderRadius: 8 }}
+                  onPress={() => Linking.openURL(selectedTask.pdfUrl!).catch(() => Alert.alert('Error', 'Could not open Task PDF'))}
+                >
+                  <Ionicons name="document-text" size={18} color="#fff" />
+                  <Text style={{ fontSize: 14, color: '#fff', fontWeight: '700' }}>
+                    Open Assigned Task PDF
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+
               <View style={styles.attachmentsSection}>
                 <Text style={styles.sectionHeaderTitle}>
                   Attachments & Files ({selectedTask?.attachments?.length || 0})

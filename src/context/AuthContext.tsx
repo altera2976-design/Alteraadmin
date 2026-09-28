@@ -5,9 +5,11 @@ import {
   useContext,
   useEffect,
   useState,
+  useCallback,
 } from "react";
+import { AppState, AppStateStatus } from "react-native";
 import { STORAGE_KEYS } from "../constants/config";
-import { authService, User } from "../services/authService";
+import { authService, User, EmployeeAppPermissions } from "../services/authService";
 
 interface AuthContextType {
   user: User | null;
@@ -31,6 +33,7 @@ interface AuthContextType {
     department?: string;
     designation?: string;
   }) => Promise<User>;
+  refreshPermissions: () => Promise<EmployeeAppPermissions | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -50,6 +53,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setLoading] = useState(true);
+
+  const refreshPermissions = useCallback(async (): Promise<EmployeeAppPermissions | null> => {
+    try {
+      const res = await authService.getMyAppPermissions();
+      if (res?.success && res.permissions) {
+        setUser((prevUser) => {
+          if (!prevUser) return null;
+          const updatedUser = {
+            ...prevUser,
+            employeeAppPermissions: res.permissions,
+            accessStatus: res.accessStatus || prevUser.accessStatus,
+            status: res.status || prevUser.status,
+          };
+          SecureStore.setItemAsync(
+            STORAGE_KEYS.USER,
+            JSON.stringify(updatedUser)
+          ).catch(() => {});
+          return updatedUser;
+        });
+        return res.permissions;
+      }
+    } catch (err) {
+      console.warn("⚠️ Failed to refresh employee app permissions:", err);
+    }
+    return null;
+  }, []);
 
   // Securely restore session from SecureStore on app launch
   useEffect(() => {
@@ -81,6 +110,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     restore();
   }, []);
 
+  // Auto-refresh permissions when app returns to foreground
+  useEffect(() => {
+    if (!token) return;
+    refreshPermissions();
+
+    const subscription = AppState.addEventListener("change", (nextAppState: AppStateStatus) => {
+      if (nextAppState === "active") {
+        refreshPermissions();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [token, refreshPermissions]);
+
   const login = async (email: string, password: string) => {
     const cleanEmail = email.trim().toLowerCase();
     const response = await authService.login(cleanEmail, password);
@@ -92,6 +137,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
     setToken(response.token);
     setUser(normalized);
+    // Fetch fresh permissions after login
+    setTimeout(() => {
+      refreshPermissions();
+    }, 100);
   };
 
   const googleLogin = async (idToken: string) => {
@@ -105,6 +154,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
       setToken(response.token);
       setUser(normalized);
+      setTimeout(() => {
+        refreshPermissions();
+      }, 100);
     }
   };
 
@@ -125,6 +177,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
       setToken(response.token);
       setUser(normalized);
+      setTimeout(() => {
+        refreshPermissions();
+      }, 100);
     }
   };
 
@@ -181,6 +236,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         setSession,
         updateProfile,
+        refreshPermissions,
       }}
     >
       {children}
@@ -193,3 +249,4 @@ export function useAuth(): AuthContextType {
   if (!ctx) throw new Error("useAuth must be used within <AuthProvider>");
   return ctx;
 }
+
