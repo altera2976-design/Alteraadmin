@@ -7,13 +7,11 @@ const isLocal =
     window.location.hostname.startsWith("192.168.") ||
     window.location.hostname.endsWith(".local"));
 
-const API_URL = isLocal
-  ? "http://localhost:5001/api"
-  : (import.meta.env.VITE_API_URL || "http://localhost:5001/api");
+const API_URL = import.meta.env.VITE_API_URL || (isLocal ? "http://localhost:5001/api" : "http://localhost:5001/api");
 
-export const SOCKET_URL = isLocal
-  ? "http://localhost:5001"
-  : (import.meta.env.VITE_API_URL || "http://localhost:5001/api").replace("/api", "");
+export const SOCKET_URL = import.meta.env.VITE_API_URL 
+  ? import.meta.env.VITE_API_URL.replace("/api", "") 
+  : (isLocal ? "http://localhost:5001" : "http://localhost:5001");
 
 const api = axios.create({
   baseURL: API_URL,
