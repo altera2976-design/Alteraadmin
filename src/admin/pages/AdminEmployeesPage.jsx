@@ -415,7 +415,7 @@ export default function AdminEmployeesPage({ subRoute = 'list', employeeId = nul
                           </td>
                           <td style={styles.td}>
                             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                              <button onClick={() => navigate(`/admin/employees/${emp._id}`)} style={styles.actionBtn}>
+                              <button onClick={() => navigate(`/admin/employees/${emp._id}`)} style={{ ...styles.actionBtn, color: '#C8102E' }}>
                                 View
                               </button>
 
@@ -429,7 +429,7 @@ export default function AdminEmployeesPage({ subRoute = 'list', employeeId = nul
                               ) : (
                                 <button
                                   onClick={() => handleUpdateAccessStatus(emp._id, 'SUSPENDED')}
-                                  style={{ ...styles.actionBtn, color: '#DC2626' }}
+                                  style={{ ...styles.actionBtn, color: '#DC2626', borderColor: '#FCA5A5' }}
                                 >
                                   Suspend
                                 </button>
@@ -437,14 +437,14 @@ export default function AdminEmployeesPage({ subRoute = 'list', employeeId = nul
 
                               <button
                                 onClick={() => handleOpenSalaryModal(emp)}
-                                style={{ ...styles.actionBtn, background: '#2563EB', color: '#FFFFFF', borderColor: '#2563EB' }}
+                                style={{ ...styles.actionBtn, background: '#C8102E', color: '#FFFFFF', borderColor: '#C8102E' }}
                               >
                                 {hasSalary ? 'Edit Salary' : 'Set Salary'}
                               </button>
 
                               <button
                                 onClick={() => handleOpenAppPermissionsModal(emp)}
-                                style={{ ...styles.actionBtn, background: '#8B5CF6', color: '#FFFFFF', borderColor: '#8B5CF6' }}
+                                style={{ ...styles.actionBtn, background: '#C8102E', color: '#FFFFFF', borderColor: '#C8102E' }}
                               >
                                 App Permissions
                               </button>
@@ -677,7 +677,7 @@ const styles = {
   controlsBar: { display: 'flex', justifyContent: 'space-between', gap: 14, marginBottom: 20, flexWrap: 'wrap' },
   searchInput: { padding: '9px 14px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: 13, minWidth: 240, outline: 'none' },
   select: { padding: '9px 12px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: 13, background: '#FFFFFF', outline: 'none' },
-  primaryBtn: { background: '#2563EB', color: '#FFFFFF', border: 'none', padding: '10px 18px', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' },
+  primaryBtn: { background: '#C8102E', color: '#FFFFFF', border: 'none', padding: '10px 18px', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' },
   secondaryBtn: { background: '#FFFFFF', color: '#475569', border: '1px solid #CBD5E1', padding: '9px 16px', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' },
   tableCard: { background: '#FFFFFF', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden' },
   table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 },

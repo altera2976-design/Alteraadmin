@@ -143,6 +143,35 @@ export default function AdminAppLayout({ children, title = "Admin Dashboard" }) 
           <div style={styles.navSectionLabel}>MANAGEMENT CONSOLE</div>
         )}
 
+        <style>{`
+          .admin-nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 11px 14px;
+            color: #9EA2AE;
+            font-weight: 500;
+            font-size: 13.5px;
+            border-radius: 10px;
+            text-decoration: none;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+          }
+          .admin-nav-link:hover {
+            background: rgba(200, 16, 46, 0.1) !important;
+            color: #FFB3C6 !important;
+          }
+          .admin-nav-link.active {
+            color: #FFFFFF !important;
+            background: linear-gradient(135deg, #9F0B22 0%, #C8102E 100%) !important;
+            font-weight: 600 !important;
+            box-shadow: 0 6px 18px rgba(159, 11, 34, 0.35) !important;
+          }
+          .admin-nav-link-compact {
+            justify-content: center;
+            padding: 12px 10px;
+          }
+        `}</style>
         <nav style={{ ...styles.nav, ...(isCompactTablet ? { padding: "12px 6px" } : {}) }}>
           {filteredNavItems.map((item) => (
             <NavLink
@@ -150,11 +179,9 @@ export default function AdminAppLayout({ children, title = "Admin Dashboard" }) 
               to={item.to}
               title={isCompactTablet ? item.label : undefined}
               onClick={closeMobileDrawer}
-              style={({ isActive }) => ({
-                ...styles.navLink,
-                ...(isActive ? styles.navLinkActive : {}),
-                ...(isCompactTablet ? styles.navLinkCompact : {}),
-              })}
+              className={({ isActive }) => 
+                `admin-nav-link ${isActive ? 'active' : ''} ${isCompactTablet ? 'admin-nav-link-compact' : ''}`
+              }
             >
               {!isCompactTablet && <span style={styles.navLabel}>{item.label}</span>}
               {isCompactTablet && <span style={styles.navLabel}>{item.label.slice(0, 3)}</span>}

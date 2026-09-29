@@ -347,7 +347,7 @@ export default function OfferLettersPage() {
     const stylesMap = {
       DRAFT: { bg: '#FEF3C7', color: '#92400E', label: 'DRAFT' },
       PENDING_APPROVAL: { bg: '#E0F2FE', color: '#0369A1', label: 'PENDING' },
-      RELEASED: { bg: '#DBEAFE', color: '#1E40AF', label: 'RELEASED' },
+      RELEASED: { bg: '#DBEAFE', color: '#9F0B22', label: 'RELEASED' },
       VIEWED: { bg: '#E0E7FF', color: '#3730A3', label: 'VIEWED' },
       ACCEPTED: { bg: '#D1FAE5', color: '#065F46', label: 'ACCEPTED' },
       REJECTED: { bg: '#FEE2E2', color: '#991B1B', label: 'REJECTED' },
@@ -391,9 +391,9 @@ export default function OfferLettersPage() {
           <div style={styles.metricTitle}>Draft</div>
           <div style={{ ...styles.metricValue, color: '#D97706' }}>{stats.draft}</div>
         </div>
-        <div style={{ ...styles.metricCard, borderLeft: '4px solid #2563EB' }}>
+        <div style={{ ...styles.metricCard, borderLeft: '4px solid #C8102E' }}>
           <div style={styles.metricTitle}>Released</div>
-          <div style={{ ...styles.metricValue, color: '#2563EB' }}>{stats.released}</div>
+          <div style={{ ...styles.metricValue, color: '#C8102E' }}>{stats.released}</div>
         </div>
         <div style={{ ...styles.metricCard, borderLeft: '4px solid #10B981' }}>
           <div style={styles.metricTitle}>Accepted</div>

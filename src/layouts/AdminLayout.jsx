@@ -127,6 +127,35 @@ export default function AdminLayout({ children, title }) {
         )}
 
         {/* Navigation List */}
+        <style>{`
+          .superadmin-nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 11px 14px;
+            color: #9EA2AE;
+            font-weight: 500;
+            font-size: 13.5px;
+            border-radius: 10px;
+            text-decoration: none;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+          }
+          .superadmin-nav-link:hover {
+            background: rgba(200, 16, 46, 0.1) !important;
+            color: #FFB3C6 !important;
+          }
+          .superadmin-nav-link.active {
+            color: #FFFFFF !important;
+            background: linear-gradient(135deg, #9F0B22 0%, #C8102E 100%) !important;
+            font-weight: 600 !important;
+            box-shadow: 0 6px 18px rgba(159, 11, 34, 0.35) !important;
+          }
+          .superadmin-nav-link-compact {
+            justify-content: center;
+            padding: 12px 10px;
+          }
+        `}</style>
         <nav style={{ ...styles.nav, ...(isCompactTablet ? { padding: "12px 6px" } : {}) }}>
           {filteredNavItems.map(({ to, label, icon }) => (
             <NavLink
@@ -134,15 +163,13 @@ export default function AdminLayout({ children, title }) {
               to={to}
               title={isCompactTablet ? label : undefined}
               onClick={closeMobileDrawer}
-              style={({ isActive }) => ({
-                ...styles.navLink,
-                ...(isActive ? styles.navLinkActive : {}),
-                ...(isCompactTablet ? styles.navLinkCompact : {}),
-              })}
+              className={({ isActive }) => 
+                `superadmin-nav-link ${isActive ? 'active' : ''} ${isCompactTablet ? 'superadmin-nav-link-compact' : ''}`
+              }
             >
               <span style={styles.navIcon}>{icon}</span>
               {!isCompactTablet && <span style={styles.navLabel}>{label}</span>}
-              {!isCompactTablet && to === "/crm" && (
+              {!isCompactTablet && to === "/super-admin/crm" && (
                 <span style={styles.crmTag}>LIVE</span>
               )}
             </NavLink>

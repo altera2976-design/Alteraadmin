@@ -238,7 +238,7 @@ export default function AdminOfferLettersPage({ subRoute = 'list', offerLetterId
           <form onSubmit={handleSaveOfferLetter} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {subRoute === 'create' && (
               <div style={{ background: '#EFF6FF', padding: 14, borderRadius: 8, border: '1px solid #BFDBFE' }}>
-                <label style={{ ...styles.label, color: '#1D4ED8' }}>Auto-populate from Existing Candidate / Employee:</label>
+                <label style={{ ...styles.label, color: '#9F0B22' }}>Auto-populate from Existing Candidate / Employee:</label>
                 <select onChange={(e) => handleSelectEmployee(e.target.value)} style={{ ...styles.input, marginTop: 4, background: '#FFFFFF' }}>
                   <option value="">Select Existing User...</option>
                   {employees.map((e) => (
@@ -387,7 +387,7 @@ export default function AdminOfferLettersPage({ subRoute = 'list', offerLetterId
                   </tr>
                   <tr>
                     <td style={{ padding: 8, fontWeight: 600, border: '1px solid #E2E8F0' }}>Annual CTC</td>
-                    <td style={{ padding: 8, fontWeight: 700, color: '#2563EB', border: '1px solid #E2E8F0' }}>₹{(selectedOffer.annualCTC || 0).toLocaleString('en-IN')} / annum</td>
+                    <td style={{ padding: 8, fontWeight: 700, color: '#C8102E', border: '1px solid #E2E8F0' }}>₹{(selectedOffer.annualCTC || 0).toLocaleString('en-IN')} / annum</td>
                   </tr>
                   <tr style={{ background: '#F8FAFC' }}>
                     <td style={{ padding: 8, fontWeight: 600, border: '1px solid #E2E8F0' }}>Work Location</td>
@@ -512,7 +512,7 @@ export default function AdminOfferLettersPage({ subRoute = 'list', offerLetterId
                         <td style={styles.td}>{new Date(o.joiningDate).toLocaleDateString('en-IN')}</td>
                         <td style={{ ...styles.td, fontWeight: 700 }}>₹{(o.annualCTC || 0).toLocaleString('en-IN')}</td>
                         <td style={styles.td}>
-                          <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, background: o.status === 'ACCEPTED' ? '#DCFCE7' : '#EFF6FF', color: o.status === 'ACCEPTED' ? '#15803D' : '#1D4ED8' }}>
+                          <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, background: o.status === 'ACCEPTED' ? '#DCFCE7' : '#EFF6FF', color: o.status === 'ACCEPTED' ? '#15803D' : '#9F0B22' }}>
                             {o.status || 'GENERATED'}
                           </span>
                         </td>
@@ -540,7 +540,7 @@ const styles = {
   controlsBar: { display: 'flex', justifyContent: 'space-between', gap: 14, marginBottom: 20, flexWrap: 'wrap' },
   searchInput: { padding: '9px 14px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: 13, minWidth: 260, outline: 'none' },
   select: { padding: '9px 12px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: 13, background: '#FFFFFF', outline: 'none' },
-  primaryBtn: { background: '#2563EB', color: '#FFFFFF', border: 'none', padding: '10px 18px', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' },
+  primaryBtn: { background: '#C8102E', color: '#FFFFFF', border: 'none', padding: '10px 18px', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' },
   secondaryBtn: { background: '#FFFFFF', color: '#475569', border: '1px solid #CBD5E1', padding: '9px 16px', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' },
   tableCard: { background: '#FFFFFF', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden' },
   table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 },
@@ -548,7 +548,7 @@ const styles = {
   th: { padding: '12px 14px', fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase' },
   tr: { borderBottom: '1px solid #F1F5F9' },
   td: { padding: '14px', color: '#334155' },
-  actionBtn: { padding: '5px 10px', borderRadius: 6, border: '1px solid #CBD5E1', background: '#FFFFFF', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#2563EB' },
+  actionBtn: { padding: '5px 10px', borderRadius: 6, border: '1px solid #CBD5E1', background: '#FFFFFF', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#C8102E' },
   cardForm: { background: '#FFFFFF', borderRadius: 12, padding: 28, border: '1px solid #E2E8F0' },
   formTitle: { fontSize: 20, fontWeight: 800, color: '#0F172A', margin: 0 },
   field: { display: 'flex', flexDirection: 'column', gap: 6 },

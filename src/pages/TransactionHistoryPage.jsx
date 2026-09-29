@@ -285,7 +285,7 @@ export default function TransactionHistoryPage({ LayoutComponent = AdminLayout }
               onClick={() => setShowCreateModal(true)}
               style={{
                 padding: '8px 16px',
-                background: '#2563eb',
+                background: '#C8102E',
                 border: 'none',
                 borderRadius: 6,
                 fontSize: 13,
@@ -320,7 +320,7 @@ export default function TransactionHistoryPage({ LayoutComponent = AdminLayout }
             </div>
             <div style={{ background: '#ffffff', padding: 14, borderRadius: 8, border: '1px solid #cbd5e1' }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Refunded Amount</div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#2563eb', marginTop: 4 }}>{formatINR(summary.refundedAmount)}</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#C8102E', marginTop: 4 }}>{formatINR(summary.refundedAmount)}</div>
             </div>
             <div style={{ background: '#ffffff', padding: 14, borderRadius: 8, border: '1px solid #cbd5e1' }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Today's Total</div>
@@ -475,7 +475,7 @@ export default function TransactionHistoryPage({ LayoutComponent = AdminLayout }
                     <td style={{ padding: '10px 14px', textAlign: 'right' }}>
                       <button
                         onClick={() => handleViewDetails(tx._id)}
-                        style={{ padding: '4px 8px', background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1d4ed8', borderRadius: 4, fontSize: 11, cursor: 'pointer', marginRight: 6 }}
+                        style={{ padding: '4px 8px', background: '#eff6ff', border: '1px solid #bfdbfe', color: '#9F0B22', borderRadius: 4, fontSize: 11, cursor: 'pointer', marginRight: 6 }}
                       >
                         View
                       </button>
@@ -690,7 +690,7 @@ export default function TransactionHistoryPage({ LayoutComponent = AdminLayout }
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
                   <button type="button" onClick={() => setShowCreateModal(false)} style={{ padding: '8px 14px', background: '#e2e8f0', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>Cancel</button>
-                  <button type="submit" disabled={isSubmitting} style={{ padding: '8px 16px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                  <button type="submit" disabled={isSubmitting} style={{ padding: '8px 16px', background: '#C8102E', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
                     {isSubmitting ? 'Saving...' : 'Save Transaction'}
                   </button>
                 </div>

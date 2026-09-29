@@ -6,6 +6,9 @@
  */
 
 import { COMPANY_LOGO_DATA_URL } from "../constants/companyLogo";
+import api from "./api";
+
+const API_HOST = api.defaults.baseURL.replace(/\/api\/?$/, "");
 
 export function formatINR(v) {
   if (v === undefined || v === null || isNaN(v)) return "₹0";
@@ -82,16 +85,6 @@ export function buildQuotationHtml(q) {
         : rawCompany.gstin,
   };
 
-  const bank = q.bankDetails || {
-    accountName: "Altera Interior",
-    bankName: "IndusInd Bank Limited",
-    accountNumber: "201002880175",
-    ifscCode: "INDB0000518",
-    branch: "Sector-31, Gurgaon Branch",
-    bankAddress:
-      "SCO-8, Sector 31/32A HUDA Market, Gurgaon – 122 002, Haryana, India",
-  };
-
   const client = q.client || {
     name: q.customerName || "Valued Client",
     company: "",
@@ -102,24 +95,38 @@ export function buildQuotationHtml(q) {
   };
 
   const quotationNumber = q.quotationNumber || q.quotationNo || "QT-2026-0001";
-  const qDate = formatDate(q.quotationDate || q.createdAt || new Date());
+  const qDate = formatDate(q.quotationDate || q.date || new Date());
   const vUntil = formatDate(
     q.validUntil || new Date(Date.now() + 30 * 86400000),
   );
   const status = (q.status || "Draft").toUpperCase();
 
-  // Group Items by Room / Area
-  const roomGroups = {};
+  // ── Group Items by Room / Area ─────────────────────────────────────────────
+  let roomGroups = {};
+
   if (Array.isArray(q.items) && q.items.length > 0) {
     q.items.forEach((item) => {
       const room = item.room || "General Works";
       if (!roomGroups[room]) roomGroups[room] = [];
       roomGroups[room].push(item);
     });
+  } else if (Array.isArray(q.sections) && q.sections.length > 0) {
+    // Backward compatibility with legacy sections
+    q.sections.forEach((sec) => {
+      roomGroups[sec.name] = (sec.items || []).map((it) => ({
+        ...it,
+        room: sec.name,
+        name: it.description,
+        quantity: parseFloat(it.qty) || 1,
+        rate: parseFloat(it.rate) || 0,
+        amount: (parseFloat(it.qty) || 1) * (parseFloat(it.rate) || 0),
+      }));
+    });
   } else {
-    roomGroups["General Scope"] = [];
+    roomGroups["General Works"] = [];
   }
 
+  // ── Build Room Work Item Tables ────────────────────────────────────────────
   let globalItemIndex = 0;
   let computedSubtotal = 0;
 
@@ -130,7 +137,12 @@ export function buildQuotationHtml(q) {
         const baseAmt = Math.round((it.quantity || 1) * (it.rate || 0));
         const accTotal = (it.accessories || []).reduce(
           (sum, a) => {
-            if (a.name && it.name && a.name.trim().toLowerCase() === it.name.trim().toLowerCase()) return sum;
+            if (
+              a.name &&
+              it.name &&
+              a.name.trim().toLowerCase() === it.name.trim().toLowerCase()
+            )
+              return sum;
             return (
               sum +
               (a.cost !== undefined
@@ -146,10 +158,7 @@ export function buildQuotationHtml(q) {
           : expected;
       };
 
-      const roomTotal = items.reduce(
-        (acc, it) => acc + getItemAmt(it),
-        0,
-      );
+      const roomTotal = items.reduce((acc, it) => acc + getItemAmt(it), 0);
       computedSubtotal += roomTotal;
 
       const itemRows = items
@@ -157,6 +166,7 @@ export function buildQuotationHtml(q) {
           globalItemIndex++;
           const amt = getItemAmt(it);
 
+          // Specs list
           const specs = it.specifications || {};
           const specEntries = Object.entries(specs).filter(([_, v]) =>
             Boolean(v),
@@ -168,6 +178,7 @@ export function buildQuotationHtml(q) {
                   .join(" | ")}</div>`
               : "";
 
+          // Accessories list
           const accs = it.accessories || [];
           const accsHtml =
             accs.length > 0
@@ -182,6 +193,7 @@ export function buildQuotationHtml(q) {
                   .join("; ")}</div>`
               : "";
 
+          // Dimension info
           const m = it.measurements;
           const dimInfo =
             m && m.length > 0 && (m.height > 0 || m.width > 0)
@@ -198,7 +210,6 @@ export function buildQuotationHtml(q) {
                 ${specsHtml}
                 ${accsHtml}
                 ${it.remarks ? `<div class="item-note">Note: ${escapeHtml(it.remarks)}</div>` : ""}
-                ${it.costVariationNote ? `<div class="item-note" style="color: #DC2626;">${escapeHtml(it.costVariationNote)}</div>` : ""}
               </td>
               <td class="center">${escapeHtml(it.unit || "Nos")}</td>
               <td class="center font-bold">${it.quantity || 1}</td>
@@ -235,85 +246,97 @@ export function buildQuotationHtml(q) {
     })
     .join("");
 
-  // Standalone Accessories
-  const accessoriesList = Array.isArray(q.standaloneAccessories) ? q.standaloneAccessories : [];
-  const accessoriesHtml =
-    accessoriesList.length > 0
+  // ── Standalone Accessories ─────────────────────────────────────────────
+  const standaloneAccessories = Array.isArray(q.standaloneAccessories)
+    ? q.standaloneAccessories
+    : [];
+  const accessoriesTotal = standaloneAccessories.reduce(
+    (sum, a) =>
+      sum +
+      (Number(a.total) || (Number(a.quantity) || 1) * (Number(a.price) || 0)),
+    0,
+  );
+
+  const standaloneAccHtml =
+    standaloneAccessories.length > 0
       ? `
-      <div class="section-title">4. Accessories</div>
-      <table class="item-table" style="margin-bottom: 16px;">
+      <div class="section-title">4. Standalone Accessories</div>
+      <table class="item-table">
         <thead>
           <tr>
             <th class="center" style="width: 5%;">#</th>
-            <th class="center" style="width: 15%;">Image</th>
-            <th style="width: 35%;">Accessory Name &amp; Description</th>
-            <th class="center" style="width: 10%;">Unit</th>
+            <th class="center" style="width: 12%;">Image</th>
+            <th style="width: 45%;">Accessory Name &amp; Description</th>
             <th class="center" style="width: 8%;">Qty</th>
-            <th class="right" style="width: 12%;">Price</th>
-            <th class="right" style="width: 15%;">Total</th>
+            <th class="center" style="width: 8%;">Unit</th>
+            <th class="right" style="width: 10%;">Unit Price</th>
+            <th class="right" style="width: 12%;">Total Price</th>
           </tr>
         </thead>
         <tbody>
-          ${accessoriesList
-            .map(
-              (acc, idx) => `
+          ${standaloneAccessories
+            .map((acc, idx) => {
+              const accTotal =
+                Number(acc.total) ||
+                (Number(acc.quantity) || 1) * (Number(acc.price) || 0);
+              return `
             <tr>
               <td class="center font-bold">${idx + 1}</td>
-              <td class="center" style="vertical-align: middle;">
-                ${
-                  acc.image
-                    ? `<img src="${acc.image}" alt="${escapeHtml(acc.name)}" style="max-width: 55px; max-height: 55px; object-fit: cover; border-radius: 4px; border: 1px solid #CBD5E1; display: inline-block;" />`
-                    : `<span style="font-size: 7.5pt; color: #94A3B8; font-style: italic;">No Image</span>`
-                }
+              <td class="center">
+                ${acc.image ? `<img src="${acc.image.startsWith('/') ? API_HOST + acc.image : acc.image}" style="max-width: 80px; max-height: 80px; object-fit: contain; border-radius: 4px; border: 1px solid #CBD5E1;" />` : '<span style="color: #94A3B8; font-size: 7.5pt;">No Image</span>'}
               </td>
               <td>
                 <div class="item-name">${escapeHtml(acc.name)}</div>
                 ${acc.description ? `<div class="item-desc">${escapeHtml(acc.description)}</div>` : ""}
               </td>
-              <td class="center">${escapeHtml(acc.unit || "Pcs")}</td>
               <td class="center font-bold">${acc.quantity || 1}</td>
+              <td class="center">${escapeHtml(acc.unit || "Nos")}</td>
               <td class="right">${formatINR(acc.price || 0)}</td>
-              <td class="right font-bold">${formatINR(acc.total || (acc.quantity || 1) * (acc.price || 0))}</td>
+              <td class="right font-bold">${formatINR(accTotal)}</td>
             </tr>
-          `,
-            )
+          `;
+            })
             .join("")}
         </tbody>
       </table>`
       : "";
 
-  // Financial calculations
-  const p = q.pricing || {};
-  const accessoriesTotal = p.accessoriesTotal !== undefined
-    ? p.accessoriesTotal
-    : accessoriesList.reduce((sum, a) => sum + (Number(a.total) || (Number(a.quantity) || 1) * (Number(a.price) || 0)), 0);
-  const itemsSubtotal = computedSubtotal;
-  const subtotal = p.subtotal !== undefined ? p.subtotal : (itemsSubtotal + accessoriesTotal);
-  const handlingAmt = p.handlingFeeAmount || Math.round(subtotal * ((p.handlingFeePercent || 0) / 100));
-  const designAmt = p.designFeeAmount || Math.round(subtotal * ((p.designFeePercent || 0) / 100));
-  const transportAmt = p.transportCharges || 0;
-  const discountAmt = p.discountAmount || 0;
+  // ── Pricing Breakdown ──────────────────────────────────────────────────────
+  const pricing = q.pricing || {};
+  const subtotal =
+    pricing.subtotal !== undefined
+      ? pricing.subtotal
+      : computedSubtotal + accessoriesTotal;
+  const handlingFee =
+    pricing.handlingFeeAmount !== undefined
+      ? pricing.handlingFeeAmount
+      : Math.round(subtotal * 0.02);
+  const designFee =
+    pricing.designFeeAmount !== undefined
+      ? pricing.designFeeAmount
+      : Math.round(subtotal * 0.02);
+  const transportCharges = pricing.transportCharges || 0;
+  const discount = pricing.discountAmount || 0;
   const taxable =
-    p.taxableAmount !== undefined
-      ? p.taxableAmount
-      : subtotal + handlingAmt + designAmt + transportAmt - discountAmt;
-  const gstAmt = p.totalGstAmount || 0;
-  const cgst = Math.round(gstAmt / 2);
-  const sgst = gstAmt - cgst;
+    pricing.taxableAmount !== undefined
+      ? pricing.taxableAmount
+      : subtotal + handlingFee + designFee + transportCharges - discount;
+  const totalGst =
+    pricing.totalGstAmount !== undefined
+      ? pricing.totalGstAmount
+      : Math.round(taxable * 0.18);
+  const cgst = Math.round(totalGst / 2);
+  const sgst = totalGst - cgst;
   const grandTotal =
-    p.grandTotal !== undefined ? p.grandTotal : taxable + gstAmt;
+    pricing.grandTotal !== undefined ? pricing.grandTotal : taxable + totalGst;
+  const amountInWords = pricing.amountInWords || "";
 
-  // Payment milestones
+  // ── Payment Milestones ─────────────────────────────────────────────────────
   const milestones = q.paymentMilestones || [];
-  const milestoneSectionNum = accessoriesList.length > 0 ? "5" : "4";
-  const costSummarySectionNum = accessoriesList.length > 0 ? "6" : "5";
-  const paymentHistorySectionNum = accessoriesList.length > 0 ? "7" : "6";
-  const bankSectionNum = accessoriesList.length > 0 ? "8" : "7";
-
   const milestonesHtml =
     milestones.length > 0
       ? `
-      <div class="section-title">${milestoneSectionNum}. Payment Milestones</div>
+      <div class="section-title">5. Payment Milestones</div>
       <table class="standard-table">
         <thead>
           <tr>
@@ -342,6 +365,7 @@ export function buildQuotationHtml(q) {
       </table>`
       : "";
 
+  // ── Payment & Transaction History ─────────────────────────────────────────
   const txList = Array.isArray(q.transactions) ? q.transactions : [];
   const calculatedPaidAmount = txList.reduce(
     (acc, tx) =>
@@ -366,7 +390,7 @@ export function buildQuotationHtml(q) {
   };
 
   const paymentSummaryHtml = `
-    <div class="section-title">${paymentHistorySectionNum}. Payment &amp; Transaction History</div>
+    <div class="section-title">6. Payment &amp; Transaction History</div>
     <table class="standard-table">
       <thead>
         <tr>
@@ -421,6 +445,25 @@ export function buildQuotationHtml(q) {
     }
   `;
 
+  // ── Bank Details ───────────────────────────────────────────────────────────
+  const bank = q.bankDetails || {
+    accountName: "Altera Interior",
+    bankName: "IndusInd Bank Limited",
+    accountNumber: "201002880175",
+    ifscCode: "INDB0000518",
+    branch: "Sector-31, Gurgaon Branch",
+    bankAddress:
+      "SCO-8, Sector 31/32A HUDA Market, Gurgaon – 122 002, Haryana, India",
+  };
+
+  // ── Terms & Conditions ─────────────────────────────────────────────────────
+  const terms = q.termsAndConditions || [
+    "1. Quotation Validity: 30 days from date of issue.",
+    "2. Measurement Variation: Cost may vary as per actual site measurements and drawings.",
+    "3. Milestone Payments: Work commences upon milestone release.",
+    "4. GST @ 18% is applicable as per government statutory norms.",
+  ];
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -457,9 +500,9 @@ export function buildQuotationHtml(q) {
       vertical-align: top;
     }
     .company-logo {
-      height: 48px;
+      height: 62px;
       width: auto;
-      max-width: 240px;
+      max-width: 280px;
       object-fit: contain;
       margin-bottom: 6px;
       display: block;
@@ -651,10 +694,11 @@ export function buildQuotationHtml(q) {
       border-bottom: 1px solid #E2E8F0;
     }
     .summary-table tr.grand-row td {
-      background: #0F172A;
-      color: #FFFFFF;
+      background: transparent;
+      color: #0F172A;
+      border-top: 2px solid #0F172A;
       font-weight: 800;
-      font-size: 10.5pt;
+      font-size: 11pt;
       border-bottom: none;
     }
 
@@ -731,7 +775,6 @@ export function buildQuotationHtml(q) {
       vertical-align: bottom;
     }
     .signature-line {
-      border-top: 1px solid #0F172A;
       margin-top: 40px;
       padding-top: 4px;
       font-size: 9pt;
@@ -764,13 +807,12 @@ export function buildQuotationHtml(q) {
         </div>
       </td>
       <td style="width: 45%; vertical-align: top;" class="header-right">
-        <div class="doc-title">OFFICIAL QUOTATION</div>
+        <div class="doc-title"> QUOTATION</div>
         <div class="doc-meta">
           <strong>Quotation No:</strong> ${escapeHtml(quotationNumber)}${q.revision ? ` (Rev ${q.revision})` : ""}<br />
           <strong>Date:</strong> ${qDate}<br />
           <strong>Valid Until:</strong> ${vUntil}
         </div>
-        <div class="doc-status">${escapeHtml(status)}</div>
       </td>
     </tr>
   </table>
@@ -798,84 +840,94 @@ export function buildQuotationHtml(q) {
   </table>
 
   <!-- 3. Items / Scope of Work -->
-  <div class="section-title">3. Scope &amp; Room Items</div>
+  <div class="section-title">3. Items / Scope of Work</div>
   ${roomSectionsHtml}
 
-  <!-- 4. Accessories -->
-  ${accessoriesHtml}
+  <!-- 4. Standalone Accessories -->
+  ${standaloneAccHtml}
 
-  <!-- Payment Milestones -->
+  <!-- 4. Milestones -->
   ${milestonesHtml}
 
-  <!-- Cost Summary -->
-  <div class="section-title">${costSummarySectionNum}. Cost Summary</div>
+  <!-- 5. Cost Summary -->
+  <div class="section-title">5. Cost Summary</div>
   <div class="summary-container">
     <table class="summary-table">
       <tr>
-        <td>Subtotal:</td>
+        <td>Items Subtotal:</td>
         <td class="right font-bold">${formatINR(subtotal)}</td>
       </tr>
       ${
-        designAmt > 0 || (p.designFeePercent || 0) > 0
+        handlingFee > 0
           ? `
       <tr>
-        <td>Design Fees (${p.designFeePercent || 0}%):</td>
-        <td class="right">${formatINR(designAmt)}</td>
+        <td>Handling Charges (${pricing.handlingFeePercent || 2}%):</td>
+        <td class="right">${formatINR(handlingFee)}</td>
       </tr>`
           : ""
       }
       ${
-        handlingAmt > 0 || (p.handlingFeePercent || 0) > 0
+        designFee > 0
           ? `
       <tr>
-        <td>Handling Fees (${p.handlingFeePercent || 0}%):</td>
-        <td class="right">${formatINR(handlingAmt)}</td>
+        <td>Designing / Consultation Fees (${pricing.designFeePercent || 2}%):</td>
+        <td class="right">${formatINR(designFee)}</td>
       </tr>`
           : ""
       }
-      <tr>
-        <td>Transportation Charges:</td>
-        <td class="right font-bold">${formatINR(transportAmt)}</td>
-      </tr>
       ${
-        discountAmt > 0
+        transportCharges > 0
           ? `
       <tr>
-        <td style="color: #059669;">Discount:</td>
-        <td class="right" style="color: #059669;">-${formatINR(discountAmt)}</td>
+        <td>Transport / Freight Charges:</td>
+        <td class="right">${formatINR(transportCharges)}</td>
+      </tr>`
+          : ""
+      }
+      ${
+        discount > 0
+          ? `
+      <tr>
+        <td style="color: #059669;">Special Discount:</td>
+        <td class="right" style="color: #059669;">-${formatINR(discount)}</td>
       </tr>`
           : ""
       }
       <tr style="border-top: 1px solid #CBD5E1;">
-        <td class="font-bold">Taxable Amount:</td>
+        <td class="font-bold">Subtotal / Taxable Amount:</td>
         <td class="right font-bold">${formatINR(taxable)}</td>
       </tr>
       ${
-        p.gstType === "AS_PER_ACTUAL"
+        pricing.gstType === "AS_PER_ACTUAL"
           ? `
       <tr>
-        <td>GST / Taxes (18% – As per Actuals):</td>
+        <td>GST (18%):</td>
         <td class="right" style="color: #2563EB; font-weight: 600;">As per Actuals</td>
       </tr>`
           : `
       <tr>
-        <td>CGST (${(p.gstPercent || 18) / 2}%):</td>
+        <td>CGST (${(pricing.gstPercent || 18) / 2}%):</td>
         <td class="right">${formatINR(cgst)}</td>
       </tr>
       <tr>
-        <td>SGST (${(p.gstPercent || 18) / 2}%):</td>
+        <td>SGST (${(pricing.gstPercent || 18) / 2}%):</td>
         <td class="right">${formatINR(sgst)}</td>
       </tr>`
       }
       <tr class="grand-row">
-        <td>GRAND TOTAL:</td>
+        <td>Estimated Grand Total:</td>
         <td class="right">${formatINR(grandTotal)}</td>
       </tr>
     </table>
   </div>
   ${
-    p.gstType === "AS_PER_ACTUAL"
-      ? `<div style="font-size: 8.5pt; color: #1D4ED8; background: #EFF6FF; border: 1px solid #BFDBFE; padding: 6px 10px; margin-bottom: 12px; font-weight: 600;">GST @ 18% will be charged separately as applicable on the actual/final invoice and is not included in this estimated total.</div>`
+    amountInWords
+      ? `<div style="font-size: 8.5pt; color: #334155; margin-bottom: 12px;"><strong>Amount in Words:</strong> ${escapeHtml(amountInWords)}</div>`
+      : ""
+  }
+  ${
+    pricing.gstType === "AS_PER_ACTUAL"
+      ? `<div style="font-size: 8.5pt; color: #475569; margin-bottom: 12px;"><strong>Note:</strong> GST @ 18% will be charged separately as applicable on the actual/final invoice and is not included in this estimated total.</div>`
       : ""
   }
 
@@ -894,13 +946,13 @@ export function buildQuotationHtml(q) {
     </tr>
   </table>
 
-  <!-- Terms & Notes -->
+  <!-- Terms & Conditions -->
   ${
-    q.notes
+    terms && terms.length > 0
       ? `
   <div class="terms-block">
-    <div style="font-weight: 700; color: #0F172A; margin-bottom: 4px; text-transform: uppercase;">Notes &amp; Terms</div>
-    <div>${escapeHtml(q.notes)}</div>
+    <div style="font-weight: 700; color: #0F172A; margin-bottom: 4px; text-transform: uppercase;">Terms &amp; Conditions</div>
+    ${terms.map((t) => `<div style="margin-bottom: 2px;">${escapeHtml(t)}</div>`).join("")}
   </div>`
       : ""
   }

@@ -287,12 +287,14 @@ export default function EmployeesPage() {
                         {hasSalary ? formatSalary(emp.salary) : 'Not Set'}
                       </td>
                       <td>
-                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                           <button
                             className="btn btn-ghost btn-sm"
                             onClick={() => navigate(`/employees/${emp._id}`)}
                             title="View"
-                          >👁️ View</button>
+                          >
+                            👁️ View
+                          </button>
 
                           {isPending || !isActiveAccess ? (
                             <button
@@ -320,8 +322,7 @@ export default function EmployeesPage() {
                           </button>
 
                           <button
-                            className="btn btn-sm"
-                            style={{ background: '#8b5cf6', color: '#fff', border: 'none' }}
+                            className="btn btn-sm btn-primary"
                             onClick={() => handleOpenAppPermissionsModal(emp)}
                           >
                             ⚙️ App Permissions

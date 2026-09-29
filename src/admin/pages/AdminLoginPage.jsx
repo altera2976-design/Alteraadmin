@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
@@ -10,6 +10,22 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const [currentBg, setCurrentBg] = useState(0);
+
+  const backgrounds = [
+    '/backgrounds/bg1.jpg',
+    '/backgrounds/bg2.jpg',
+    '/backgrounds/bg3.jpg',
+    '/backgrounds/bg4.png'
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentBg((prev) => (prev + 1) % backgrounds.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -42,6 +58,25 @@ export default function AdminLoginPage() {
 
   return (
     <div style={styles.container}>
+      {/* Background Carousel */}
+      {backgrounds.map((bg, index) => (
+        <div
+          key={bg}
+          style={{
+            ...styles.bgImage,
+            backgroundImage: `url(${bg})`,
+            opacity: index === currentBg ? 1 : 0,
+            transform: index === currentBg 
+              ? 'translateX(0) scale(1)' 
+              : index < currentBg 
+                ? 'translateX(-50px) scale(1.05)' 
+                : 'translateX(50px) scale(1.05)'
+          }}
+        />
+      ))}
+      {/* Dark Overlay */}
+      <div style={styles.overlay} />
+
       <div style={styles.card}>
         <div style={styles.header}>
           <div style={styles.badge}>
@@ -89,7 +124,7 @@ export default function AdminLoginPage() {
 
         <div style={styles.footer}>
           <span>Super Admin account? </span>
-          <a href="/login" style={{ color: '#2563EB', textDecoration: 'none', fontWeight: 600 }}>
+          <a href="/login" style={{ color: '#93C5FD', textDecoration: 'none', fontWeight: 600 }}>
             Super Admin Portal
           </a>
         </div>
@@ -104,17 +139,44 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: '#FFFFFF',
+    background: '#000000',
     padding: 20,
     fontFamily: "'Inter', system-ui, sans-serif",
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  bgImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    transition: 'opacity 1.5s ease-in-out, transform 1.5s ease-in-out',
+    zIndex: 1,
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'rgba(0, 0, 0, 0.45)', // Subtle dark overlay
+    zIndex: 2,
   },
   card: {
     width: '100%',
     maxWidth: 440,
-    background: '#FFFFFF',
-    borderRadius: 16,
+    background: 'rgba(25, 30, 40, 0.4)',
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
+    border: '1px solid rgba(255, 255, 255, 0.15)',
+    borderRadius: 24,
     padding: '40px 32px',
-    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2)',
+    boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+    position: 'relative',
+    zIndex: 10,
   },
   header: {
     textAlign: 'center',
@@ -134,12 +196,12 @@ const styles = {
   title: {
     fontSize: 24,
     fontWeight: 800,
-    color: '#0F172A',
+    color: '#FFFFFF',
     margin: '0 0 6px 0',
   },
   subtitle: {
     fontSize: 13,
-    color: '#64748B',
+    color: 'rgba(255,255,255,0.7)',
     margin: 0,
     lineHeight: 1.5,
   },
@@ -168,12 +230,14 @@ const styles = {
   label: {
     fontSize: 12.5,
     fontWeight: 600,
-    color: '#334155',
+    color: '#FFFFFF',
   },
   input: {
     padding: '11px 14px',
     borderRadius: 8,
-    border: '1px solid #CBD5E1',
+    border: '1px solid rgba(255, 255, 255, 0.2)',
+    background: 'rgba(255, 255, 255, 0.1)',
+    color: '#FFFFFF',
     fontSize: 14,
     outline: 'none',
     transition: 'all 0.2s',
@@ -195,6 +259,6 @@ const styles = {
     marginTop: 24,
     textAlign: 'center',
     fontSize: 13,
-    color: '#64748B',
+    color: 'rgba(255, 255, 255, 0.7)',
   },
 };

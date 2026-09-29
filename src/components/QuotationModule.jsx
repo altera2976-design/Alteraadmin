@@ -1183,7 +1183,36 @@ export default function QuotationModule({
 
     setIsActionLoading(true);
     try {
-      const payload = {
+      const MAX_SIZE = 50 * 1024 * 1024; // 50MB
+      let hasFiles = false;
+      const formData = new FormData();
+      const updatedStandaloneAccessories = [...standaloneAccessories];
+
+      for (let i = 0; i < updatedStandaloneAccessories.length; i++) {
+        const acc = updatedStandaloneAccessories[i];
+        if (acc.image && acc.image.startsWith("data:image")) {
+          // Convert base64 to Blob
+          const res = await fetch(acc.image);
+          const blob = await res.blob();
+          
+          if (blob.size > MAX_SIZE) {
+            alert(`The image for accessory "${acc.name}" exceeds the maximum allowed size of 50MB.`);
+            setIsActionLoading(false);
+            return;
+          }
+          
+          hasFiles = true;
+          const ext = blob.type.split('/')[1] || 'jpg';
+          const filename = `image_${i}.${ext}`;
+          
+          formData.append("images", blob, `idx_${i}_${filename}`);
+          
+          // Clear out the base64 from the payload JSON so it doesn't get sent twice
+          updatedStandaloneAccessories[i].image = "";
+        }
+      }
+
+      const payloadObj = {
         client: {
           name: clientName.trim(),
           company: clientCompany.trim(),
@@ -1197,7 +1226,7 @@ export default function QuotationModule({
         projectType,
         siteLocation: siteLocation.trim() || clientAddress.trim(),
         items: currentItems,
-        standaloneAccessories,
+        standaloneAccessories: updatedStandaloneAccessories,
         pricing: {
           handlingFeePercent: parseFloat(handlingPercent) || 0,
           designFeePercent: parseFloat(designPercent) || 0,
@@ -1211,11 +1240,21 @@ export default function QuotationModule({
         notes: quotationNotes.trim(),
       };
 
+      let finalPayload = payloadObj;
+      let config = {};
+
+      if (hasFiles) {
+        formData.append("data", JSON.stringify(payloadObj));
+        finalPayload = formData;
+        // MUST be undefined so Axios/browser automatically sets multipart/form-data with the correct boundary!
+        config = { headers: { "Content-Type": undefined } };
+      }
+
       if (editingQuotationId) {
-        await api.put(`/quotations/${editingQuotationId}`, payload);
+        await api.put(`/quotations/${editingQuotationId}`, finalPayload, config);
         setSuccess("Quotation updated successfully!");
       } else {
-        await api.post("/quotations", payload);
+        await api.post("/quotations", finalPayload, config);
         setSuccess("Quotation generated successfully!");
       }
 
@@ -3302,7 +3341,7 @@ export default function QuotationModule({
                               <tr key={idx} style={{ borderBottom: "1px solid #e2e8f0", background: idx % 2 === 0 ? "#ffffff" : "#f8fafc" }}>
                                 <td style={{ padding: "6px", textAlign: "center", verticalAlign: "middle" }}>
                                   {acc.image ? (
-                                    <img src={acc.image} alt={acc.name} style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 4, border: "1px solid #cbd5e1", display: "inline-block" }} />
+                                    <img src={acc.image.startsWith("/") ? `${api.defaults.baseURL.replace(/\/api\/?$/, "")}${acc.image}` : acc.image} alt={acc.name} style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 4, border: "1px solid #cbd5e1", display: "inline-block" }} />
                                   ) : (
                                     <span style={{ fontSize: 10, color: "#94a3b8", fontStyle: "italic" }}>No Image</span>
                                   )}
@@ -4116,7 +4155,7 @@ export default function QuotationModule({
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           {acc.image ? (
                             <img
-                              src={acc.image}
+                              src={acc.image.startsWith("/") ? `${api.defaults.baseURL.replace(/\/api\/?$/, "")}${acc.image}` : acc.image}
                               alt={acc.name}
                               style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 4, border: "1px solid #cbd5e1" }}
                             />

@@ -41,6 +41,12 @@ export default function AttendancePage() {
   const [isSavingReview, setIsSavingReview] = useState(false);
   const [reviewFeedback, setReviewFeedback] = useState("");
 
+  // Daily Update / OT Modal State
+  const [dailyUpdateRecord, setDailyUpdateRecord] = useState(null);
+  const [dailyUpdateText, setDailyUpdateText] = useState("");
+  const [otHours, setOtHours] = useState("");
+  const [isSavingDailyUpdate, setIsSavingDailyUpdate] = useState(false);
+
   // Zoomed Image Modal State
   const [zoomedImage, setZoomedImage] = useState(null);
 
@@ -161,6 +167,34 @@ export default function AttendancePage() {
       setReviewFeedback("⚠️ Failed to submit review.");
     } finally {
       setIsSavingReview(false);
+    }
+  };
+
+  const handleOpenDailyUpdate = (record) => {
+    setDailyUpdateRecord(record);
+    setDailyUpdateText(record.dailyUpdate || "");
+    setOtHours(record.otHours || "");
+  };
+
+  const handleSaveDailyUpdate = async () => {
+    if (!dailyUpdateRecord?.attendanceId) return;
+    setIsSavingDailyUpdate(true);
+    try {
+      const res = await api.put(
+        `/attendance/${dailyUpdateRecord.attendanceId}/daily-update-ot`,
+        {
+          dailyUpdate: dailyUpdateText,
+          otHours: otHours,
+        }
+      );
+      if (res.data.success) {
+        setDailyUpdateRecord(null);
+        fetchDailyData(selectedDate);
+      }
+    } catch (err) {
+      alert("Failed to save daily update and OT.");
+    } finally {
+      setIsSavingDailyUpdate(false);
     }
   };
 
@@ -674,14 +708,24 @@ export default function AttendancePage() {
                           {/* Action */}
                           <td style={{ textAlign: "right" }}>
                             {emp.attendanceId ? (
-                              <button
-                                className="btn btn-secondary btn-sm"
-                                style={styles.inspectBtn}
-                                onClick={() => handleOpenReview(emp)}
-                              >
-                                <span>🔍</span>
-                                <span>Audit Record</span>
-                              </button>
+                              <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                                <button
+                                  className="btn btn-secondary btn-sm"
+                                  style={styles.inspectBtn}
+                                  onClick={() => handleOpenDailyUpdate(emp)}
+                                >
+                                  <span>📝</span>
+                                  <span>OT & Update</span>
+                                </button>
+                                <button
+                                  className="btn btn-secondary btn-sm"
+                                  style={styles.inspectBtn}
+                                  onClick={() => handleOpenReview(emp)}
+                                >
+                                  <span>🔍</span>
+                                  <span>Audit Record</span>
+                                </button>
+                              </div>
                             ) : (
                               <span style={{ color: "#C8CBD4", fontSize: 12 }}>
                                 —
@@ -1002,6 +1046,71 @@ export default function AttendancePage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: DAILY UPDATE & OT ─────────────────── */}
+      {dailyUpdateRecord && (
+        <div style={styles.modalBackdrop}>
+          <div style={styles.modalCard}>
+            <div style={styles.modalHeader}>
+              <div>
+                <span style={styles.modalSub}>DAILY UPDATE & OT</span>
+                <h3 style={styles.modalTitle}>
+                  {dailyUpdateRecord.userName} ({dailyUpdateRecord.date})
+                </h3>
+              </div>
+              <button
+                style={styles.modalClose}
+                onClick={() => setDailyUpdateRecord(null)}
+              >
+                ✕
+              </button>
+            </div>
+            <div style={styles.modalBody}>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: 13, color: '#374151' }}>
+                  Overtime (OT) Hours
+                </label>
+                <input
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  value={otHours}
+                  onChange={(e) => setOtHours(e.target.value)}
+                  placeholder="e.g. 2.5"
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 14 }}
+                />
+              </div>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: 13, color: '#374151' }}>
+                  Daily Work Update / Remarks
+                </label>
+                <textarea
+                  value={dailyUpdateText}
+                  onChange={(e) => setDailyUpdateText(e.target.value)}
+                  placeholder="Enter employee's daily update or work summary here..."
+                  rows={5}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 14, resize: 'vertical' }}
+                />
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 24 }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setDailyUpdateRecord(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handleSaveDailyUpdate}
+                disabled={isSavingDailyUpdate}
+              >
+                {isSavingDailyUpdate ? "Saving..." : "Save Updates"}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -110,7 +110,7 @@ export default function AdminCRMPage({ activeTab = 'leads', leadId = null }) {
 
       {/* KPI Cards */}
       <div style={styles.summaryStrip}>
-        <SummaryBox label="Total Pipeline Leads" val={leads.length} color="#2563EB" />
+        <SummaryBox label="Total Pipeline Leads" val={leads.length} color="#C8102E" />
         <SummaryBox label="New Inquiries" val={newLeadsCount} color="#3B82F6" />
         <SummaryBox label="In Discussion / Design" val={inProgressCount} color="#F59E0B" />
         <SummaryBox label="Converted Clients" val={convertedCount} color="#10B981" />
@@ -212,7 +212,7 @@ export default function AdminCRMPage({ activeTab = 'leads', leadId = null }) {
                               fontWeight: 700,
                               border: '1px solid #CBD5E1',
                               background: lead.status === 'Converted' ? '#DCFCE7' : lead.status === 'New Lead' ? '#EFF6FF' : '#FEF3C7',
-                              color: lead.status === 'Converted' ? '#15803D' : lead.status === 'New Lead' ? '#1D4ED8' : '#B45309'
+                              color: lead.status === 'Converted' ? '#15803D' : lead.status === 'New Lead' ? '#9F0B22' : '#B45309'
                             }}
                           >
                             <option value="New Lead">New Lead</option>
@@ -303,12 +303,12 @@ function Box({ label, val }) {
 const styles = {
   tabHeader: { display: 'flex', gap: 8, marginBottom: 20 },
   tabBtn: { padding: '10px 18px', borderRadius: 8, border: '1px solid #CBD5E1', background: '#FFFFFF', color: '#475569', fontWeight: 600, fontSize: 13, cursor: 'pointer' },
-  tabBtnActive: { background: '#2563EB', color: '#FFFFFF', borderColor: '#2563EB' },
+  tabBtnActive: { background: '#C8102E', color: '#FFFFFF', borderColor: '#C8102E' },
   summaryStrip: { display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 20 },
   controlsBar: { display: 'flex', justifyContent: 'space-between', gap: 14, marginBottom: 20, flexWrap: 'wrap' },
   searchInput: { padding: '9px 14px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: 13, minWidth: 260, outline: 'none' },
   select: { padding: '9px 12px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: 13, background: '#FFFFFF', outline: 'none' },
-  primaryBtn: { background: '#2563EB', color: '#FFFFFF', border: 'none', padding: '10px 18px', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' },
+  primaryBtn: { background: '#C8102E', color: '#FFFFFF', border: 'none', padding: '10px 18px', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' },
   secondaryBtn: { background: '#FFFFFF', color: '#475569', border: '1px solid #CBD5E1', padding: '9px 16px', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' },
   tableCard: { background: '#FFFFFF', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden' },
   table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 },
@@ -316,7 +316,7 @@ const styles = {
   th: { padding: '12px 14px', fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase' },
   tr: { borderBottom: '1px solid #F1F5F9' },
   td: { padding: '14px', color: '#334155' },
-  actionBtn: { padding: '5px 10px', borderRadius: 6, border: '1px solid #CBD5E1', background: '#FFFFFF', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#2563EB' },
+  actionBtn: { padding: '5px 10px', borderRadius: 6, border: '1px solid #CBD5E1', background: '#FFFFFF', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#C8102E' },
   cardForm: { background: '#FFFFFF', borderRadius: 12, padding: 28, border: '1px solid #E2E8F0' },
   formTitle: { fontSize: 20, fontWeight: 800, color: '#0F172A', margin: 0 },
   modalOverlay: { position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },

@@ -154,7 +154,7 @@ export default function AdminPayrollPage({ activeTab = 'overview', payrollId = n
             <Box label="Late Days" val={selectedPayrollDoc.lateDays || 0} />
             <Box label="Bonuses" val={`₹${(selectedPayrollDoc.bonus || 0).toLocaleString('en-IN')}`} color="#10B981" />
             <Box label="Deductions" val={`₹${(selectedPayrollDoc.deductions || 0).toLocaleString('en-IN')}`} color="#EF4444" />
-            <Box label="Net Payable Salary" val={`₹${(selectedPayrollDoc.netSalary || selectedPayrollDoc.totalSalary || 0).toLocaleString('en-IN')}`} color="#2563EB" isHighlight />
+            <Box label="Net Payable Salary" val={`₹${(selectedPayrollDoc.netSalary || selectedPayrollDoc.totalSalary || 0).toLocaleString('en-IN')}`} color="#C8102E" isHighlight />
           </div>
         </div>
       )}
@@ -164,7 +164,7 @@ export default function AdminPayrollPage({ activeTab = 'overview', payrollId = n
         <div>
           {/* Header Summary Cards */}
           <div style={styles.summaryStrip}>
-            <SummaryBox label="Total Payroll Cost" val={`₹${totalPayrollCost.toLocaleString('en-IN')}`} color="#2563EB" />
+            <SummaryBox label="Total Payroll Cost" val={`₹${totalPayrollCost.toLocaleString('en-IN')}`} color="#C8102E" />
             <SummaryBox label="Employees Processed" val={payrolls.length} color="#10B981" />
             <SummaryBox label="Selected Month" val={selectedMonth} color="#8B5CF6" />
           </div>
@@ -206,7 +206,7 @@ export default function AdminPayrollPage({ activeTab = 'overview', payrollId = n
                         <td style={styles.td}>{p.presentDays || 0} / {p.workingDays || 30} days</td>
                         <td style={{ ...styles.td, color: '#10B981', fontWeight: 600 }}>+₹{(p.bonus || 0).toLocaleString('en-IN')}</td>
                         <td style={{ ...styles.td, color: '#EF4444', fontWeight: 600 }}>-₹{(p.deductions || 0).toLocaleString('en-IN')}</td>
-                        <td style={{ ...styles.td, fontWeight: 800, color: '#2563EB' }}>₹{(p.netSalary || p.totalSalary || 0).toLocaleString('en-IN')}</td>
+                        <td style={{ ...styles.td, fontWeight: 800, color: '#C8102E' }}>₹{(p.netSalary || p.totalSalary || 0).toLocaleString('en-IN')}</td>
                         <td style={styles.td}>
                           <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, background: '#DCFCE7', color: '#15803D' }}>
                             {p.status || 'GENERATED'}
@@ -251,7 +251,7 @@ function Box({ label, val, color = '#0F172A', isHighlight }) {
 const styles = {
   tabHeader: { display: 'flex', gap: 8, marginBottom: 20 },
   tabBtn: { padding: '10px 18px', borderRadius: 8, border: '1px solid #CBD5E1', background: '#FFFFFF', color: '#475569', fontWeight: 600, fontSize: 13, cursor: 'pointer' },
-  tabBtnActive: { background: '#2563EB', color: '#FFFFFF', borderColor: '#2563EB' },
+  tabBtnActive: { background: '#C8102E', color: '#FFFFFF', borderColor: '#C8102E' },
   summaryStrip: { display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 20 },
   tableCard: { background: '#FFFFFF', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden' },
   table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 },
@@ -259,14 +259,14 @@ const styles = {
   th: { padding: '12px 14px', fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase' },
   tr: { borderBottom: '1px solid #F1F5F9' },
   td: { padding: '14px', color: '#334155' },
-  actionBtn: { padding: '5px 10px', borderRadius: 6, border: '1px solid #CBD5E1', background: '#FFFFFF', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#2563EB' },
+  actionBtn: { padding: '5px 10px', borderRadius: 6, border: '1px solid #CBD5E1', background: '#FFFFFF', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#C8102E' },
   cardForm: { background: '#FFFFFF', borderRadius: 12, padding: 28, border: '1px solid #E2E8F0' },
   formTitle: { fontSize: 20, fontWeight: 800, color: '#0F172A', margin: 0 },
   gridForm: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 18, marginTop: 14 },
   field: { display: 'flex', flexDirection: 'column', gap: 6 },
   label: { fontSize: 12.5, fontWeight: 600, color: '#334155' },
   input: { padding: '10px 14px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: 13, outline: 'none' },
-  primaryBtn: { background: '#2563EB', color: '#FFFFFF', border: 'none', padding: '10px 18px', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' },
+  primaryBtn: { background: '#C8102E', color: '#FFFFFF', border: 'none', padding: '10px 18px', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' },
   secondaryBtn: { background: '#FFFFFF', color: '#475569', border: '1px solid #CBD5E1', padding: '9px 16px', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' },
   msgBanner: { padding: '12px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, marginBottom: 16 },
 };

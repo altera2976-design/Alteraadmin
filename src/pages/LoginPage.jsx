@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -9,6 +9,21 @@ export default function LoginPage() {
   const [form, setForm]       = useState({ email: '', password: '' });
   const [error, setError]     = useState('');
   const [loading, setLoading] = useState(false);
+  const [currentBg, setCurrentBg] = useState(0);
+
+  const backgrounds = [
+    '/backgrounds/bg1.jpg',
+    '/backgrounds/bg2.jpg',
+    '/backgrounds/bg3.jpg',
+    '/backgrounds/bg4.png'
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentBg((prev) => (prev + 1) % backgrounds.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -37,6 +52,25 @@ export default function LoginPage() {
 
   return (
     <div style={s.page}>
+      {/* Background Carousel */}
+      {backgrounds.map((bg, index) => (
+        <div
+          key={bg}
+          style={{
+            ...s.bgImage,
+            backgroundImage: `url(${bg})`,
+            opacity: index === currentBg ? 1 : 0,
+            transform: index === currentBg 
+              ? 'translateX(0) scale(1)' 
+              : index < currentBg 
+                ? 'translateX(-50px) scale(1.05)' 
+                : 'translateX(50px) scale(1.05)'
+          }}
+        />
+      ))}
+      {/* Dark Overlay */}
+      <div style={s.overlay} />
+
       <div style={s.card}>
         {/* Header */}
         <div style={s.header}>
@@ -60,8 +94,8 @@ export default function LoginPage() {
           )}
 
           <div className="form-group">
-            <label className="form-label" htmlFor="email">
-              Email Address <span className="required">*</span>
+            <label className="form-label" htmlFor="email" style={{ color: '#fff', fontSize: '14px', fontWeight: '500' }}>
+              Email Address <span className="required" style={{ color: '#ef4444' }}>*</span>
             </label>
             <input
               id="email"
@@ -73,12 +107,19 @@ export default function LoginPage() {
               onChange={handleChange}
               autoComplete="email"
               disabled={loading}
+              style={{
+                background: 'rgba(255,255,255,0.1)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                color: '#fff',
+                padding: '12px 16px',
+                borderRadius: '8px'
+              }}
             />
           </div>
 
           <div className="form-group">
-            <label className="form-label" htmlFor="password">
-              Password <span className="required">*</span>
+            <label className="form-label" htmlFor="password" style={{ color: '#fff', fontSize: '14px', fontWeight: '500' }}>
+              Password <span className="required" style={{ color: '#ef4444' }}>*</span>
             </label>
             <input
               id="password"
@@ -90,6 +131,13 @@ export default function LoginPage() {
               onChange={handleChange}
               autoComplete="current-password"
               disabled={loading}
+              style={{
+                background: 'rgba(255,255,255,0.1)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                color: '#fff',
+                padding: '12px 16px',
+                borderRadius: '8px'
+              }}
             />
           </div>
 
@@ -131,24 +179,51 @@ export default function LoginPage() {
 const s = {
   page: {
     minHeight: '100vh',
-    background: '#FFFFFF',
+    background: '#000000',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
     fontFamily: "'Inter', system-ui, sans-serif",
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  bgImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    transition: 'opacity 1.5s ease-in-out, transform 1.5s ease-in-out',
+    zIndex: 1,
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'rgba(0, 0, 0, 0.45)', // Subtle dark overlay
+    zIndex: 2,
   },
   card: {
-    background: '#fff',
-    borderRadius: 16,
-    boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+    background: 'rgba(25, 30, 40, 0.4)',
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
+    border: '1px solid rgba(255, 255, 255, 0.15)',
+    borderRadius: 24,
+    boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
     width: '100%',
     maxWidth: 420,
     overflow: 'hidden',
+    position: 'relative',
+    zIndex: 10,
   },
   header: {
-    background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)',
-    padding: '36px 32px 28px',
+    background: 'transparent',
+    padding: '36px 32px 10px',
     textAlign: 'center',
   },
   logoWrap: {
@@ -169,6 +244,6 @@ const s = {
     textAlign: 'center',
     padding: '12px 32px 24px',
     fontSize: 12,
-    color: '#94a3b8',
+    color: 'rgba(255, 255, 255, 0.5)',
   },
 };
