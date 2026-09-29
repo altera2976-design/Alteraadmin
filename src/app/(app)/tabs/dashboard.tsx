@@ -23,6 +23,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { THEME } from '../../../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { projectApi } from '../../../services/projectApi';
+import DevotionalBanner from '../../../components/DevotionalBanner';
 import { getSocket } from '../../../services/socket';
 import { API_URL, STORAGE_KEYS } from '../../../constants/config';
 
@@ -216,6 +217,8 @@ export default function DashboardScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[THEME.colors.primary]} />}
       >
+        <DevotionalBanner />
+
         {/* ========================================================================= */}
         {/* 1. ADMIN DASHBOARD VIEW */}
         {/* ========================================================================= */}
@@ -469,7 +472,7 @@ export default function DashboardScreen() {
                       </View>
                       <View style={styles.salaryItem}>
                         <Text style={styles.salaryItemLabel}>OT Payment</Text>
-                        <Text style={[styles.salaryItemVal, { color: '#10B981' }]}>+₹{Number(dashboardData?.mySalary?.overtimePayment || 0).toLocaleString('en-IN')}</Text>
+                        <Text style={[styles.salaryItemVal, { color: '#7A131A' }]}>+₹{Number(dashboardData?.mySalary?.overtimePayment || 0).toLocaleString('en-IN')}</Text>
                       </View>
                     </View>
 

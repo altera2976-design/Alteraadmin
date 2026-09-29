@@ -682,8 +682,8 @@ export default function ProjectDetailScreen() {
 
                     {t.attachments && t.attachments.length > 0 ? (
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                        <Ionicons name="attach-outline" size={13} color="#2563eb" />
-                        <Text style={{ fontSize: 11, color: '#2563eb', fontWeight: '700' }}>
+                        <Ionicons name="attach-outline" size={13} color="#7A131A" />
+                        <Text style={{ fontSize: 11, color: '#7A131A', fontWeight: '700' }}>
                           Attachments: {t.attachments.length} {t.attachments.length === 1 ? 'file' : 'files'}
                         </Text>
                       </View>

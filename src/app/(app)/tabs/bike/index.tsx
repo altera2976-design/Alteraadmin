@@ -489,11 +489,11 @@ export default function BikeTrackingScreen() {
   const getStatusColor = () => {
     switch (displayStatus) {
       case "TRACKING":
-        return "#10B981";
+        return "#7A131A";
       case "COMPLETED":
         return "#8B5CF6";
       case "READY":
-        return "#3B82F6";
+        return "#7A131A";
       default:
         return "#6B7280";
     }
@@ -579,13 +579,13 @@ export default function BikeTrackingScreen() {
         ) : (
           <View style={styles.activeCard}>
             <View style={styles.activeHeader}>
-              <Ionicons name="bicycle" size={32} color="#10B981" />
+              <Ionicons name="bicycle" size={32} color="#7A131A" />
               <Text style={styles.activeTitle}>AUTOMATIC GPS TRACKING</Text>
             </View>
 
             {/* GPS Signal Status Badge */}
             <View style={styles.gpsBadge}>
-              <Ionicons name="location" size={16} color="#10B981" />
+              <Ionicons name="location" size={16} color="#7A131A" />
               <Text style={styles.gpsBadgeText}>{gpsStatusText}</Text>
               {gpsAccuracy !== null && (
                 <Text style={styles.gpsAccuracyText}>
@@ -607,7 +607,7 @@ export default function BikeTrackingScreen() {
               </View>
               <View style={styles.statBox}>
                 <Text style={styles.statLabel}>Working Time</Text>
-                <Text style={[styles.statValue, { color: "#3B82F6" }]}>
+                <Text style={[styles.statValue, { color: "#7A131A" }]}>
                   {elapsedTime}
                 </Text>
               </View>
@@ -743,8 +743,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 20,
     borderWidth: 2,
-    borderColor: "#10B981",
-    shadowColor: "#10B981",
+    borderColor: "#7A131A",
+    shadowColor: "#7A131A",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 10,
@@ -759,7 +759,7 @@ const styles = StyleSheet.create({
   activeTitle: {
     fontSize: 16,
     fontWeight: "800",
-    color: "#10B981",
+    color: "#7A131A",
     marginLeft: 8,
     letterSpacing: 0.5,
   },
@@ -781,7 +781,7 @@ const styles = StyleSheet.create({
     marginLeft: 6,
   },
   gpsAccuracyText: {
-    color: "#059669",
+    color: "#7A131A",
     fontSize: 11,
     marginLeft: 4,
     fontWeight: "500",

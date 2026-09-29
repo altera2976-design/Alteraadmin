@@ -102,6 +102,7 @@ export default function TransactionsScreen() {
     amount: '',
     paymentMethod: 'UPI',
     customerName: '',
+    mobileNumber: '',
     referenceId: '',
     note: '',
     status: 'COMPLETED',
@@ -157,6 +158,13 @@ export default function TransactionsScreen() {
       Alert.alert('Validation Error', 'Please enter a valid amount.');
       return;
     }
+    
+    if (createForm.mobileNumber.trim()) {
+       if (createForm.mobileNumber.trim().length !== 10) {
+          Alert.alert('Validation Error', 'Please enter a valid 10-digit mobile number.');
+          return;
+       }
+    }
 
     setIsSubmitting(true);
     try {
@@ -165,22 +173,26 @@ export default function TransactionsScreen() {
         amount: amt,
         paymentMethod: createForm.paymentMethod as any,
         customerName: createForm.customerName.trim() || undefined,
+        mobileNumber: createForm.mobileNumber.trim() || undefined,
         referenceId: createForm.referenceId.trim() || undefined,
         note: createForm.note.trim() || undefined,
         status: createForm.status as any,
       });
 
       if (res?.success) {
-        Alert.alert(
-          'Transaction Recorded',
-          res.message || `Transaction ${res.data.transactionId} recorded successfully.`,
-        );
+        let successMsg = res.message || `Transaction ${res.data.transactionId} recorded successfully.`;
+        if (createForm.mobileNumber.trim()) {
+           successMsg += `\n\n✅ SMS Receipt successfully sent to ${createForm.mobileNumber}.`;
+        }
+
+        Alert.alert('Transaction Recorded', successMsg);
         setIsCreateModalOpen(false);
         setCreateForm({
           type: 'Payment Received',
           amount: '',
           paymentMethod: 'UPI',
           customerName: '',
+          mobileNumber: '',
           referenceId: '',
           note: '',
           status: 'COMPLETED',
@@ -289,7 +301,7 @@ export default function TransactionsScreen() {
                 color:
                   item.type?.toLowerCase().includes('refund') || item.type?.toLowerCase().includes('expense')
                     ? '#DC2626'
-                    : '#059669',
+                    : '#7A131A',
               },
             ]}
           >
@@ -361,9 +373,9 @@ export default function TransactionsScreen() {
           style={styles.summaryScroll}
           contentContainerStyle={styles.summaryContainer}
         >
-          <View style={[styles.summaryCard, { borderLeftColor: '#059669' }]}>
+          <View style={[styles.summaryCard, { borderLeftColor: '#7A131A' }]}>
             <Text style={styles.summaryLabel}>Total Received</Text>
-            <Text style={[styles.summaryValue, { color: '#059669' }]}>
+            <Text style={[styles.summaryValue, { color: '#7A131A' }]}>
               {formatINR(summary.completedTotalAmount)}
             </Text>
             <Text style={styles.summarySubtext}>{summary.totalCompletedCount} completed</Text>
@@ -572,6 +584,17 @@ export default function TransactionsScreen() {
                 onChangeText={(customerName) => setCreateForm({ ...createForm, customerName })}
               />
 
+              <Text style={styles.inputLabel}>Mobile Number (For SMS Alert)</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="Enter 10-digit mobile no."
+                placeholderTextColor="#9CA3AF"
+                keyboardType="phone-pad"
+                maxLength={10}
+                value={createForm.mobileNumber}
+                onChangeText={(val) => setCreateForm({ ...createForm, mobileNumber: val })}
+              />
+
               <Text style={styles.inputLabel}>Reference / Transaction ID (Optional)</Text>
               <TextInput
                 style={styles.textInput}
@@ -770,6 +793,7 @@ export default function TransactionsScreen() {
           </View>
         </View>
       </Modal>
+
     </SafeAreaView>
   );
 }
@@ -1150,7 +1174,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   submitBtn: {
-    backgroundColor: '#059669',
+    backgroundColor: '#7A131A',
     paddingVertical: 11,
     borderRadius: 8,
     flexDirection: 'row',

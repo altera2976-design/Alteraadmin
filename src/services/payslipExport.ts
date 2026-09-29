@@ -237,7 +237,7 @@ export function buildPayslipHtml(payroll: PayrollRecord, emp: any): string {
         .net-pay-val {
           font-size: 26px;
           font-weight: 800;
-          color: #10B981;
+          color: #7A131A;
         }
 
         .payment-info {
@@ -310,7 +310,7 @@ export function buildPayslipHtml(payroll: PayrollRecord, emp: any): string {
           <div class="att-item-lbl">Total Days</div>
         </div>
         <div>
-          <div class="att-item-val" style="color:#10B981;">${att.presentDays}</div>
+          <div class="att-item-val" style="color:#7A131A;">${att.presentDays}</div>
           <div class="att-item-lbl">Present Days</div>
         </div>
         <div>
@@ -322,7 +322,7 @@ export function buildPayslipHtml(payroll: PayrollRecord, emp: any): string {
           <div class="att-item-lbl">Unpaid Absences</div>
         </div>
         <div>
-          <div class="att-item-val" style="color:#3B82F6;">${att.paidLeave}</div>
+          <div class="att-item-val" style="color:#7A131A;">${att.paidLeave}</div>
           <div class="att-item-lbl">Paid Leave</div>
         </div>
         <div>
@@ -515,7 +515,8 @@ export async function generatePayslipPdf(
   ).replace(/[^a-zA-Z0-9]/g, "_");
   const filename = `Payslip_${cleanName}_${payroll.month}.pdf`;
 
-  const { uri, base64 } = await Print.printToFileAsync({ html, base64: true });
+  const { uri } = await Print.printToFileAsync({ html });
+  const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
 
   const baseDir =
     FileSystem.documentDirectory || FileSystem.cacheDirectory || "";

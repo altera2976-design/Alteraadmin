@@ -304,7 +304,7 @@ export function buildOfferLetterHtml(offer: OfferLetterData): string {
       </tr>
       <tr>
         <td class="label-cell">Annual Total CTC Package</td>
-        <td class="val-cell" style="color: #2563EB; font-weight: 800;">${annualCtcStr} / annum</td>
+        <td class="val-cell" style="color: #7A131A; font-weight: 800;">${annualCtcStr} / annum</td>
       </tr>
       <tr>
         <td class="label-cell">Work Location</td>
@@ -359,7 +359,8 @@ export async function generateOfferLetterPdf(
     .replace(/\s+/g, "_");
   const filename = `OfferLetter_${offerNum}_${candidate}.pdf`;
 
-  const { uri, base64 } = await Print.printToFileAsync({ html, base64: true });
+  const { uri } = await Print.printToFileAsync({ html });
+  const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
   const baseDir = FileSystem.documentDirectory || FileSystem.cacheDirectory || "";
   const destUri = baseDir ? `${baseDir}${filename}` : uri;
 

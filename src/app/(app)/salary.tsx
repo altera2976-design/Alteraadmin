@@ -195,7 +195,16 @@ export default function SalaryScreen() {
                 p.employee?._id === user._id,
             );
             setMyRecord(
-              userRec || (res.payroll.length === 1 ? res.payroll[0] : null),
+              userRec || (res.payroll.length === 1 ? res.payroll[0] : {
+                _id: "dummy",
+                employee: user,
+                status: "DRAFT",
+                netSalary: user?.salary || 0,
+                earnings: { basic: user?.salary || 0, hra: 0, allowances: 0, grossSalary: user?.salary || 0, overtimeAmount: 0, overtimeRate: 0, bonus: 0 },
+                deductions: { unpaidLeaveDeduction: 0, halfDayDeduction: 0, pf: 0, esi: 0, profTax: 0, tds: 0, advance: 0, totalDeductions: 0 },
+                attendanceSummary: { presentDays: 0, workingDays: 30, halfDays: 0, unpaidLeave: 0, paidLeave: 0, overtimeHours: 0, totalCalendarDays: 30 },
+                proRata: { isProRata: false, notes: "Estimated default template" }
+              } as any)
             );
           }
         }
@@ -425,9 +434,9 @@ export default function SalaryScreen() {
   const getStatusColor = (status: string) => {
     switch (status?.toUpperCase()) {
       case "PAID":
-        return "#10B981";
+        return "#7A131A";
       case "APPROVED":
-        return "#3B82F6";
+        return "#7A131A";
       case "CALCULATED":
         return "#F59E0B";
       case "DRAFT":
@@ -651,7 +660,7 @@ export default function SalaryScreen() {
                     <Text style={styles.attLbl}>Days in Month</Text>
                   </View>
                   <View style={styles.attBox}>
-                    <Text style={[styles.attVal, { color: "#10B981" }]}>
+                    <Text style={[styles.attVal, { color: "#7A131A" }]}>
                       {myRecord.attendanceSummary?.presentDays ?? 0}
                     </Text>
                     <Text style={styles.attLbl}>Present Days</Text>
@@ -669,7 +678,7 @@ export default function SalaryScreen() {
                     <Text style={styles.attLbl}>Unpaid Leave</Text>
                   </View>
                   <View style={styles.attBox}>
-                    <Text style={[styles.attVal, { color: "#3B82F6" }]}>
+                    <Text style={[styles.attVal, { color: "#7A131A" }]}>
                       {myRecord.attendanceSummary?.paidLeave ?? 0}
                     </Text>
                     <Text style={styles.attLbl}>Paid Leave</Text>
@@ -714,7 +723,7 @@ export default function SalaryScreen() {
                       Overtime ({myRecord.attendanceSummary?.overtimeHours} hrs
                       @ ₹{myRecord.earnings?.overtimeRate}/hr)
                     </Text>
-                    <Text style={[styles.tableVal, { color: "#10B981" }]}>
+                    <Text style={[styles.tableVal, { color: "#7A131A" }]}>
                       +{formatINR(myRecord.earnings?.overtimeAmount)}
                     </Text>
                   </View>
@@ -722,7 +731,7 @@ export default function SalaryScreen() {
                 {(myRecord.earnings?.bonus || 0) > 0 && (
                   <View style={styles.tableRow}>
                     <Text style={styles.tableLbl}>Performance Bonus</Text>
-                    <Text style={[styles.tableVal, { color: "#10B981" }]}>
+                    <Text style={[styles.tableVal, { color: "#7A131A" }]}>
                       +{formatINR(myRecord.earnings?.bonus)}
                     </Text>
                   </View>
@@ -892,7 +901,7 @@ export default function SalaryScreen() {
                 </Text>
                 <Text style={styles.kpiLbl}>Total Staff</Text>
               </View>
-              <View style={[styles.kpiCard, { borderLeftColor: "#3B82F6" }]}>
+              <View style={[styles.kpiCard, { borderLeftColor: "#7A131A" }]}>
                 <Text style={styles.kpiVal}>
                   {formatINR(summary?.totalGrossSalary)}
                 </Text>
@@ -904,8 +913,8 @@ export default function SalaryScreen() {
                 </Text>
                 <Text style={styles.kpiLbl}>Deductions</Text>
               </View>
-              <View style={[styles.kpiCard, { borderLeftColor: "#10B981" }]}>
-                <Text style={[styles.kpiVal, { color: "#10B981" }]}>
+              <View style={[styles.kpiCard, { borderLeftColor: "#7A131A" }]}>
+                <Text style={[styles.kpiVal, { color: "#7A131A" }]}>
                   {formatINR(summary?.totalNetSalary)}
                 </Text>
                 <Text style={styles.kpiLbl}>Net Payable</Text>
@@ -1049,7 +1058,7 @@ export default function SalaryScreen() {
                       <Text
                         style={[
                           styles.detailColVal,
-                          { color: "#10B981", fontWeight: "800" },
+                          { color: "#7A131A", fontWeight: "800" },
                         ]}
                       >
                         {formatINR(item.netSalary)}
@@ -1198,7 +1207,7 @@ export default function SalaryScreen() {
                     <Text style={styles.attLblMini}>Unpaid</Text>
                   </View>
                   <View style={styles.attBoxMini}>
-                    <Text style={[styles.attValMini, { color: "#3B82F6" }]}>
+                    <Text style={[styles.attValMini, { color: "#7A131A" }]}>
                       {selectedDetail.attendanceSummary?.paidLeave ?? 0}
                     </Text>
                     <Text style={styles.attLblMini}>Paid Leave</Text>
@@ -1239,7 +1248,7 @@ export default function SalaryScreen() {
                         {selectedDetail.attendanceSummary?.overtimeHours}h @ ₹
                         {selectedDetail.earnings?.overtimeRate}/h)
                       </Text>
-                      <Text style={[styles.tableVal, { color: "#10B981" }]}>
+                      <Text style={[styles.tableVal, { color: "#7A131A" }]}>
                         +{formatINR(selectedDetail.earnings?.overtimeAmount)}
                       </Text>
                     </View>
@@ -1322,7 +1331,7 @@ export default function SalaryScreen() {
                     <Ionicons
                       name="checkmark-circle"
                       size={20}
-                      color="#10B981"
+                      color="#7A131A"
                     />
                     <View style={{ flex: 1, marginLeft: 10 }}>
                       <Text style={styles.paidInfoTitle}>Salary Disbursed</Text>
@@ -2428,7 +2437,7 @@ const styles = StyleSheet.create({
   netHighlightVal: {
     fontSize: 22,
     fontWeight: "800",
-    color: "#10B981",
+    color: "#7A131A",
   },
   fieldSectionTitle: {
     fontSize: 12,
@@ -2499,7 +2508,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#10B981",
+    backgroundColor: "#7A131A",
     paddingVertical: 14,
     borderRadius: 12,
   },
@@ -2535,7 +2544,7 @@ const styles = StyleSheet.create({
   paymentAmountVal: {
     fontSize: 28,
     fontWeight: "800",
-    color: "#10B981",
+    color: "#7A131A",
     marginBottom: 10,
   },
   paymentMethodRow: {

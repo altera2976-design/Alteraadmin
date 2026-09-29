@@ -427,7 +427,7 @@ export function buildQuotationHtml(q: any): string {
         <tr>
           <td class="font-bold">${esc(paySummary.paymentStatus.replace("_", " "))}</td>
           <td class="right font-bold">${inr(paySummary.totalAmount || grandTotal)}</td>
-          <td class="right font-bold" style="color: #059669;">${inr(paySummary.paidAmount)}</td>
+          <td class="right font-bold" style="color: #7A131A;">${inr(paySummary.paidAmount)}</td>
           <td class="right font-bold" style="color: #DC2626;">${inr(paySummary.remainingAmount)}</td>
         </tr>
       </tbody>
@@ -456,7 +456,7 @@ export function buildQuotationHtml(q: any): string {
               <td><strong>${esc(tx.transactionId || tx.referenceId || "TXN")}</strong></td>
               <td>${formatDate(tx.transactionDate || tx.createdAt)}</td>
               <td>${esc(tx.paymentMethod || "UPI")}</td>
-              <td class="center" style="color: #059669; font-weight: 700;">${esc(tx.status || "Completed")}</td>
+              <td class="center" style="color: #7A131A; font-weight: 700;">${esc(tx.status || "Completed")}</td>
               <td class="right font-bold">${inr(tx.amount)}</td>
             </tr>
           `,
@@ -911,8 +911,8 @@ export function buildQuotationHtml(q: any): string {
         discount > 0
           ? `
       <tr>
-        <td style="color: #059669;">Special Discount:</td>
-        <td class="right" style="color: #059669;">-${inr(discount)}</td>
+        <td style="color: #7A131A;">Special Discount:</td>
+        <td class="right" style="color: #7A131A;">-${inr(discount)}</td>
       </tr>`
           : ""
       }
@@ -925,7 +925,7 @@ export function buildQuotationHtml(q: any): string {
           ? `
       <tr>
         <td>GST (18%):</td>
-        <td class="right" style="color: #2563EB; font-weight: 600;">As per Actuals</td>
+        <td class="right" style="color: #7A131A; font-weight: 600;">As per Actuals</td>
       </tr>`
           : `
       <tr>
@@ -1038,7 +1038,8 @@ export async function generatePdf(
   const html = buildQuotationHtml(q);
   const filename = getPdfFileName(q);
 
-  const { uri, base64 } = await Print.printToFileAsync({ html, base64: true });
+  const { uri } = await Print.printToFileAsync({ html });
+  const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
 
   const baseDir =
     FileSystem.documentDirectory || FileSystem.cacheDirectory || "";

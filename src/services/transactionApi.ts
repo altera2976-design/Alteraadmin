@@ -18,6 +18,7 @@ export interface TransactionDoc {
   adminName?: string;
   customerId?: string;
   customerName?: string;
+  mobileNumber?: string;
   quotationId?: string;
   invoiceId?: string;
   payrollId?: string;

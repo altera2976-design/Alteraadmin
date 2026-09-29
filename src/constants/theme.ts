@@ -11,7 +11,7 @@ export const THEME = {
     textLight: '#94A3B8',
     placeholder: '#9CA3AF',
     border: '#EEEEEE',
-    success: '#10B981',
+    success: '#7A131A',
     danger: '#EF4444',
     warning: '#D97706',
   },

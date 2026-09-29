@@ -55,7 +55,7 @@ const REPORT_TYPES = [
     icon: 'people-outline',
     metricKey: 'employees',
     unit: 'Staff',
-    color: '#2563EB',
+    color: '#7A131A',
   },
   {
     id: 'attendance',
@@ -63,7 +63,7 @@ const REPORT_TYPES = [
     icon: 'calendar-outline',
     metricKey: 'attendance',
     unit: 'Present',
-    color: '#10B981',
+    color: '#7A131A',
   },
   {
     id: 'payment',
@@ -495,7 +495,7 @@ export default function ReportsScreen() {
               onPress={handleExportCsv}
               disabled={exporting}
             >
-              <Ionicons name="grid-outline" size={16} color="#10B981" />
+              <Ionicons name="grid-outline" size={16} color="#7A131A" />
               <Text style={styles.quickBtnText}>Excel / CSV</Text>
             </TouchableOpacity>
 
@@ -758,7 +758,11 @@ function RecordCard({ type, item }: { type: ReportTypeId; item: any }) {
           </View>
 
           <View style={styles.cardFooter}>
-            <Text style={styles.teamTag}><Ionicons name="person-circle-outline" size={14} /> Team: {item.assignedTeam}</Text>
+            <Text style={styles.teamTag}><Ionicons name="person-circle-outline" size={14} /> Team: {
+              Array.isArray(item.assignedTeam) 
+                ? item.assignedTeam.map((t: any) => t.name || t.userId?.name || (typeof t === 'string' ? t : '')).filter(Boolean).join(', ') 
+                : (typeof item.assignedTeam === 'object' && item.assignedTeam !== null ? item.assignedTeam.name : item.assignedTeam)
+            }</Text>
           </View>
         </View>
       );
@@ -828,7 +832,7 @@ function RecordCard({ type, item }: { type: ReportTypeId; item: any }) {
             </View>
             <View style={styles.statCol}>
               <Text style={styles.statLabel}>Present</Text>
-              <Text style={[styles.statVal, { color: '#10B981' }]}>{item.presentDays || 0} Days</Text>
+              <Text style={[styles.statVal, { color: '#7A131A' }]}>{item.presentDays || 0} Days</Text>
             </View>
           </View>
         </View>
@@ -873,7 +877,7 @@ function RecordCard({ type, item }: { type: ReportTypeId; item: any }) {
               <Text style={styles.cardTitle}>{item.title}</Text>
               <Text style={styles.cardSub}>{item.party} • {item.referenceId}</Text>
             </View>
-            <Text style={[styles.paymentAmount, { color: isPositive ? '#10B981' : '#D60000' }]}>
+            <Text style={[styles.paymentAmount, { color: isPositive ? '#7A131A' : '#D60000' }]}>
               {formatINR(item.amount)}
             </Text>
           </View>

@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#059669",
+    color: "#7A131A",
   },
   cardBody: {
     padding: 16,

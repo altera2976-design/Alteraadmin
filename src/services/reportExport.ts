@@ -135,7 +135,7 @@ export function buildReportHtml(
           <td style="font-weight:600;color:#111;">${escapeHtml(item.title)}</td>
           <td>${escapeHtml(item.party)}</td>
           <td><span class="badge ${item.type === 'Income' ? 'badge-completed' : 'badge-inactive'}">${escapeHtml(item.type)}</span></td>
-          <td style="font-weight:700;color:${item.amount >= 0 ? '#10B981' : '#D60000'};">${formatINR(item.amount)}</td>
+          <td style="font-weight:700;color:${item.amount >= 0 ? '#7A131A' : '#D60000'};">${formatINR(item.amount)}</td>
           <td>${escapeHtml(item.date)}</td>
           <td>${escapeHtml(item.status)}</td>
         </tr>
@@ -355,7 +355,8 @@ export async function generatePdf(
   const cleanPeriod = period.replace(/[^a-zA-Z0-9]/g, '_');
   const filename = `${type}_Report_${cleanPeriod}.pdf`;
 
-  const { uri, base64 } = await Print.printToFileAsync({ html, base64: true });
+  const { uri } = await Print.printToFileAsync({ html });
+  const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
 
   const baseDir = FileSystem.documentDirectory || FileSystem.cacheDirectory || '';
   const destUri = baseDir ? `${baseDir}${filename}` : uri;

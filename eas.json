@@ -14,7 +14,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://alterabackend.onrender.com/api"
+        "EXPO_PUBLIC_API_URL": "http://192.168.1.36:5001/api"
       }
     },
     "apk": {

@@ -305,10 +305,10 @@ export default function QuotationScreen() {
         setSelectedQuotation((prev) =>
           prev
             ? {
-                ...prev,
-                paymentSummary: res.paymentSummary,
-                transactions: res.transactions,
-              }
+              ...prev,
+              paymentSummary: res.paymentSummary,
+              transactions: res.transactions,
+            }
             : null,
         );
 
@@ -365,6 +365,10 @@ export default function QuotationScreen() {
   const [stAccUnit, setStAccUnit] = useState("Nos");
   const [stAccPrice, setStAccPrice] = useState("");
 
+  const [stAccHardwareOptions, setStAccHardwareOptions] = useState<string[]>(DEFAULT_HARDWARE_OPTIONS);
+  const [showStAccCustomHardware, setShowStAccCustomHardware] = useState(false);
+  const [stAccCustomHardware, setStAccCustomHardware] = useState("");
+
   const handlePickAccImage = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -393,9 +397,18 @@ export default function QuotationScreen() {
     const price = Math.max(0, parseFloat(stAccPrice) || 0);
     const total = Math.round(qty * price);
 
+    const finalHardware = showStAccCustomHardware ? stAccCustomHardware.trim() : stAccDesc.trim();
+    if (showStAccCustomHardware && finalHardware && !stAccHardwareOptions.includes(finalHardware)) {
+      setStAccHardwareOptions(prev => {
+        const copy = [...prev];
+        copy.splice(copy.length - 1, 0, finalHardware);
+        return copy;
+      });
+    }
+
     const newAcc: QuotationStandaloneAccessory = {
       name,
-      description: stAccDesc.trim(),
+      description: finalHardware,
       image: stAccImage || undefined,
       quantity: qty,
       unit: stAccUnit || "Nos",
@@ -406,6 +419,8 @@ export default function QuotationScreen() {
     setStandaloneAccessories((prev) => [...prev, newAcc]);
     setStAccName("");
     setStAccDesc("");
+    setShowStAccCustomHardware(false);
+    setStAccCustomHardware("");
     setStAccImage("");
     setStAccQty("1");
     setStAccUnit("Nos");
@@ -1487,9 +1502,9 @@ export default function QuotationScreen() {
             </Text>
           </View>
 
-          <View style={[styles.kpiCard, { borderLeftColor: "#10B981" }]}>
+          <View style={[styles.kpiCard, { borderLeftColor: "#7A131A" }]}>
             <Text style={styles.kpiLabel}>Approved / Converted</Text>
-            <Text style={[styles.kpiVal, { color: "#059669" }]}>
+            <Text style={[styles.kpiVal, { color: "#7A131A" }]}>
               {formatINR(summary.approvedValue)}
             </Text>
             <Text style={styles.kpiCount}>
@@ -1775,11 +1790,11 @@ export default function QuotationScreen() {
                           <Text style={styles.priceVal}>
                             {formatINR(
                               selectedQuotation.pricing?.accessoriesTotal ||
-                                selectedQuotation.standaloneAccessories.reduce(
-                                  (s, a) =>
-                                    s + (a.total || a.quantity * a.price),
-                                  0,
-                                ),
+                              selectedQuotation.standaloneAccessories.reduce(
+                                (s, a) =>
+                                  s + (a.total || a.quantity * a.price),
+                                0,
+                              ),
                             )}
                           </Text>
                         </View>
@@ -1818,10 +1833,10 @@ export default function QuotationScreen() {
                     )}
                     {(selectedQuotation.pricing?.discountAmount || 0) > 0 && (
                       <View style={styles.priceRow}>
-                        <Text style={[styles.priceLabel, { color: "#059669" }]}>
+                        <Text style={[styles.priceLabel, { color: "#7A131A" }]}>
                           Special Discount:
                         </Text>
-                        <Text style={[styles.priceVal, { color: "#059669" }]}>
+                        <Text style={[styles.priceVal, { color: "#7A131A" }]}>
                           -
                           {formatINR(selectedQuotation.pricing?.discountAmount)}
                         </Text>
@@ -1878,10 +1893,10 @@ export default function QuotationScreen() {
                         style={[
                           styles.statusTag,
                           selectedQuotation.paymentSummary?.paymentStatus ===
-                          "PAID"
+                            "PAID"
                             ? styles.statusTagApproved
                             : selectedQuotation.paymentSummary
-                                  ?.paymentStatus === "PARTIALLY_PAID"
+                              ?.paymentStatus === "PARTIALLY_PAID"
                               ? styles.statusTagSent
                               : styles.statusTagRejected,
                         ]}
@@ -1890,10 +1905,10 @@ export default function QuotationScreen() {
                           style={[
                             styles.statusTagText,
                             selectedQuotation.paymentSummary?.paymentStatus ===
-                            "PAID"
+                              "PAID"
                               ? styles.statusTextApproved
                               : selectedQuotation.paymentSummary
-                                    ?.paymentStatus === "PARTIALLY_PAID"
+                                ?.paymentStatus === "PARTIALLY_PAID"
                                 ? styles.statusTextSent
                                 : styles.statusTextRejected,
                           ]}
@@ -1919,7 +1934,7 @@ export default function QuotationScreen() {
                       <Text style={styles.priceVal}>
                         {formatINR(
                           selectedQuotation.paymentSummary?.totalAmount ||
-                            selectedQuotation.pricing?.grandTotal,
+                          selectedQuotation.pricing?.grandTotal,
                         )}
                       </Text>
                     </View>
@@ -1930,13 +1945,13 @@ export default function QuotationScreen() {
                         marginBottom: 6,
                       }}
                     >
-                      <Text style={[styles.priceLabel, { color: "#059669" }]}>
+                      <Text style={[styles.priceLabel, { color: "#7A131A" }]}>
                         Total Amount Paid:
                       </Text>
                       <Text
                         style={[
                           styles.priceVal,
-                          { color: "#059669", fontWeight: "800" },
+                          { color: "#7A131A", fontWeight: "800" },
                         ]}
                       >
                         {formatINR(
@@ -1962,7 +1977,7 @@ export default function QuotationScreen() {
                       >
                         {formatINR(
                           selectedQuotation.paymentSummary?.remainingAmount ??
-                            (selectedQuotation.pricing?.grandTotal || 0),
+                          (selectedQuotation.pricing?.grandTotal || 0),
                         )}
                       </Text>
                     </View>
@@ -1984,8 +1999,8 @@ export default function QuotationScreen() {
                         setTxnAmount(
                           String(
                             selectedQuotation.paymentSummary?.remainingAmount ||
-                              selectedQuotation.pricing?.grandTotal ||
-                              "",
+                            selectedQuotation.pricing?.grandTotal ||
+                            "",
                           ),
                         );
                         setIsAddTxnModalOpen(true);
@@ -2010,7 +2025,7 @@ export default function QuotationScreen() {
 
                     {/* Transaction History List */}
                     {selectedQuotation.transactions &&
-                    selectedQuotation.transactions.length > 0 ? (
+                      selectedQuotation.transactions.length > 0 ? (
                       <View
                         style={{
                           marginTop: 6,
@@ -2065,7 +2080,7 @@ export default function QuotationScreen() {
                                   style={{
                                     fontSize: 13,
                                     fontWeight: "800",
-                                    color: "#059669",
+                                    color: "#7A131A",
                                   }}
                                 >
                                   {formatINR(tx.amount)}
@@ -2656,10 +2671,10 @@ export default function QuotationScreen() {
                             styles.roomPill,
                             isActive && styles.roomPillActive,
                             isSpecial &&
-                              !isActive && {
-                                borderColor: "#7A131A",
-                                backgroundColor: "#FFF5F5",
-                              },
+                            !isActive && {
+                              borderColor: "#7A131A",
+                              backgroundColor: "#FFF5F5",
+                            },
                           ]}
                           onPress={() => handleSelectRoom(r)}
                         >
@@ -2668,10 +2683,10 @@ export default function QuotationScreen() {
                               styles.roomPillText,
                               isActive && styles.roomPillTextActive,
                               isSpecial &&
-                                !isActive && {
-                                  color: "#7A131A",
-                                  fontWeight: "700",
-                                },
+                              !isActive && {
+                                color: "#7A131A",
+                                fontWeight: "700",
+                              },
                             ]}
                           >
                             {r}
@@ -2684,31 +2699,31 @@ export default function QuotationScreen() {
                   {(showCustomRoomInput ||
                     selectedRoom === "Custom" ||
                     selectedRoom === "+ Add More") && (
-                    <View style={styles.customRoomInputCard}>
-                      <Text style={styles.inputLabel}>
-                        Enter Custom Category Name *
-                      </Text>
-                      <View
-                        style={{ flexDirection: "row", gap: 8, marginTop: 4 }}
-                      >
-                        <TextInput
-                          style={[styles.textInput, { flex: 1 }]}
-                          placeholder="Enter Custom Category Name"
-                          placeholderTextColor="#94A3B8"
-                          value={customRoomName}
-                          onChangeText={setCustomRoomName}
-                          autoFocus
-                        />
-                        <TouchableOpacity
-                          style={styles.addCustomBtn}
-                          onPress={handleConfirmCustomRoom}
+                      <View style={styles.customRoomInputCard}>
+                        <Text style={styles.inputLabel}>
+                          Enter Custom Category Name *
+                        </Text>
+                        <View
+                          style={{ flexDirection: "row", gap: 8, marginTop: 4 }}
                         >
-                          <Ionicons name="add" size={16} color="#ffffff" />
-                          <Text style={styles.addCustomBtnText}>Add</Text>
-                        </TouchableOpacity>
+                          <TextInput
+                            style={[styles.textInput, { flex: 1 }]}
+                            placeholder="Enter Custom Category Name"
+                            placeholderTextColor="#94A3B8"
+                            value={customRoomName}
+                            onChangeText={setCustomRoomName}
+                            autoFocus
+                          />
+                          <TouchableOpacity
+                            style={styles.addCustomBtn}
+                            onPress={handleConfirmCustomRoom}
+                          >
+                            <Ionicons name="add" size={16} color="#ffffff" />
+                            <Text style={styles.addCustomBtnText}>Add</Text>
+                          </TouchableOpacity>
+                        </View>
                       </View>
-                    </View>
-                  )}
+                    )}
 
                   {/* Sub-Item Pills Selection */}
                   <View
@@ -2750,10 +2765,10 @@ export default function QuotationScreen() {
                               styles.roomPill,
                               isActive && styles.roomPillActive,
                               isAddMore &&
-                                !isActive && {
-                                  borderColor: "#7A131A",
-                                  backgroundColor: "#FFF5F5",
-                                },
+                              !isActive && {
+                                borderColor: "#7A131A",
+                                backgroundColor: "#FFF5F5",
+                              },
                             ]}
                             onPress={() => handleSelectSubItem(sub)}
                           >
@@ -2762,10 +2777,10 @@ export default function QuotationScreen() {
                                 styles.roomPillText,
                                 isActive && styles.roomPillTextActive,
                                 isAddMore &&
-                                  !isActive && {
-                                    color: "#7A131A",
-                                    fontWeight: "700",
-                                  },
+                                !isActive && {
+                                  color: "#7A131A",
+                                  fontWeight: "700",
+                                },
                               ]}
                             >
                               {sub}
@@ -2852,10 +2867,10 @@ export default function QuotationScreen() {
                               styles.roomPill,
                               isActive && styles.roomPillActive,
                               isAddMore &&
-                                !isActive && {
-                                  borderColor: "#7A131A",
-                                  backgroundColor: "#FFF5F5",
-                                },
+                              !isActive && {
+                                borderColor: "#7A131A",
+                                backgroundColor: "#FFF5F5",
+                              },
                             ]}
                             onPress={() => handleSelectDescription(desc)}
                           >
@@ -2864,10 +2879,10 @@ export default function QuotationScreen() {
                                 styles.roomPillText,
                                 isActive && styles.roomPillTextActive,
                                 isAddMore &&
-                                  !isActive && {
-                                    color: "#7A131A",
-                                    fontWeight: "700",
-                                  },
+                                !isActive && {
+                                  color: "#7A131A",
+                                  fontWeight: "700",
+                                },
                               ]}
                             >
                               {desc}
@@ -2923,10 +2938,10 @@ export default function QuotationScreen() {
                               styles.roomPill,
                               isActive && styles.roomPillActive,
                               isAddMore &&
-                                !isActive && {
-                                  borderColor: "#7A131A",
-                                  backgroundColor: "#FFF5F5",
-                                },
+                              !isActive && {
+                                borderColor: "#7A131A",
+                                backgroundColor: "#FFF5F5",
+                              },
                             ]}
                             onPress={() => handleSelectUnit(u)}
                           >
@@ -2935,10 +2950,10 @@ export default function QuotationScreen() {
                                 styles.roomPillText,
                                 isActive && styles.roomPillTextActive,
                                 isAddMore &&
-                                  !isActive && {
-                                    color: "#7A131A",
-                                    fontWeight: "700",
-                                  },
+                                !isActive && {
+                                  color: "#7A131A",
+                                  fontWeight: "700",
+                                },
                               ]}
                             >
                               {u}
@@ -3024,15 +3039,15 @@ export default function QuotationScreen() {
                               ? 1
                               : 0) * (parseFloat(itemRate) || 0),
                         ) +
-                          itemAccessories.reduce(
-                            (sum, a) =>
-                              sum +
-                              (a.cost !== undefined
-                                ? Number(a.cost)
-                                : (Number(a.qty) || 1) *
-                                  (Number(a.unitPrice) || 0)),
-                            0,
-                          ),
+                        itemAccessories.reduce(
+                          (sum, a) =>
+                            sum +
+                            (a.cost !== undefined
+                              ? Number(a.cost)
+                              : (Number(a.qty) || 1) *
+                              (Number(a.unitPrice) || 0)),
+                          0,
+                        ),
                       )}
                     </Text>
 
@@ -3055,10 +3070,10 @@ export default function QuotationScreen() {
                               styles.roomPill,
                               isActive && styles.roomPillActive,
                               isAddMore &&
-                                !isActive && {
-                                  borderColor: "#7A131A",
-                                  backgroundColor: "#FFF5F5",
-                                },
+                              !isActive && {
+                                borderColor: "#7A131A",
+                                backgroundColor: "#FFF5F5",
+                              },
                             ]}
                             onPress={() => handleSelectMaterial(m)}
                           >
@@ -3067,10 +3082,10 @@ export default function QuotationScreen() {
                                 styles.roomPillText,
                                 isActive && styles.roomPillTextActive,
                                 isAddMore &&
-                                  !isActive && {
-                                    color: "#7A131A",
-                                    fontWeight: "700",
-                                  },
+                                !isActive && {
+                                  color: "#7A131A",
+                                  fontWeight: "700",
+                                },
                               ]}
                             >
                               {m}
@@ -3133,10 +3148,10 @@ export default function QuotationScreen() {
                               styles.roomPill,
                               isActive && styles.roomPillActive,
                               isAddMore &&
-                                !isActive && {
-                                  borderColor: "#7A131A",
-                                  backgroundColor: "#FFF5F5",
-                                },
+                              !isActive && {
+                                borderColor: "#7A131A",
+                                backgroundColor: "#FFF5F5",
+                              },
                             ]}
                             onPress={() => handleSelectHardware(h)}
                           >
@@ -3145,10 +3160,10 @@ export default function QuotationScreen() {
                                 styles.roomPillText,
                                 isActive && styles.roomPillTextActive,
                                 isAddMore &&
-                                  !isActive && {
-                                    color: "#7A131A",
-                                    fontWeight: "700",
-                                  },
+                                !isActive && {
+                                  color: "#7A131A",
+                                  fontWeight: "700",
+                                },
                               ]}
                             >
                               {h}
@@ -3306,22 +3321,22 @@ export default function QuotationScreen() {
                                 Math.round(
                                   (it.quantity || 1) * (it.rate || 0),
                                 ) +
-                                  (it.accessories || []).reduce((sum, a) => {
-                                    if (
-                                      a.name &&
-                                      it.name &&
-                                      a.name.trim().toLowerCase() ===
-                                        it.name.trim().toLowerCase()
-                                    )
-                                      return sum;
-                                    return (
-                                      sum +
-                                      (a.cost !== undefined
-                                        ? Number(a.cost)
-                                        : (Number(a.qty) || 1) *
-                                          (Number(a.unitPrice) || 0))
-                                    );
-                                  }, 0),
+                                (it.accessories || []).reduce((sum, a) => {
+                                  if (
+                                    a.name &&
+                                    it.name &&
+                                    a.name.trim().toLowerCase() ===
+                                    it.name.trim().toLowerCase()
+                                  )
+                                    return sum;
+                                  return (
+                                    sum +
+                                    (a.cost !== undefined
+                                      ? Number(a.cost)
+                                      : (Number(a.qty) || 1) *
+                                      (Number(a.unitPrice) || 0))
+                                  );
+                                }, 0),
                               )}
                             </Text>
                             <TouchableOpacity
@@ -3527,15 +3542,56 @@ export default function QuotationScreen() {
                     />
 
                     <Text style={styles.inputLabel}>
-                      Description (Optional)
+                      Select Hardware Option:
                     </Text>
-                    <TextInput
-                      style={[styles.textInput, { height: 48 }]}
-                      placeholder="Specification or brand details..."
-                      multiline
-                      value={stAccDesc}
-                      onChangeText={setStAccDesc}
-                    />
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      style={{ marginBottom: 12 }}
+                      contentContainerStyle={{ gap: 8, paddingVertical: 4 }}
+                    >
+                      {stAccHardwareOptions.map((opt) => (
+                        <TouchableOpacity
+                          key={opt}
+                          style={[
+                            styles.smallPill,
+                            { paddingVertical: 8, paddingHorizontal: 16 },
+                            (showStAccCustomHardware ? opt === "+ Add More" : stAccDesc === opt) && styles.smallPillActive,
+                          ]}
+                          onPress={() => {
+                            if (opt === "+ Add More") {
+                              setShowStAccCustomHardware(true);
+                              setStAccDesc("+ Add More");
+                            } else {
+                              setShowStAccCustomHardware(false);
+                              setStAccDesc(opt);
+                            }
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.smallPillText,
+                              { fontSize: 13 },
+                              (showStAccCustomHardware ? opt === "+ Add More" : stAccDesc === opt) && styles.smallPillTextActive,
+                            ]}
+                          >
+                            {opt === "+ Add More" ? "Custom" : opt}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+
+                    {showStAccCustomHardware && (
+                      <View style={{ marginBottom: 12 }}>
+                        <TextInput
+                          style={[styles.textInput, { height: 48 }]}
+                          placeholder="Type custom hardware details..."
+                          multiline
+                          value={stAccCustomHardware}
+                          onChangeText={setStAccCustomHardware}
+                        />
+                      </View>
+                    )}
 
                     <View
                       style={{
@@ -3603,7 +3659,7 @@ export default function QuotationScreen() {
                         {formatINR(
                           Math.round(
                             (parseInt(stAccQty, 10) || 1) *
-                              (parseFloat(stAccPrice) || 0),
+                            (parseFloat(stAccPrice) || 0),
                           ),
                         )}
                       </Text>
@@ -3841,7 +3897,7 @@ export default function QuotationScreen() {
                           style={[
                             styles.smallPill,
                             discountType === "PERCENT" &&
-                              styles.smallPillActive,
+                            styles.smallPillActive,
                           ]}
                           onPress={() => setDiscountType("PERCENT")}
                         >
@@ -3849,7 +3905,7 @@ export default function QuotationScreen() {
                             style={[
                               styles.smallPillText,
                               discountType === "PERCENT" &&
-                                styles.smallPillTextActive,
+                              styles.smallPillTextActive,
                             ]}
                           >
                             %
@@ -3866,7 +3922,7 @@ export default function QuotationScreen() {
                             style={[
                               styles.smallPillText,
                               discountType === "FIXED" &&
-                                styles.smallPillTextActive,
+                              styles.smallPillTextActive,
                             ]}
                           >
                             ₹ Fixed
@@ -3911,7 +3967,7 @@ export default function QuotationScreen() {
                         style={[
                           styles.roomPillText,
                           gstType === "AS_PER_ACTUAL" &&
-                            styles.roomPillTextActive,
+                          styles.roomPillTextActive,
                         ]}
                       >
                         18%
@@ -3922,8 +3978,8 @@ export default function QuotationScreen() {
                       style={[
                         styles.roomPill,
                         gstType !== "AS_PER_ACTUAL" &&
-                          parseFloat(gstPercent) === 18 &&
-                          styles.roomPillActive,
+                        parseFloat(gstPercent) === 18 &&
+                        styles.roomPillActive,
                       ]}
                       onPress={() => {
                         setGstPercent("18");
@@ -3934,8 +3990,8 @@ export default function QuotationScreen() {
                         style={[
                           styles.roomPillText,
                           gstType !== "AS_PER_ACTUAL" &&
-                            parseFloat(gstPercent) === 18 &&
-                            styles.roomPillTextActive,
+                          parseFloat(gstPercent) === 18 &&
+                          styles.roomPillTextActive,
                         ]}
                       >
                         GST 18% (Calculated in total)
@@ -3948,8 +4004,8 @@ export default function QuotationScreen() {
                         style={[
                           styles.roomPill,
                           gstType !== "AS_PER_ACTUAL" &&
-                            parseFloat(gstPercent) === rate &&
-                            styles.roomPillActive,
+                          parseFloat(gstPercent) === rate &&
+                          styles.roomPillActive,
                         ]}
                         onPress={() => {
                           setGstPercent(String(rate));
@@ -3961,8 +4017,8 @@ export default function QuotationScreen() {
                           style={[
                             styles.roomPillText,
                             gstType !== "AS_PER_ACTUAL" &&
-                              parseFloat(gstPercent) === rate &&
-                              styles.roomPillTextActive,
+                            parseFloat(gstPercent) === rate &&
+                            styles.roomPillTextActive,
                           ]}
                         >
                           GST {rate}%
@@ -3993,7 +4049,7 @@ export default function QuotationScreen() {
                           style={[
                             styles.smallPill,
                             gstType === "AS_PER_ACTUAL" &&
-                              styles.smallPillActive,
+                            styles.smallPillActive,
                           ]}
                           onPress={() => setGstType("AS_PER_ACTUAL")}
                         >
@@ -4001,10 +4057,10 @@ export default function QuotationScreen() {
                             style={[
                               styles.smallPillText,
                               gstType === "AS_PER_ACTUAL" &&
-                                styles.smallPillTextActive,
+                              styles.smallPillTextActive,
                             ]}
                           >
-                            As Actuals
+                            As Per Actuals
                           </Text>
                         </TouchableOpacity>
                         <TouchableOpacity
@@ -4019,7 +4075,7 @@ export default function QuotationScreen() {
                             style={[
                               styles.smallPillText,
                               gstType === "CGST_SGST" &&
-                                styles.smallPillTextActive,
+                              styles.smallPillTextActive,
                             ]}
                           >
                             CGST+SGST
@@ -4082,7 +4138,7 @@ export default function QuotationScreen() {
                       <Text
                         style={{
                           fontSize: 11,
-                          color: "#059669",
+                          color: "#7A131A",
                           fontWeight: "600",
                         }}
                       >
@@ -4138,10 +4194,10 @@ export default function QuotationScreen() {
                     </View>
                     {liveCalculation.discountAmt > 0 && (
                       <View style={styles.priceRow}>
-                        <Text style={[styles.priceLabel, { color: "#059669" }]}>
+                        <Text style={[styles.priceLabel, { color: "#7A131A" }]}>
                           Discount:
                         </Text>
-                        <Text style={[styles.priceVal, { color: "#059669" }]}>
+                        <Text style={[styles.priceVal, { color: "#7A131A" }]}>
                           -{formatINR(liveCalculation.discountAmt)}
                         </Text>
                       </View>
@@ -4154,7 +4210,7 @@ export default function QuotationScreen() {
                       </Text>
                       <Text style={styles.priceVal}>
                         {gstType === "AS_PER_ACTUAL"
-                          ? "Extra at Actuals"
+                          ? "As per Actuals"
                           : formatINR(liveCalculation.gstAmt)}
                       </Text>
                     </View>
@@ -4462,7 +4518,7 @@ export default function QuotationScreen() {
                       </Text>
                     </Text>
                     <Text
-                      style={{ fontSize: 11, color: "#059669", marginTop: 2 }}
+                      style={{ fontSize: 11, color: "#7A131A", marginTop: 2 }}
                     >
                       Paid So Far:{" "}
                       <Text style={{ fontWeight: "700" }}>
@@ -4552,7 +4608,7 @@ export default function QuotationScreen() {
                 <TouchableOpacity
                   style={[
                     styles.primaryActionBtn,
-                    { marginTop: 16, backgroundColor: "#059669" },
+                    { marginTop: 16, backgroundColor: "#7A131A" },
                   ]}
                   onPress={handleAddTxnSubmit}
                   disabled={isSubmittingTxn}
@@ -4608,9 +4664,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   headerTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#ffffff",
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#7A131A',
     letterSpacing: 0.3,
   },
   headerSub: {
@@ -4676,9 +4732,9 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   kpiVal: {
-    fontSize: 13.5,
-    fontWeight: "800",
-    color: "#0F172A",
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#7A131A',
     marginTop: 1,
   },
   kpiCount: {
@@ -4728,14 +4784,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   emptyTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#334155",
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#7A131A',
     marginTop: 12,
   },
   emptySub: {
-    fontSize: 12,
-    color: "#64748B",
+    fontSize: 14,
+    color: '#6B7280',
     textAlign: "center",
     marginTop: 6,
     lineHeight: 18,
@@ -4882,13 +4938,13 @@ const styles = StyleSheet.create({
     borderBottomColor: "#F1F5F9",
   },
   modalTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#7A131A",
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#7A131A',
   },
   modalSub: {
-    fontSize: 11,
-    color: "#64748B",
+    fontSize: 13,
+    color: '#6B7280',
     marginTop: 2,
   },
   closeBtn: {
@@ -4913,16 +4969,16 @@ const styles = StyleSheet.create({
     borderColor: "#E2E8F0",
   },
   boxTitle: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: "#1E293B",
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#7A131A',
     textTransform: "uppercase",
     marginBottom: 8,
     letterSpacing: 0.5,
   },
   boxText: {
-    fontSize: 11,
-    color: "#334155",
+    fontSize: 13,
+    color: '#6B7280',
     marginBottom: 3,
     lineHeight: 16,
   },
@@ -4933,13 +4989,13 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   priceLabel: {
-    fontSize: 11,
-    color: "#64748B",
+    fontSize: 15,
+    color: '#4B5563',
   },
   priceVal: {
-    fontSize: 11,
+    fontSize: 16,
     fontWeight: "700",
-    color: "#1E293B",
+    color: '#111827',
   },
   grandTotalRow: {
     borderTopWidth: 1,
@@ -4948,14 +5004,14 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   grandTotalLabel: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: "#7A131A",
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#7A131A',
   },
   grandTotalVal: {
-    fontSize: 15,
-    fontWeight: "900",
-    color: "#7A131A",
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#7A131A',
   },
   wordsText: {
     fontSize: 10,
@@ -4987,9 +5043,9 @@ const styles = StyleSheet.create({
     color: "#0F172A",
   },
   itemCardName: {
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: "700",
-    color: "#1E293B",
+    color: '#111827',
     marginTop: 2,
   },
   itemCardQty: {
@@ -4998,8 +5054,8 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   itemCardSpecs: {
-    fontSize: 9.5,
-    color: "#475569",
+    fontSize: 13,
+    color: '#6B7280',
     marginTop: 3,
   },
   itemCardAcc: {
@@ -5078,7 +5134,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#059669",
+    backgroundColor: "#7A131A",
     paddingVertical: 12,
     borderRadius: 10,
     gap: 6,
@@ -5102,9 +5158,9 @@ const styles = StyleSheet.create({
     borderBottomColor: "#E2E8F0",
   },
   creatorTitle: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: "#0F172A",
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#7A131A',
   },
   saveHeaderBtn: {
     backgroundColor: "#7A131A",
@@ -5153,15 +5209,15 @@ const styles = StyleSheet.create({
   },
 
   formSectionTitle: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#0F172A",
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#7A131A',
     marginBottom: 12,
   },
   inputLabel: {
-    fontSize: 11,
+    fontSize: 15,
     fontWeight: "700",
-    color: "#475569",
+    color: '#4B5563',
     marginBottom: 4,
     marginTop: 6,
   },

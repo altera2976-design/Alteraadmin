@@ -646,8 +646,8 @@ Local file URI: ${downloadRes.uri}`);
                     activeOpacity={0.7}
                     onPress={() => setSelectedTask(t)}
                   >
-                    <Ionicons name="attach-outline" size={16} color={attachCount > 0 ? '#2563eb' : '#64748b'} />
-                    <Text style={[styles.attachmentBadgeText, attachCount > 0 && { color: '#2563eb', fontWeight: '700' }]}>
+                    <Ionicons name="attach-outline" size={16} color={attachCount > 0 ? '#7A131A' : '#64748b'} />
+                    <Text style={[styles.attachmentBadgeText, attachCount > 0 && { color: '#7A131A', fontWeight: '700' }]}>
                       Attachments: {attachCount} {attachCount === 1 ? 'file' : 'files'}
                     </Text>
                     <Ionicons name="chevron-forward" size={14} color="#94a3b8" style={{ marginLeft: 'auto' }} />
@@ -658,8 +658,8 @@ Local file URI: ${downloadRes.uri}`);
                       style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#eff6ff', borderRadius: 6, borderWidth: 1, borderColor: '#bfdbfe' }}
                       onPress={() => Linking.openURL(t.pdfUrl!).catch(() => Alert.alert('Error', 'Could not open Task PDF'))}
                     >
-                      <Ionicons name="document-text" size={16} color="#2563eb" />
-                      <Text style={{ fontSize: 12, color: '#2563eb', fontWeight: '700' }}>
+                      <Ionicons name="document-text" size={16} color="#7A131A" />
+                      <Text style={{ fontSize: 12, color: '#7A131A', fontWeight: '700' }}>
                         View / Download Task PDF
                       </Text>
                     </TouchableOpacity>
@@ -757,7 +757,7 @@ Local file URI: ${downloadRes.uri}`);
                     <View style={{ flex: 1, marginRight: 8 }}>
                       <Text style={styles.title} numberOfLines={1}>{project.name}</Text>
                     </View>
-                    <View style={[styles.statusBadge, { backgroundColor: '#10b981' }]}>
+                    <View style={[styles.statusBadge, { backgroundColor: '#7A131A' }]}>
                       <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }}>
                         Completed
                       </Text>
@@ -1422,7 +1422,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
   },
   statusActionBtnActiveTodo: { backgroundColor: '#64748B', borderColor: '#64748B' },
-  statusActionBtnActiveProgress: { backgroundColor: '#2563EB', borderColor: '#2563EB' },
+  statusActionBtnActiveProgress: { backgroundColor: '#7A131A', borderColor: '#7A131A' },
   statusActionBtnActiveDone: { backgroundColor: '#16A34A', borderColor: '#16A34A' },
   statusActionText: { fontSize: 11, fontWeight: '600', color: '#334155' },
   statusActionTextActive: { color: '#FFFFFF', fontWeight: '700' },

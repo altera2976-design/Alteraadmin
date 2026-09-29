@@ -487,7 +487,7 @@ export default function AttendanceScreen() {
   const getStatusColor = (status: string) => {
     switch (status?.toUpperCase()) {
       case "PRESENT":
-        return "#10B981";
+        return "#7A131A";
       case "LATE":
         return "#F59E0B";
       case "HALF_DAY":
@@ -722,7 +722,7 @@ export default function AttendanceScreen() {
                       size={14}
                       color={
                         todayRecord?.verificationStatus === "VERIFIED"
-                          ? "#10B981"
+                          ? "#7A131A"
                           : "#F59E0B"
                       }
                     />
@@ -732,7 +732,7 @@ export default function AttendanceScreen() {
                         {
                           color:
                             todayRecord?.verificationStatus === "VERIFIED"
-                              ? "#10B981"
+                              ? "#7A131A"
                               : "#F59E0B",
                         },
                       ]}
@@ -901,7 +901,7 @@ export default function AttendanceScreen() {
                     <Ionicons
                       name="checkmark-circle"
                       size={22}
-                      color="#10B981"
+                      color="#7A131A"
                     />
                     <Text style={styles.allDoneText}>
                       Today's attendance completed (
@@ -1035,7 +1035,7 @@ export default function AttendanceScreen() {
                 </Text>
                 <Text style={styles.kpiLbl}>Total Staff</Text>
               </View>
-              <View style={[styles.kpiCard, { borderLeftColor: "#10B981" }]}>
+              <View style={[styles.kpiCard, { borderLeftColor: "#7A131A" }]}>
                 <Text style={styles.kpiVal}>{adminStats?.present ?? 0}</Text>
                 <Text style={styles.kpiLbl}>Present</Text>
               </View>
@@ -1181,7 +1181,7 @@ export default function AttendanceScreen() {
                           {
                             color:
                               emp.verificationStatus === "VERIFIED"
-                                ? "#10B981"
+                                ? "#7A131A"
                                 : "#F59E0B",
                           },
                         ]}

@@ -73,7 +73,7 @@ export const APP_COLORS = {
   textLight: "#94A3B8",
   placeholder: "#9CA3AF",
   border: "#E0E0E0",
-  success: "#10B981",
+  success: "#7A131A",
   danger: "#EF4444",
   warning: "#D97706",
 };
