@@ -7,11 +7,11 @@ const isLocal =
     window.location.hostname.startsWith("192.168.") ||
     window.location.hostname.endsWith(".local"));
 
-const API_URL = import.meta.env.VITE_API_URL || (isLocal ? "http://localhost:5001/api" : "http://localhost:5001/api");
+const API_URL = import.meta.env.VITE_API_URL || (isLocal ? "http://localhost:5001/api" : "https://alterabackend.onrender.com/api");
 
 export const SOCKET_URL = import.meta.env.VITE_API_URL 
   ? import.meta.env.VITE_API_URL.replace("/api", "") 
-  : (isLocal ? "http://localhost:5001" : "http://localhost:5001");
+  : (isLocal ? "http://localhost:5001" : "https://alterabackend.onrender.com");
 
 const api = axios.create({
   baseURL: API_URL,
