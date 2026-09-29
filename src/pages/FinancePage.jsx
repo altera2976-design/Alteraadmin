@@ -146,9 +146,9 @@ export default function FinancePage() {
                   <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>All estimates submitted</div>
                 </div>
 
-                <div className="card" style={{ padding: 18, borderLeft: '4px solid #2563eb' }}>
+                <div className="card" style={{ padding: 18, borderLeft: '4px solid #7A131A' }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>APPROVED VALUE</div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: '#2563eb', marginTop: 4 }}>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: '#7A131A', marginTop: 4 }}>
                     {formatCurrency(revenueSummary.approvedValue)}
                   </div>
                   <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>Approved contracts</div>
@@ -349,7 +349,7 @@ export default function FinancePage() {
                     <tr key={o._id} style={styles.trRow}>
                       <td style={{ fontWeight: 700 }}>{o.client}</td>
                       <td>{o.project}</td>
-                      <td style={{ color: '#2563eb', fontWeight: 600 }}>{o.invoiceNumber}</td>
+                      <td style={{ color: '#7A131A', fontWeight: 600 }}>{o.invoiceNumber}</td>
                       <td>{formatCurrency(o.total)}</td>
                       <td style={{ color: '#16a34a' }}>{formatCurrency(o.paid)}</td>
                       <td style={{ fontWeight: 800, color: '#dc2626' }}>{formatCurrency(o.outstanding)}</td>
@@ -376,9 +376,9 @@ export default function FinancePage() {
           ) : plData ? (
             <div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 20 }}>
-                <div className="card" style={{ padding: 16, borderLeft: '4px solid #2563eb' }}>
+                <div className="card" style={{ padding: 16, borderLeft: '4px solid #7A131A' }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>TOTAL REVENUE</div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: '#2563eb', marginTop: 4 }}>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: '#7A131A', marginTop: 4 }}>
                     {formatCurrency(plData.summary?.totalRevenue)}
                   </div>
                 </div>
@@ -394,9 +394,9 @@ export default function FinancePage() {
                     {formatCurrency(plData.summary?.netProfit)}
                   </div>
                 </div>
-                <div className="card" style={{ padding: 16, borderLeft: '4px solid #10b981' }}>
+                <div className="card" style={{ padding: 16, borderLeft: '4px solid #7A131A' }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>OVERALL MARGIN</div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: '#10b981', marginTop: 4 }}>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: '#7A131A', marginTop: 4 }}>
                     {plData.summary?.overallMargin}%
                   </div>
                 </div>
@@ -612,8 +612,8 @@ const styles = {
   },
   tabBtnActive: {
     padding: '8px 16px',
-    background: '#2563eb',
-    border: '1px solid #2563eb',
+    background: '#7A131A',
+    border: '1px solid #7A131A',
     borderRadius: 8,
     fontWeight: 600,
     fontSize: 13,

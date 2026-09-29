@@ -392,7 +392,7 @@ const styles = {
   userDetails: { minWidth: 0, flex: 1 },
   userName: { color: "#FFFFFF", fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   userRole: { color: "#9EA2AE", fontSize: 11, fontWeight: 500, display: "flex", alignItems: "center", gap: 5, marginTop: 1 },
-  roleDot: { width: 6, height: 6, borderRadius: "50%", background: "#10B981" },
+  roleDot: { width: 6, height: 6, borderRadius: "50%", background: "#7A131A" },
   logoutBtn: {
     display: "flex",
     alignItems: "center",
@@ -474,6 +474,6 @@ const styles = {
   },
   userPillInfo: { display: "flex", flexDirection: "column", lineHeight: 1.1 },
   userPillName: { fontSize: 12.5, fontWeight: 700, color: "#1A1A1E" },
-  userPillStatus: { fontSize: 10, fontWeight: 600, color: "#10B981" },
+  userPillStatus: { fontSize: 10, fontWeight: 600, color: "#7A131A" },
   content: { flex: 1, padding: "28px", maxWidth: 1380, width: "100%", margin: "0 auto" },
 };

@@ -308,6 +308,10 @@ export default function QuotationModule({
   const [accFormPrice, setAccFormPrice] = useState("");
   const [editingAccIndex, setEditingAccIndex] = useState(null);
 
+  const [stAccHardwareOptions, setStAccHardwareOptions] = useState(DEFAULT_HARDWARE_OPTIONS);
+  const [showStAccCustomHardware, setShowStAccCustomHardware] = useState(false);
+  const [stAccCustomHardware, setStAccCustomHardware] = useState("");
+
   // Step 4 Pricing & Taxes Form
   const [handlingPercent, setHandlingPercent] = useState("2");
   const [designPercent, setDesignPercent] = useState("2");
@@ -525,6 +529,28 @@ export default function QuotationModule({
 
   // ── HANDLERS ───────────────────────────────────────────────────────────────
 
+  const handleConfirmCustomStAccHardware = () => {
+    const trimmed = stAccCustomHardware.trim();
+    if (!trimmed) return;
+
+    if (!stAccHardwareOptions.includes(trimmed)) {
+      setStAccHardwareOptions((prev) => {
+        const copy = [...prev];
+        const addMoreIdx = copy.indexOf("+ Add More");
+        if (addMoreIdx !== -1) {
+          copy.splice(addMoreIdx, 0, trimmed);
+        } else {
+          copy.push(trimmed);
+        }
+        return copy;
+      });
+    }
+
+    setAccFormDesc(trimmed);
+    setStAccCustomHardware("");
+    setShowStAccCustomHardware(false);
+  };
+
   const handleAddOrUpdateStandaloneAccessory = () => {
     const name = accFormName.trim();
     if (!name) {
@@ -535,9 +561,18 @@ export default function QuotationModule({
     const price = Math.max(0, parseFloat(accFormPrice) || 0);
     const total = Math.round(qty * price);
 
+    const finalHardware = showStAccCustomHardware ? stAccCustomHardware.trim() : accFormDesc.trim();
+    if (showStAccCustomHardware && finalHardware && !stAccHardwareOptions.includes(finalHardware)) {
+      setStAccHardwareOptions((prev) => {
+        const copy = [...prev];
+        copy.splice(copy.length - 1, 0, finalHardware);
+        return copy;
+      });
+    }
+
     const newAcc = {
       name,
-      description: accFormDesc.trim(),
+      description: finalHardware,
       image: accFormImage,
       quantity: qty,
       unit: accFormUnit.trim() || "Pcs",
@@ -556,6 +591,8 @@ export default function QuotationModule({
 
     setAccFormName("");
     setAccFormDesc("");
+    setShowStAccCustomHardware(false);
+    setStAccCustomHardware("");
     setAccFormImage("");
     setAccFormQty("1");
     setAccFormUnit("Pcs");
@@ -566,7 +603,15 @@ export default function QuotationModule({
     const acc = standaloneAccessories[index];
     if (!acc) return;
     setAccFormName(acc.name || "");
-    setAccFormDesc(acc.description || "");
+    const desc = acc.description || "";
+    if (stAccHardwareOptions.includes(desc)) {
+      setAccFormDesc(desc);
+      setShowStAccCustomHardware(false);
+    } else {
+      setAccFormDesc("+ Add More");
+      setShowStAccCustomHardware(true);
+      setStAccCustomHardware(desc);
+    }
     setAccFormImage(acc.image || "");
     setAccFormQty(String(acc.quantity || 1));
     setAccFormUnit(acc.unit || "Pcs");
@@ -2217,7 +2262,7 @@ export default function QuotationModule({
                       }}
                     >
                       2. Select Item Name for{" "}
-                      <span style={{ color: "#2563eb" }}>{selectedRoom}</span>:
+                      <span style={{ color: "#7A131A" }}>{selectedRoom}</span>:
                     </label>
                     <div
                       style={{
@@ -2314,7 +2359,7 @@ export default function QuotationModule({
                       }}
                     >
                       Configure Details for{" "}
-                      <span style={{ color: "#2563eb" }}>
+                      <span style={{ color: "#7A131A" }}>
                         {itemName || selectedRoom}
                       </span>
                     </h4>
@@ -3200,15 +3245,65 @@ export default function QuotationModule({
                           placeholder="e.g. Cutlery Tray / Magic Corner"
                         />
                       </div>
-                      <div>
-                        <label style={styles.label}>Description (Optional)</label>
-                        <input
-                          type="text"
-                          value={accFormDesc}
-                          onChange={(e) => setAccFormDesc(e.target.value)}
-                          style={styles.formInput}
-                          placeholder="e.g. Stainless Steel 304 Soft-Close"
-                        />
+                      <div style={{ minWidth: 0 }}>
+                        <label style={styles.label}>Select Hardware Option:</label>
+                        <div style={{ display: "flex", gap: "8px", overflowX: "auto", paddingBottom: "4px", alignItems: "center" }}>
+                          {stAccHardwareOptions.map((opt) => {
+                            const isActive = showStAccCustomHardware ? opt === "+ Add More" : accFormDesc === opt;
+                            return (
+                              <div
+                                key={opt}
+                                style={{
+                                  padding: "6px 12px",
+                                  borderRadius: "6px",
+                                  fontSize: "12px",
+                                  fontWeight: 600,
+                                  cursor: "pointer",
+                                  backgroundColor: isActive ? "#7A131A" : "#E2E8F0",
+                                  color: isActive ? "#ffffff" : "#475569",
+                                  whiteSpace: "nowrap"
+                                }}
+                                onClick={() => {
+                                  if (opt === "+ Add More") {
+                                    setShowStAccCustomHardware(true);
+                                    setAccFormDesc("+ Add More");
+                                  } else {
+                                    setShowStAccCustomHardware(false);
+                                    setAccFormDesc(opt);
+                                  }
+                                }}
+                              >
+                                {opt}
+                              </div>
+                            );
+                          })}
+                          {showStAccCustomHardware && (
+                            <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                              <input
+                                type="text"
+                                value={stAccCustomHardware}
+                                onChange={(e) => setStAccCustomHardware(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    handleConfirmCustomStAccHardware();
+                                  }
+                                }}
+                                style={{ ...styles.formInput, width: 200, minWidth: 200 }}
+                                placeholder="Custom hardware..."
+                                autoFocus
+                              />
+                              <button
+                                type="button"
+                                className="btn btn-primary"
+                                onClick={handleConfirmCustomStAccHardware}
+                                style={{ padding: "6px 12px", fontSize: 12, whiteSpace: "nowrap" }}
+                              >
+                                Add Option
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                       <div>
                         <label style={styles.label}>Unit</label>
@@ -3359,7 +3454,7 @@ export default function QuotationModule({
                                 <td style={{ padding: "6px", textAlign: "center" }}>
                                   <button
                                     type="button"
-                                    style={{ border: "none", background: "none", color: "#2563eb", cursor: "pointer", marginRight: 8, fontWeight: 600 }}
+                                    style={{ border: "none", background: "none", color: "#7A131A", cursor: "pointer", marginRight: 8, fontWeight: 600 }}
                                     onClick={() => handleEditStandaloneAccessory(idx)}
                                   >
                                     Edit
@@ -3467,7 +3562,7 @@ export default function QuotationModule({
                         type="number"
                         value={transportCharges}
                         onChange={(e) => setTransportCharges(e.target.value)}
-                        style={{ ...styles.formInput, borderColor: "#2563eb", fontWeight: 700 }}
+                        style={{ ...styles.formInput, borderColor: "#7A131A", fontWeight: 700 }}
                         placeholder="e.g. 5000"
                         min="0"
                       />
@@ -3648,7 +3743,7 @@ export default function QuotationModule({
                         style={{
                           marginTop: 10,
                           fontSize: 12,
-                          color: "#1d4ed8",
+                          color: "#7A131A",
                           fontWeight: 600,
                           background: "#eff6ff",
                           padding: "8px 12px",
@@ -3664,7 +3759,7 @@ export default function QuotationModule({
                         style={{
                           marginTop: 10,
                           fontSize: 12,
-                          color: "#059669",
+                          color: "#7A131A",
                           fontWeight: 600,
                           background: "#ecfdf5",
                           padding: "8px 12px",
@@ -3724,7 +3819,7 @@ export default function QuotationModule({
                       </div>
                       <div>
                         Discount:{" "}
-                        <strong style={{ color: "#059669" }}>
+                        <strong style={{ color: "#7A131A" }}>
                           -{formatINR(liveCalc.discountAmt)}
                         </strong>
                       </div>
@@ -3804,7 +3899,7 @@ export default function QuotationModule({
                         fontSize: 12,
                         fontWeight: 700,
                         color: liveCalc.isMilestoneValid
-                          ? "#059669"
+                          ? "#7A131A"
                           : "#dc2626",
                       }}
                     >
@@ -4259,7 +4354,7 @@ export default function QuotationModule({
                       )}
                     </strong>
                   </div>
-                  <div style={{ color: "#059669" }}>
+                  <div style={{ color: "#7A131A" }}>
                     Paid:{" "}
                     <strong>
                       {formatINR(
@@ -4351,7 +4446,7 @@ export default function QuotationModule({
                                   tx.referenceId ||
                                   `TXN-${idx + 1}`}
                               </span>
-                              <span style={{ color: "#059669" }}>
+                              <span style={{ color: "#7A131A" }}>
                                 {formatINR(tx.amount)}
                               </span>
                             </div>
@@ -4921,7 +5016,7 @@ export default function QuotationModule({
                 <button
                   type="submit"
                   className="btn btn-primary"
-                  style={{ background: "#059669", borderColor: "#059669" }}
+                  style={{ background: "#7A131A", borderColor: "#7A131A" }}
                   disabled={isActionLoading}
                 >
                   {isActionLoading ? "Saving..." : "✓ Save & Sync Transaction"}

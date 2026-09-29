@@ -23,6 +23,7 @@ import StaffPortalPage from './pages/StaffPortalPage';
 import TaskManagementPage from './pages/TaskManagementPage';
 import TransactionHistoryPage from './pages/TransactionHistoryPage';
 import ViewEmployeePage from './pages/ViewEmployeePage';
+import FestivalsPage from './pages/FestivalsPage';
 
 // Admin Portal Components & Pages
 import AdminProtectedRoute from './admin/components/AdminProtectedRoute';
@@ -108,9 +109,10 @@ export default function App() {
           <Route path="/super-admin/finance" element={<ProtectedRoute superAdminOnly={true} permissionKey="reports"><FinancePage /></ProtectedRoute>} />
           <Route path="/super-admin/reports" element={<ProtectedRoute superAdminOnly={true} permissionKey="reports"><ReportsPage /></ProtectedRoute>} />
           <Route path="/super-admin/settings" element={<ProtectedRoute superAdminOnly={true} permissionKey="administration"><AdministrationPage /></ProtectedRoute>} />
+          <Route path="/super-admin/festivals" element={<ProtectedRoute superAdminOnly={true}><FestivalsPage /></ProtectedRoute>} />
 
           {/* Legacy Super Admin aliases for seamless navigation */}
-          <Route path="/admin-panel" element={<Navigate to="/super-admin/dashboard" replace />} />
+          <Route path="/admin-panel" element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="/admin-portal" element={<ProtectedRoute permissionKey="dashboard"><AdminPortalPage /></ProtectedRoute>} />
           <Route path="/manager-portal" element={<ProtectedRoute permissionKey="dashboard"><ManagerPortalPage /></ProtectedRoute>} />
           <Route path="/staff-portal" element={<ProtectedRoute permissionKey="dashboard"><StaffPortalPage /></ProtectedRoute>} />

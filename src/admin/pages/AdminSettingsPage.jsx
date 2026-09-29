@@ -77,6 +77,6 @@ const styles = {
   label: { fontSize: 12.5, fontWeight: 600, color: '#334155' },
   input: { padding: '9px 14px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: 13, outline: 'none' },
   checkLabel: { display: 'flex', gap: 10, alignItems: 'center', fontSize: 13.5, color: '#334155', cursor: 'pointer' },
-  primaryBtn: { background: '#2563EB', color: '#FFFFFF', border: 'none', padding: '10px 20px', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' },
+  primaryBtn: { background: '#7A131A', color: '#FFFFFF', border: 'none', padding: '10px 20px', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' },
   msgBanner: { padding: '12px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, marginBottom: 16, background: '#DCFCE7', color: '#15803D' },
 };

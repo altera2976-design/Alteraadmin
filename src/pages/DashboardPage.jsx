@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import AdminLayout from '../layouts/AdminLayout';
 import api, { SOCKET_URL } from '../services/api';
 
+
 export default function DashboardPage() {
   const { user, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
@@ -156,6 +157,8 @@ export default function DashboardPage() {
           Staff Workspace Portal
         </button>
       </div>
+
+
 
       {/* ── Welcome Banner ───────────────────────────────────── */}
       <div style={styles.welcomeBanner}>

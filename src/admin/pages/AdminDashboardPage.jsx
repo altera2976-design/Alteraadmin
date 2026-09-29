@@ -121,7 +121,7 @@ export default function AdminDashboardPage() {
     return (
       <AdminAppLayout title="Admin Dashboard">
         <div style={{ padding: 60, textAlign: 'center' }}>
-          <div style={{ width: 44, height: 44, border: '4px solid #E2E8F0', borderTopColor: '#2563EB', borderRadius: '50%', margin: '0 auto 16px auto', animation: 'spin 0.8s linear infinite' }} />
+          <div style={{ width: 44, height: 44, border: '4px solid #E2E8F0', borderTopColor: '#7A131A', borderRadius: '50%', margin: '0 auto 16px auto', animation: 'spin 0.8s linear infinite' }} />
           <p style={{ color: '#64748B', fontWeight: 600, fontSize: 14 }}>Loading live admin dashboard statistics...</p>
         </div>
       </AdminAppLayout>
@@ -194,24 +194,24 @@ export default function AdminDashboardPage() {
         {/* Dynamic Permission-Based Metric KPI Cards */}
         <div style={styles.grid10}>
           {hasPerm('employees', 'administration') && (
-            <Card title="Total Employees" value={totalEmp} color="#2563EB" badge="Active Staff" onClick={() => navigate('/admin/employees')} />
+            <Card title="Total Employees" value={totalEmp} color="#7A131A" badge="Active Staff" onClick={() => navigate('/admin/employees')} />
           )}
           {hasPerm('attendance') && (
             <>
-              <Card title="Present Today" value={presentToday} color="#10B981" badge="Checked In" />
+              <Card title="Present Today" value={presentToday} color="#7A131A" badge="Checked In" />
               <Card title="Absent Today" value={absentToday} color="#EF4444" badge="Not In Office" />
               <Card title="Late Today" value={lateToday} color="#F59E0B" badge="Late Check-in" />
               <Card title="Attendance %" value={`${attendancePct}%`} color="#8B5CF6" badge="Today Ratio" />
             </>
           )}
           {hasPerm('payroll', 'salary') && (
-            <Card title="Total Payroll" value={`₹${totalPayroll.toLocaleString('en-IN')}`} color="#059669" badge="Salary Paid/Due" onClick={() => navigate('/admin/payroll')} />
+            <Card title="Total Payroll" value={`₹${totalPayroll.toLocaleString('en-IN')}`} color="#7A131A" badge="Salary Paid/Due" onClick={() => navigate('/admin/payroll')} />
           )}
           {hasPerm('transactions') && (
             <Card title="Total Transactions" value={`₹${totalReceivedAmount.toLocaleString('en-IN')}`} color="#0288D1" badge={`${totalTransactionsCount} Completed`} />
           )}
           {hasPerm('crm') && (
-            <Card title="Total Leads" value={totalLeads} color="#3B82F6" badge="CRM Pipeline" />
+            <Card title="Total Leads" value={totalLeads} color="#7A131A" badge="CRM Pipeline" />
           )}
           {hasPerm('quotations', 'quotation') && (
             <Card title="Pending Quotations" value={pendingQuotations} color="#D97706" badge="Awaiting Approval" />
@@ -247,7 +247,7 @@ export default function AdminDashboardPage() {
             ].map((bar, i) => (
               <div key={i} style={styles.barCol}>
                 <div style={styles.barTrack}>
-                  <div style={{ ...styles.barFill, height: `${bar.val}%`, background: i === 4 ? '#2563EB' : '#94A3B8' }} />
+                  <div style={{ ...styles.barFill, height: `${bar.val}%`, background: i === 4 ? '#7A131A' : '#94A3B8' }} />
                 </div>
                 <span style={styles.barLabel}>{bar.day}</span>
                 <span style={styles.barVal}>{bar.val}%</span>
@@ -285,9 +285,9 @@ export default function AdminDashboardPage() {
               <span>{totalLeads} Total Leads</span>
             </div>
             <div style={{ height: 8, background: '#E2E8F0', borderRadius: 4, overflow: 'hidden', display: 'flex' }}>
-              <div style={{ width: '40%', background: '#3B82F6' }} title="New Leads" />
+              <div style={{ width: '40%', background: '#7A131A' }} title="New Leads" />
               <div style={{ width: '35%', background: '#F59E0B' }} title="In Discussion" />
-              <div style={{ width: '25%', background: '#10B981' }} title="Converted" />
+              <div style={{ width: '25%', background: '#7A131A' }} title="Converted" />
             </div>
           </div>
         </div>
@@ -344,7 +344,7 @@ export default function AdminDashboardPage() {
                         {rec.isLate ? (
                           <span style={{ color: '#D97706', fontWeight: 600, fontSize: 12 }}>Late ({rec.lateMinutes || 15}m)</span>
                         ) : (
-                          <span style={{ color: '#10B981', fontWeight: 600, fontSize: 12 }}>On Time</span>
+                          <span style={{ color: '#7A131A', fontWeight: 600, fontSize: 12 }}>On Time</span>
                         )}
                       </td>
                     </tr>
@@ -500,7 +500,7 @@ const styles = {
   },
   chartTitle: { fontSize: 16, fontWeight: 700, color: '#0F172A' },
   chartSub: { fontSize: 12, color: '#64748B', marginTop: 2 },
-  chartBadge: { fontSize: 11, fontWeight: 700, background: '#EFF6FF', color: '#2563EB', padding: '4px 8px', borderRadius: 6 },
+  chartBadge: { fontSize: 11, fontWeight: 700, background: '#EFF6FF', color: '#7A131A', padding: '4px 8px', borderRadius: 6 },
   barContainer: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', height: 140, paddingTop: 10 },
   barCol: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flex: 1 },
   barTrack: { width: 14, height: 100, background: '#F1F5F9', borderRadius: 6, overflow: 'hidden', display: 'flex', alignItems: 'flex-end' },
@@ -509,7 +509,7 @@ const styles = {
   barVal: { fontSize: 10, fontWeight: 700, color: '#0F172A' },
   statsRow: { display: 'flex', gap: 12, marginBottom: 10 },
   statBox: { flex: 1, background: '#F8FAFC', padding: 12, borderRadius: 8, textAlign: 'center', border: '1px solid #E2E8F0' },
-  statVal: { fontSize: 20, fontWeight: 800, color: '#2563EB' },
+  statVal: { fontSize: 20, fontWeight: 800, color: '#7A131A' },
   statLbl: { fontSize: 11, fontWeight: 600, color: '#64748B', marginTop: 2 },
   columns2: { display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20 },
   tableCard: { background: '#FFFFFF', borderRadius: 12, padding: 20, border: '1px solid #E2E8F0' },

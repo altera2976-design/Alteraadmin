@@ -324,7 +324,7 @@ export default function ProjectsManagementPage() {
                   ) : (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
                       {rooms.map((r) => (
-                        <div key={r._id} className="card" style={{ padding: 18, borderTop: '4px solid #2563eb' }}>
+                        <div key={r._id} className="card" style={{ padding: 18, borderTop: '4px solid #7A131A' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span style={{ fontWeight: 700, fontSize: 16 }}>{r.roomName}</span>
                             <span style={styles.badgeRequirement}>{r.roomType}</span>
@@ -341,7 +341,7 @@ export default function ProjectsManagementPage() {
                               <strong>{r.progress || 0}%</strong>
                             </div>
                             <div style={{ width: '100%', height: 6, background: '#e2e8f0', borderRadius: 4, overflow: 'hidden' }}>
-                              <div style={{ width: `${r.progress || 0}%`, height: '100%', background: '#2563eb' }} />
+                              <div style={{ width: `${r.progress || 0}%`, height: '100%', background: '#7A131A' }} />
                             </div>
                           </div>
                           <div style={{ fontSize: 12, color: '#64748b', marginTop: 10 }}>
@@ -427,7 +427,7 @@ export default function ProjectsManagementPage() {
                             <td style={{ fontWeight: 600 }}>{m.roomName}</td>
                             <td>{m.componentName}</td>
                             <td>{m.length} x {m.width} {m.unit}</td>
-                            <td style={{ fontWeight: 700, color: '#2563eb' }}>{m.area} sq {m.unit}</td>
+                            <td style={{ fontWeight: 700, color: '#7A131A' }}>{m.area} sq {m.unit}</td>
                             <td>{m.measuredByName || 'Supervisor'}</td>
                             <td>{new Date(m.date).toLocaleDateString('en-IN')}</td>
                           </tr>
@@ -499,7 +499,7 @@ export default function ProjectsManagementPage() {
                       <tbody>
                         {procurements.map((p) => (
                           <tr key={p._id} style={styles.trRow}>
-                            <td style={{ fontWeight: 700, color: '#2563eb' }}>{p.poNumber}</td>
+                            <td style={{ fontWeight: 700, color: '#7A131A' }}>{p.poNumber}</td>
                             <td style={{ fontWeight: 600 }}>{p.materialName}</td>
                             <td>{p.supplier}</td>
                             <td>{p.quantity} {p.unit}</td>
@@ -530,12 +530,12 @@ export default function ProjectsManagementPage() {
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
                     {siteVisits.map((v) => (
-                      <div key={v._id} className="card" style={{ padding: 16, borderLeft: '4px solid #10b981' }}>
+                      <div key={v._id} className="card" style={{ padding: 16, borderLeft: '4px solid #7A131A' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <span style={{ fontWeight: 700 }}>👤 {v.employeeName}</span>
                           <span style={{ fontSize: 12, color: '#64748b' }}>{new Date(v.visitDate).toLocaleDateString('en-IN')}</span>
                         </div>
-                        <div style={{ fontSize: 12, color: '#2563eb', marginTop: 4 }}>
+                        <div style={{ fontSize: 12, color: '#7A131A', marginTop: 4 }}>
                           📍 GPS: {v.gpsLocation?.address || `${v.gpsLocation?.latitude || '12.97'}, ${v.gpsLocation?.longitude || '77.59'}`}
                         </div>
                         <div style={{ fontSize: 13, marginTop: 8, background: '#f8fafc', padding: 8, borderRadius: 6 }}>

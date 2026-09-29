@@ -72,7 +72,7 @@ export default function AdminNotificationsPage() {
                 style={{
                   ...styles.notifItem,
                   background: n.isRead ? '#FFFFFF' : '#EFF6FF',
-                  borderLeft: n.isRead ? '4px solid #CBD5E1' : '4px solid #2563EB',
+                  borderLeft: n.isRead ? '4px solid #CBD5E1' : '4px solid #7A131A',
                 }}
               >
                 <span style={{ fontSize: 20 }}>🔔</span>
@@ -99,6 +99,6 @@ export default function AdminNotificationsPage() {
 const styles = {
   card: { background: '#FFFFFF', borderRadius: 12, padding: 20, border: '1px solid #E2E8F0' },
   notifItem: { display: 'flex', gap: 14, alignItems: 'flex-start', padding: 16, borderRadius: 10, border: '1px solid #E2E8F0', transition: 'all 0.2s ease' },
-  primaryBtn: { background: '#2563EB', color: '#FFFFFF', border: 'none', padding: '9px 16px', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' },
-  actionBtn: { padding: '5px 10px', borderRadius: 6, border: '1px solid #CBD5E1', background: '#FFFFFF', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#2563EB' },
+  primaryBtn: { background: '#7A131A', color: '#FFFFFF', border: 'none', padding: '9px 16px', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' },
+  actionBtn: { padding: '5px 10px', borderRadius: 6, border: '1px solid #CBD5E1', background: '#FFFFFF', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#7A131A' },
 };

@@ -312,7 +312,7 @@ export default function AdminAccessPage() {
     if (r === 'SUPER_ADMIN') return { bg: '#f3e8ff', color: '#6d28d9', label: 'SUPER ADMIN' };
     if (r === 'ADMIN') return { bg: '#e0f2fe', color: '#0284c7', label: 'ADMIN' };
     if (r === 'SALES') return { bg: '#fef3c7', color: '#d97706', label: 'SALES' };
-    if (r === 'MANAGER') return { bg: '#d1fae5', color: '#059669', label: 'MANAGER' };
+    if (r === 'MANAGER') return { bg: '#d1fae5', color: '#7A131A', label: 'MANAGER' };
     return { bg: '#f1f5f9', color: '#475569', label: r || 'STAFF' };
   };
 
@@ -434,7 +434,7 @@ export default function AdminAccessPage() {
           <div style={styles.kpiSub}>Leads & client consultations</div>
         </div>
 
-        <div className="card" style={{ padding: 14, borderLeft: '4px solid #10b981', background: '#ecfdf5' }}>
+        <div className="card" style={{ padding: 14, borderLeft: '4px solid #7A131A', background: '#ecfdf5' }}>
           <div style={styles.kpiLabel}>Total Registered Accounts</div>
           <div style={{ ...styles.kpiVal, color: '#047857' }}>{users.length}</div>
           <div style={styles.kpiSub}>System-wide active users</div>

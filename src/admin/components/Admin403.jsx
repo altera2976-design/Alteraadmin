@@ -21,7 +21,7 @@ export default function Admin403({ message = "Access Denied — You don't have p
         </p>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
           <Link to="/admin/dashboard" style={{
-            background: '#2563EB',
+            background: '#7A131A',
             color: '#FFFFFF',
             padding: '10px 24px',
             borderRadius: 8,

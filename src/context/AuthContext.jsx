@@ -1,49 +1,65 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import api from '../services/api';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser]       = useState(null);
-  const [token, setToken]     = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [token, setToken] = useState(() => localStorage.getItem('ems_token'));
+  const [user, setUser]   = useState(() => {
+    try {
+      const stored = localStorage.getItem('ems_user');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+  // loading=true only when a token exists and we're verifying it server-side
+  const [loading, setLoading] = useState(() => !!localStorage.getItem('ems_token'));
 
-  // Restore session from localStorage on mount
-  // Restore session from localStorage & verify fresh permissions from backend on mount
+  // Guard against double-invocation in React StrictMode (dev)
+  const sessionRestored = useRef(false);
+
+  // Verify session freshness with backend on mount (lazy init already populated state)
   useEffect(() => {
-    const restoreSession = async () => {
+    if (sessionRestored.current) return;
+    sessionRestored.current = true;
+
+    const verifySession = async () => {
       const storedToken = localStorage.getItem('ems_token');
-      const storedUser  = localStorage.getItem('ems_user');
-      if (storedToken) {
-        setToken(storedToken);
-        if (storedUser) {
-          try {
-            setUser(JSON.parse(storedUser));
-          } catch {}
-        }
-        try {
-          const meRes = await api.get('/auth/me');
-          const freshUser = meRes.data?.user || meRes.data;
-          if (freshUser) {
-            const isSuperEmail = freshUser.email?.toLowerCase() === 'admin@alterainterior.com' || freshUser.email?.toLowerCase() === 'admin@company.com';
-            const effectiveRole = isSuperEmail ? 'SUPER_ADMIN' : (freshUser.role || 'EMPLOYEE');
-            const normalized = { ...freshUser, role: effectiveRole };
-            setUser(normalized);
-            localStorage.setItem('ems_user', JSON.stringify(normalized));
-          }
-        } catch (err) {
-          if (err.response?.status === 401 || err.response?.status === 403) {
-            localStorage.removeItem('ems_token');
-            localStorage.removeItem('ems_user');
-            setToken(null);
-            setUser(null);
-          }
-        }
+      if (!storedToken) {
+        // No token — not logged in, nothing to verify
+        setLoading(false);
+        return;
       }
-      setLoading(false);
+
+      try {
+        const meRes = await api.get('/auth/me');
+        const freshUser = meRes.data?.user || meRes.data;
+        if (freshUser) {
+          const isSuperEmail =
+            freshUser.email?.toLowerCase() === 'admin@alterainterior.com' ||
+            freshUser.email?.toLowerCase() === 'admin@company.com';
+          const effectiveRole = isSuperEmail ? 'SUPER_ADMIN' : (freshUser.role || 'EMPLOYEE');
+          const normalized = { ...freshUser, role: effectiveRole };
+          setUser(normalized);
+          localStorage.setItem('ems_user', JSON.stringify(normalized));
+        }
+      } catch (err) {
+        // Only force logout on explicit auth rejection (401/403)
+        // Network errors / server down: keep cached user so page doesn't flicker
+        if (err.response?.status === 401 || err.response?.status === 403) {
+          localStorage.removeItem('ems_token');
+          localStorage.removeItem('ems_user');
+          setToken(null);
+          setUser(null);
+        }
+        // Any other error (network timeout, 500, etc.) — keep cached state
+      } finally {
+        setLoading(false);
+      }
     };
 
-    restoreSession();
+    verifySession();
   }, []);
 
   const login = async (email, password) => {
@@ -88,7 +104,7 @@ export function AuthProvider({ children }) {
         user,
         token,
         loading,
-        isAuthenticated: !!token,
+        isAuthenticated: !!user,
         isAdmin: isSuperAdmin || user?.role === 'ADMIN' || user?.role === 'SALES' || user?.role === 'MANAGER',
         isSuperAdmin,
         login,

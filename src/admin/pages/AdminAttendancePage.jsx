@@ -98,8 +98,8 @@ export default function AdminAttendancePage({ activeTab = 'daily', employeeId = 
 
       {/* Summary KPI Strip */}
       <div style={styles.summaryStrip}>
-        <SummaryBox label="Total Records" val={filtered.length} color="#2563EB" />
-        <SummaryBox label="Present" val={presentCount} color="#10B981" />
+        <SummaryBox label="Total Records" val={filtered.length} color="#7A131A" />
+        <SummaryBox label="Present" val={presentCount} color="#7A131A" />
         <SummaryBox label="Late" val={lateCount} color="#F59E0B" />
         <SummaryBox label="Absent" val={absentCount} color="#EF4444" />
         <SummaryBox label="Attendance %" val={`${attendanceRatio}%`} color="#8B5CF6" />
@@ -228,7 +228,7 @@ function SummaryBox({ label, val, color }) {
 const styles = {
   tabHeader: { display: 'flex', gap: 8, marginBottom: 20 },
   tabBtn: { padding: '10px 18px', borderRadius: 8, border: '1px solid #CBD5E1', background: '#FFFFFF', color: '#475569', fontWeight: 600, fontSize: 13, cursor: 'pointer' },
-  tabBtnActive: { background: '#2563EB', color: '#FFFFFF', borderColor: '#2563EB' },
+  tabBtnActive: { background: '#7A131A', color: '#FFFFFF', borderColor: '#7A131A' },
   summaryStrip: { display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 20 },
   filterBar: { display: 'flex', gap: 14, background: '#FFFFFF', padding: 16, borderRadius: 12, border: '1px solid #E2E8F0', marginBottom: 20, flexWrap: 'wrap' },
   fieldGroup: { display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 150 },

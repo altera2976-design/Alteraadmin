@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { to: "/super-admin/crm", label: "CRM", key: "crm", icon: "👥" },
   { to: "/super-admin/quotations", label: "Quotations", key: "quotation", icon: "🧾" },
   { to: "/super-admin/projects", label: "Projects", key: "projects", icon: "📁" },
+  { to: "/super-admin/festivals", label: "Festivals", key: "administration", icon: "🎉", superAdminOnly: true },
   { to: "/super-admin/reports", label: "Reports", key: "reports", icon: "📈" },
   { to: "/super-admin/settings", label: "System Settings", key: "administration", icon: "⚙️" },
 ];
@@ -488,7 +489,7 @@ const styles = {
     width: 6,
     height: 6,
     borderRadius: "50%",
-    background: "#10B981",
+    background: "#7A131A",
   },
   logoutBtn: {
     display: "flex",
@@ -628,7 +629,7 @@ const styles = {
   userPillStatus: {
     fontSize: 10,
     fontWeight: 600,
-    color: "#10B981",
+    color: "#7A131A",
   },
   content: {
     flex: 1,

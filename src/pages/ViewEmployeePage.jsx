@@ -103,7 +103,7 @@ function Field({ label, value, mono }) {
   return (
     <div className="detail-item">
       <span className="detail-label">{label}</span>
-      <span className="detail-value" style={mono ? { fontFamily: 'monospace', color: '#2563eb' } : {}}>
+      <span className="detail-value" style={mono ? { fontFamily: 'monospace', color: '#7A131A' } : {}}>
         {value}
       </span>
     </div>
@@ -116,13 +116,13 @@ const s = {
     borderBottom: '1px solid #e2e8f0', flexWrap: 'wrap',
   },
   avatarLg: {
-    width: 72, height: 72, borderRadius: '50%', background: '#2563eb', color: '#fff',
+    width: 72, height: 72, borderRadius: '50%', background: '#7A131A', color: '#fff',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     fontSize: 28, fontWeight: 700, flexShrink: 0,
   },
   profileName: { fontSize: 22, fontWeight: 700, color: '#1e293b', marginBottom: 6 },
   profileMeta: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0 },
-  empId: { fontFamily: 'monospace', fontWeight: 600, color: '#2563eb', fontSize: 14 },
+  empId: { fontFamily: 'monospace', fontWeight: 600, color: '#7A131A', fontSize: 14 },
   sectionTitle: {
     fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase',
     letterSpacing: '0.6px', marginBottom: 12,

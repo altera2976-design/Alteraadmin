@@ -9,21 +9,7 @@ export default function LoginPage() {
   const [form, setForm]       = useState({ email: '', password: '' });
   const [error, setError]     = useState('');
   const [loading, setLoading] = useState(false);
-  const [currentBg, setCurrentBg] = useState(0);
 
-  const backgrounds = [
-    '/backgrounds/bg1.jpg',
-    '/backgrounds/bg2.jpg',
-    '/backgrounds/bg3.jpg',
-    '/backgrounds/bg4.png'
-  ];
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentBg((prev) => (prev + 1) % backgrounds.length);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
 
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -52,23 +38,13 @@ export default function LoginPage() {
 
   return (
     <div style={s.page}>
-      {/* Background Carousel */}
-      {backgrounds.map((bg, index) => (
-        <div
-          key={bg}
-          style={{
-            ...s.bgImage,
-            backgroundImage: `url(${bg})`,
-            opacity: index === currentBg ? 1 : 0,
-            transform: index === currentBg 
-              ? 'translateX(0) scale(1)' 
-              : index < currentBg 
-                ? 'translateX(-50px) scale(1.05)' 
-                : 'translateX(50px) scale(1.05)'
-          }}
-        />
-      ))}
-      {/* Dark Overlay */}
+      <div
+        style={{
+          ...s.bgImage,
+          background: '#FFFFFF'
+        }}
+      />
+      {/* Light Overlay if needed (optional) */}
       <div style={s.overlay} />
 
       <div style={s.card}>
@@ -94,7 +70,7 @@ export default function LoginPage() {
           )}
 
           <div className="form-group">
-            <label className="form-label" htmlFor="email" style={{ color: '#fff', fontSize: '14px', fontWeight: '500' }}>
+            <label className="form-label" htmlFor="email" style={{ color: '#0F172A', fontSize: '14px', fontWeight: '500' }}>
               Email Address <span className="required" style={{ color: '#ef4444' }}>*</span>
             </label>
             <input
@@ -108,9 +84,9 @@ export default function LoginPage() {
               autoComplete="email"
               disabled={loading}
               style={{
-                background: 'rgba(255,255,255,0.1)',
-                border: '1px solid rgba(255,255,255,0.2)',
-                color: '#fff',
+                background: '#F8FAFC',
+                border: '1px solid #E2E8F0',
+                color: '#0F172A',
                 padding: '12px 16px',
                 borderRadius: '8px'
               }}
@@ -118,7 +94,7 @@ export default function LoginPage() {
           </div>
 
           <div className="form-group">
-            <label className="form-label" htmlFor="password" style={{ color: '#fff', fontSize: '14px', fontWeight: '500' }}>
+            <label className="form-label" htmlFor="password" style={{ color: '#0F172A', fontSize: '14px', fontWeight: '500' }}>
               Password <span className="required" style={{ color: '#ef4444' }}>*</span>
             </label>
             <input
@@ -132,9 +108,9 @@ export default function LoginPage() {
               autoComplete="current-password"
               disabled={loading}
               style={{
-                background: 'rgba(255,255,255,0.1)',
-                border: '1px solid rgba(255,255,255,0.2)',
-                color: '#fff',
+                background: '#F8FAFC',
+                border: '1px solid #E2E8F0',
+                color: '#0F172A',
                 padding: '12px 16px',
                 borderRadius: '8px'
               }}
@@ -179,7 +155,7 @@ export default function LoginPage() {
 const s = {
   page: {
     minHeight: '100vh',
-    background: '#000000',
+    background: '#FFFFFF',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -205,16 +181,14 @@ const s = {
     left: 0,
     width: '100%',
     height: '100%',
-    backgroundColor: 'rgba(0, 0, 0, 0.45)', // Subtle dark overlay
+    backgroundColor: 'rgba(255, 255, 255, 0.8)', // Light overlay
     zIndex: 2,
   },
   card: {
-    background: 'rgba(25, 30, 40, 0.4)',
-    backdropFilter: 'blur(12px)',
-    WebkitBackdropFilter: 'blur(12px)',
-    border: '1px solid rgba(255, 255, 255, 0.15)',
+    background: '#FFFFFF',
+    border: '1px solid #E2E8F0',
     borderRadius: 24,
-    boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+    boxShadow: '0 10px 40px rgba(0,0,0,0.08)',
     width: '100%',
     maxWidth: 420,
     overflow: 'hidden',
@@ -229,7 +203,7 @@ const s = {
   logoWrap: {
     width: 64,
     height: 64,
-    background: 'rgba(255,255,255,0.15)',
+    background: '#F1F5F9',
     borderRadius: '50%',
     display: 'flex',
     alignItems: 'center',
@@ -237,13 +211,13 @@ const s = {
     margin: '0 auto 16px',
   },
   logoImg: { width: 52, height: 52, objectFit: 'contain' },
-  title: { color: '#fff', fontSize: 20, fontWeight: 700, marginBottom: 6 },
-  subtitle: { color: 'rgba(255,255,255,0.7)', fontSize: 13 },
+  title: { color: '#0F172A', fontSize: 20, fontWeight: 700, marginBottom: 6 },
+  subtitle: { color: '#64748B', fontSize: 13 },
   form: { padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 16 },
   footer: {
     textAlign: 'center',
     padding: '12px 32px 24px',
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: '#94A3B8',
   },
 };

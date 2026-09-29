@@ -381,7 +381,7 @@ export default function AdminEmployeesPage({ subRoute = 'list', employeeId = nul
                             <div>{emp.name}</div>
                             <div style={{ fontSize: 11, color: '#64748B', fontWeight: 400 }}>{emp.email}</div>
                           </td>
-                          <td style={{ ...styles.td, fontWeight: 700, color: '#2563EB', fontFamily: 'monospace' }}>
+                          <td style={{ ...styles.td, fontWeight: 700, color: '#7A131A', fontFamily: 'monospace' }}>
                             {emp.employeeId || 'EMP-N/A'}
                           </td>
                           <td style={styles.td}>{emp.phone || '—'}</td>
@@ -414,7 +414,7 @@ export default function AdminEmployeesPage({ subRoute = 'list', employeeId = nul
                             {hasSalary ? `₹${(emp.salary || 0).toLocaleString('en-IN')}` : 'Not Set'}
                           </td>
                           <td style={styles.td}>
-                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'nowrap', alignItems: 'center', justifyContent: 'flex-end' }}>
                               <button onClick={() => navigate(`/admin/employees/${emp._id}`)} style={{ ...styles.actionBtn, color: '#C8102E' }}>
                                 View
                               </button>
@@ -620,7 +620,7 @@ export default function AdminEmployeesPage({ subRoute = 'list', employeeId = nul
                           gap: 10,
                           padding: 12,
                           borderRadius: 10,
-                          border: appPermsForm[item.key] ? '2px solid #2563EB' : '1px solid #CBD5E1',
+                          border: appPermsForm[item.key] ? '2px solid #7A131A' : '1px solid #CBD5E1',
                           background: appPermsForm[item.key] ? '#EFF6FF' : '#FFFFFF',
                           cursor: 'pointer',
                           transition: 'all 0.15s ease'
@@ -630,10 +630,10 @@ export default function AdminEmployeesPage({ subRoute = 'list', employeeId = nul
                           type="checkbox"
                           checked={Boolean(appPermsForm[item.key])}
                           onChange={(e) => setAppPermsForm({ ...appPermsForm, [item.key]: e.target.checked })}
-                          style={{ marginTop: 2, width: 16, height: 16, cursor: 'pointer', accentColor: '#2563EB' }}
+                          style={{ marginTop: 2, width: 16, height: 16, cursor: 'pointer', accentColor: '#7A131A' }}
                         />
                         <div>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: appPermsForm[item.key] ? '#1D4ED8' : '#1E293B' }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: appPermsForm[item.key] ? '#7A131A' : '#1E293B' }}>
                             {item.label} {appPermsForm[item.key] ? '✅ [ON]' : '❌ [OFF]'}
                           </div>
                           <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>{item.desc}</div>
@@ -685,7 +685,7 @@ const styles = {
   th: { padding: '12px 14px', fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase' },
   tr: { borderBottom: '1px solid #F1F5F9' },
   td: { padding: '14px', color: '#334155' },
-  actionBtn: { padding: '5px 10px', borderRadius: 6, border: '1px solid #CBD5E1', background: '#FFFFFF', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#2563EB' },
+  actionBtn: { padding: '5px 10px', borderRadius: 6, border: '1px solid #CBD5E1', background: '#FFFFFF', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#7A131A' },
   cardForm: { background: '#FFFFFF', borderRadius: 12, padding: 28, border: '1px solid #E2E8F0' },
   formTitle: { fontSize: 20, fontWeight: 800, color: '#0F172A', margin: 0 },
   gridForm: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 18, marginTop: 20 },

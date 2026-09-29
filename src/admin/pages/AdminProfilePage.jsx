@@ -158,11 +158,11 @@ export default function AdminProfilePage() {
 
 const styles = {
   card: { background: '#FFFFFF', borderRadius: 12, padding: 28, border: '1px solid #E2E8F0' },
-  avatar: { width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)', color: '#FFFFFF', fontSize: 22, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  roleTag: { fontSize: 11, fontWeight: 700, background: '#EFF6FF', color: '#2563EB', padding: '2px 8px', borderRadius: 4, marginTop: 4, display: 'inline-block' },
+  avatar: { width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg, #7A131A 0%, #7A131A 100%)', color: '#FFFFFF', fontSize: 22, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  roleTag: { fontSize: 11, fontWeight: 700, background: '#EFF6FF', color: '#7A131A', padding: '2px 8px', borderRadius: 4, marginTop: 4, display: 'inline-block' },
   field: { display: 'flex', flexDirection: 'column', gap: 6 },
   label: { fontSize: 12.5, fontWeight: 600, color: '#334155' },
   input: { padding: '10px 14px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: 13, outline: 'none' },
-  primaryBtn: { background: '#2563EB', color: '#FFFFFF', border: 'none', padding: '11px 18px', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' },
+  primaryBtn: { background: '#7A131A', color: '#FFFFFF', border: 'none', padding: '11px 18px', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' },
   msgBanner: { padding: '12px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, marginBottom: 16 },
 };

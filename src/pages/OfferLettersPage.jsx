@@ -395,9 +395,9 @@ export default function OfferLettersPage() {
           <div style={styles.metricTitle}>Released</div>
           <div style={{ ...styles.metricValue, color: '#C8102E' }}>{stats.released}</div>
         </div>
-        <div style={{ ...styles.metricCard, borderLeft: '4px solid #10B981' }}>
+        <div style={{ ...styles.metricCard, borderLeft: '4px solid #7A131A' }}>
           <div style={styles.metricTitle}>Accepted</div>
-          <div style={{ ...styles.metricValue, color: '#10B981' }}>{stats.accepted}</div>
+          <div style={{ ...styles.metricValue, color: '#7A131A' }}>{stats.accepted}</div>
         </div>
         <div style={{ ...styles.metricCard, borderLeft: '4px solid #EF4444' }}>
           <div style={styles.metricTitle}>Rejected</div>
@@ -894,7 +894,7 @@ export default function OfferLettersPage() {
                       type="button"
                       style={{
                         ...styles.createBtn,
-                        background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                        background: 'linear-gradient(135deg, #7A131A 0%, #7A131A 100%)',
                         boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
                       }}
                       onClick={handleSaveAndSendCandidate}
@@ -1005,7 +1005,7 @@ export default function OfferLettersPage() {
       {isDeliveryModalOpen && selectedOfferForDelivery && (
         <div style={styles.modalOverlay}>
           <div style={styles.modalCard}>
-            <h2 style={{ color: '#10B981', fontSize: 18, fontWeight: 800, marginBottom: 8 }}>
+            <h2 style={{ color: '#7A131A', fontSize: 18, fontWeight: 800, marginBottom: 8 }}>
               🎉 Offer Letter Released!
             </h2>
             <p style={{ color: '#475569', fontSize: 13, marginBottom: 20 }}>

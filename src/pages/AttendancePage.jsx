@@ -283,7 +283,7 @@ export default function AttendancePage() {
                 ✅
               </div>
               <div>
-                <div style={{ ...styles.kpiNum, color: "#10B981" }}>
+                <div style={{ ...styles.kpiNum, color: "#7A131A" }}>
                   {stats.present}
                 </div>
                 <div style={styles.kpiLabel}>Present On-Duty</div>
@@ -792,7 +792,7 @@ export default function AttendancePage() {
               <div className="card" style={styles.monthlyKpiCard}>
                 <div style={styles.monthlyKpiIcon}>📅</div>
                 <div style={styles.monthlyKpiLabel}>Total Present Days</div>
-                <div style={{ ...styles.monthlyKpiVal, color: "#10B981" }}>
+                <div style={{ ...styles.monthlyKpiVal, color: "#7A131A" }}>
                   {monthlyStats.present}
                 </div>
                 <div style={styles.monthlyKpiSub}>

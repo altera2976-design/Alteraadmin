@@ -241,14 +241,14 @@ export default function TransactionHistoryPage({ LayoutComponent = AdminLayout }
   const getStatusBadgeClass = (st) => {
     switch (st) {
       case 'Completed':
-        return 'bg-emerald-100 text-emerald-800 border-emerald-300';
+        return 'bg-red-100 text-red-800 border-red-300';
       case 'Pending':
         return 'bg-amber-100 text-amber-800 border-amber-300';
       case 'Failed':
       case 'Cancelled':
         return 'bg-rose-100 text-rose-800 border-rose-300';
       case 'Refunded':
-        return 'bg-blue-100 text-blue-800 border-blue-300';
+        return 'bg-red-100 text-red-800 border-red-300';
       default:
         return 'bg-slate-100 text-slate-800 border-slate-300';
     }
@@ -312,7 +312,7 @@ export default function TransactionHistoryPage({ LayoutComponent = AdminLayout }
             </div>
             <div style={{ background: '#ffffff', padding: 14, borderRadius: 8, border: '1px solid #cbd5e1' }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Total Completed</div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#059669', marginTop: 4 }}>{formatINR(summary.totalAmount)}</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#7A131A', marginTop: 4 }}>{formatINR(summary.totalAmount)}</div>
             </div>
             <div style={{ background: '#ffffff', padding: 14, borderRadius: 8, border: '1px solid #cbd5e1' }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Pending Amount</div>
@@ -527,7 +527,7 @@ export default function TransactionHistoryPage({ LayoutComponent = AdminLayout }
                     <div><span style={{ color: '#64748b' }}>Reference ID:</span> <strong>{selectedTransaction.referenceId || '—'}</strong></div>
                     <div><span style={{ color: '#64748b' }}>Type:</span> <strong>{selectedTransaction.transactionType}</strong></div>
                     <div><span style={{ color: '#64748b' }}>Payment Method:</span> <strong>{selectedTransaction.paymentMethod}</strong></div>
-                    <div><span style={{ color: '#64748b' }}>Amount:</span> <strong style={{ fontSize: 14, color: '#059669' }}>{formatINR(selectedTransaction.amount)}</strong></div>
+                    <div><span style={{ color: '#64748b' }}>Amount:</span> <strong style={{ fontSize: 14, color: '#7A131A' }}>{formatINR(selectedTransaction.amount)}</strong></div>
                     <div><span style={{ color: '#64748b' }}>Status:</span> <strong>{selectedTransaction.status}</strong></div>
                     <div><span style={{ color: '#64748b' }}>Date:</span> <strong>{formatDate(selectedTransaction.transactionDate || selectedTransaction.createdAt)}</strong></div>
                     <div><span style={{ color: '#64748b' }}>Recorded By:</span> <strong>{selectedTransaction.createdByName || '—'}</strong></div>

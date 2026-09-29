@@ -393,7 +393,7 @@ export default function TaskManagementPage() {
                         <button
                           style={{
                             background: '#eff6ff',
-                            color: '#2563eb',
+                            color: '#7A131A',
                             border: '1px solid #bfdbfe',
                             borderRadius: 6,
                             padding: '4px 8px',

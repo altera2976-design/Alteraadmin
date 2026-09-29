@@ -250,7 +250,7 @@ export default function EmployeesPage() {
 
                   return (
                     <tr key={emp._id}>
-                      <td style={{ fontWeight: 700, color: '#2563eb', fontFamily: 'monospace' }}>
+                      <td style={{ fontWeight: 700, color: '#7A131A', fontFamily: 'monospace' }}>
                         {emp.employeeId || 'EMP-N/A'}
                       </td>
                       <td>
@@ -287,7 +287,7 @@ export default function EmployeesPage() {
                         {hasSalary ? formatSalary(emp.salary) : 'Not Set'}
                       </td>
                       <td>
-                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'nowrap', alignItems: 'center', justifyContent: 'flex-end' }}>
                           <button
                             className="btn btn-ghost btn-sm"
                             onClick={() => navigate(`/employees/${emp._id}`)}
@@ -499,7 +499,7 @@ export default function EmployeesPage() {
                       gap: 10,
                       padding: 12,
                       borderRadius: 10,
-                      border: appPermsForm[item.key] ? '2px solid #2563EB' : '1px solid #CBD5E1',
+                      border: appPermsForm[item.key] ? '2px solid #7A131A' : '1px solid #CBD5E1',
                       background: appPermsForm[item.key] ? '#EFF6FF' : '#FFFFFF',
                       cursor: 'pointer',
                       transition: 'all 0.15s ease'
@@ -509,10 +509,10 @@ export default function EmployeesPage() {
                       type="checkbox"
                       checked={Boolean(appPermsForm[item.key])}
                       onChange={(e) => setAppPermsForm({ ...appPermsForm, [item.key]: e.target.checked })}
-                      style={{ marginTop: 2, width: 16, height: 16, cursor: 'pointer', accentColor: '#2563EB' }}
+                      style={{ marginTop: 2, width: 16, height: 16, cursor: 'pointer', accentColor: '#7A131A' }}
                     />
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: appPermsForm[item.key] ? '#1D4ED8' : '#1E293B' }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: appPermsForm[item.key] ? '#7A131A' : '#1E293B' }}>
                         {item.label} {appPermsForm[item.key] ? '✅ [ON]' : '❌ [OFF]'}
                       </div>
                       <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>{item.desc}</div>

@@ -109,7 +109,7 @@ export default function AdminReportsPage() {
 const styles = {
   controlsBar: { display: 'flex', justifyContent: 'space-between', gap: 14, marginBottom: 20, flexWrap: 'wrap' },
   select: { padding: '9px 14px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: 13, background: '#FFFFFF', outline: 'none', fontWeight: 600 },
-  primaryBtn: { background: '#2563EB', color: '#FFFFFF', border: 'none', padding: '10px 18px', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' },
+  primaryBtn: { background: '#7A131A', color: '#FFFFFF', border: 'none', padding: '10px 18px', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' },
   tableCard: { background: '#FFFFFF', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden' },
   table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 },
   thRow: { background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' },

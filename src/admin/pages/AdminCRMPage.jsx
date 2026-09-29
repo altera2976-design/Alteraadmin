@@ -111,9 +111,9 @@ export default function AdminCRMPage({ activeTab = 'leads', leadId = null }) {
       {/* KPI Cards */}
       <div style={styles.summaryStrip}>
         <SummaryBox label="Total Pipeline Leads" val={leads.length} color="#C8102E" />
-        <SummaryBox label="New Inquiries" val={newLeadsCount} color="#3B82F6" />
+        <SummaryBox label="New Inquiries" val={newLeadsCount} color="#7A131A" />
         <SummaryBox label="In Discussion / Design" val={inProgressCount} color="#F59E0B" />
-        <SummaryBox label="Converted Clients" val={convertedCount} color="#10B981" />
+        <SummaryBox label="Converted Clients" val={convertedCount} color="#7A131A" />
       </div>
 
       {/* Detail View Sub-route */}

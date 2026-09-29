@@ -20,7 +20,7 @@ export default function ProtectedRoute({ children, superAdminOnly = false, permi
   const requiresSuperAdmin = superAdminOnly || ['employees', 'payroll', 'salary', 'tracking'].includes(permissionKey);
 
   if (requiresSuperAdmin && !isUserSuperAdmin) {
-    return <Navigate to="/admin-panel" replace />;
+    return <Navigate to="/admin/dashboard" replace />;
   }
 
   if (permissionKey && !isUserSuperAdmin && user?.permissions && user.permissions[permissionKey] === false) {

@@ -404,7 +404,7 @@ export function buildQuotationHtml(q) {
         <tr>
           <td class="font-bold">${escapeHtml(paySummary.paymentStatus.replace("_", " "))}</td>
           <td class="right font-bold">${formatINR(paySummary.totalAmount || grandTotal)}</td>
-          <td class="right font-bold" style="color: #059669;">${formatINR(paySummary.paidAmount)}</td>
+          <td class="right font-bold" style="color: #7A131A;">${formatINR(paySummary.paidAmount)}</td>
           <td class="right font-bold" style="color: #DC2626;">${formatINR(paySummary.remainingAmount)}</td>
         </tr>
       </tbody>
@@ -433,7 +433,7 @@ export function buildQuotationHtml(q) {
               <td><strong>${escapeHtml(tx.transactionId || tx.referenceId || "TXN")}</strong></td>
               <td>${formatDate(tx.transactionDate || tx.createdAt)}</td>
               <td>${escapeHtml(tx.paymentMethod || "UPI")}</td>
-              <td class="center" style="color: #059669; font-weight: 700;">${escapeHtml(tx.status || "Completed")}</td>
+              <td class="center" style="color: #7A131A; font-weight: 700;">${escapeHtml(tx.status || "Completed")}</td>
               <td class="right font-bold">${formatINR(tx.amount)}</td>
             </tr>
           `,
@@ -888,8 +888,8 @@ export function buildQuotationHtml(q) {
         discount > 0
           ? `
       <tr>
-        <td style="color: #059669;">Special Discount:</td>
-        <td class="right" style="color: #059669;">-${formatINR(discount)}</td>
+        <td style="color: #7A131A;">Special Discount:</td>
+        <td class="right" style="color: #7A131A;">-${formatINR(discount)}</td>
       </tr>`
           : ""
       }
@@ -902,7 +902,7 @@ export function buildQuotationHtml(q) {
           ? `
       <tr>
         <td>GST (18%):</td>
-        <td class="right" style="color: #2563EB; font-weight: 600;">As per Actuals</td>
+        <td class="right" style="color: #7A131A; font-weight: 600;">As per Actuals</td>
       </tr>`
           : `
       <tr>

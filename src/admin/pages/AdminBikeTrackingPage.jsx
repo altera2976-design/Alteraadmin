@@ -65,8 +65,8 @@ export default function AdminBikeTrackingPage({ activeTab = 'live' }) {
 
       {/* KPI Cards */}
       <div style={styles.summaryStrip}>
-        <SummaryBox label="Active Live Trips" val={totalActive} color="#10B981" />
-        <SummaryBox label="Completed Trips Logged" val={totalHistoryTrips} color="#2563EB" />
+        <SummaryBox label="Active Live Trips" val={totalActive} color="#7A131A" />
+        <SummaryBox label="Completed Trips Logged" val={totalHistoryTrips} color="#7A131A" />
         <SummaryBox label="Total Distance Travelled" val={`${totalDistanceKm} km`} color="#8B5CF6" />
       </div>
 
@@ -140,7 +140,7 @@ export default function AdminBikeTrackingPage({ activeTab = 'live' }) {
                         {s.stopMeterReading ? ` → Stop: ${s.stopMeterReading} km` : ''}
                       </div>
                     </td>
-                    <td style={{ ...styles.td, fontWeight: 800, color: '#2563EB' }}>
+                    <td style={{ ...styles.td, fontWeight: 800, color: '#7A131A' }}>
                       {(s.distanceKm || 0).toFixed(2)} km
                     </td>
                     <td style={styles.td}>
@@ -178,7 +178,7 @@ function SummaryBox({ label, val, color }) {
 const styles = {
   tabHeader: { display: 'flex', gap: 8, marginBottom: 20 },
   tabBtn: { padding: '10px 18px', borderRadius: 8, border: '1px solid #CBD5E1', background: '#FFFFFF', color: '#475569', fontWeight: 600, fontSize: 13, cursor: 'pointer' },
-  tabBtnActive: { background: '#2563EB', color: '#FFFFFF', borderColor: '#2563EB' },
+  tabBtnActive: { background: '#7A131A', color: '#FFFFFF', borderColor: '#7A131A' },
   summaryStrip: { display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 20 },
   controlsBar: { display: 'flex', justifyContent: 'space-between', gap: 14, marginBottom: 20, flexWrap: 'wrap' },
   searchInput: { padding: '9px 14px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: 13, minWidth: 260, outline: 'none' },

@@ -420,7 +420,7 @@ export default function PayrollPage() {
 
             <div style={{ background: '#0f172a', color: '#fff', padding: '14px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <span style={{ fontWeight: 600 }}>Net Take-Home Salary</span>
-              <span style={{ fontSize: '20px', fontWeight: 800, color: '#10b981' }}>{formatSalary(selectedItem.netSalary)}</span>
+              <span style={{ fontSize: '20px', fontWeight: 800, color: '#7A131A' }}>{formatSalary(selectedItem.netSalary)}</span>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>

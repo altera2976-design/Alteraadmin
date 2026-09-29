@@ -334,7 +334,7 @@ export default function AdminOfferLettersPage({ subRoute = 'list', offerLetterId
               <p style={{ color: '#64748B', fontSize: 13, margin: '2px 0 0 0' }}>Candidate: {selectedOffer.candidateName} • Status: {selectedOffer.status}</p>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => handleSendEmail(selectedOffer._id)} disabled={emailSending} style={{ ...styles.primaryBtn, background: '#059669' }}>
+              <button onClick={() => handleSendEmail(selectedOffer._id)} disabled={emailSending} style={{ ...styles.primaryBtn, background: '#7A131A' }}>
                 ✉️ {emailSending ? 'Sending...' : 'Email to Candidate'}
               </button>
               <button onClick={() => printOfferLetterPdf(selectedOffer)} style={styles.primaryBtn}>🖨️ Download PDF</button>
@@ -519,7 +519,7 @@ export default function AdminOfferLettersPage({ subRoute = 'list', offerLetterId
                         <td style={styles.td}>
                           <div style={{ display: 'flex', gap: 6 }}>
                             <button onClick={() => navigate(`/admin/offer-letters/${o._id}`)} style={styles.actionBtn}>View / PDF</button>
-                            <button onClick={() => handleSendEmail(o._id)} style={{ ...styles.actionBtn, color: '#059669' }}>Email</button>
+                            <button onClick={() => handleSendEmail(o._id)} style={{ ...styles.actionBtn, color: '#7A131A' }}>Email</button>
                             <button onClick={() => navigate(`/admin/offer-letters/${o._id}/edit`)} style={styles.actionBtn}>Edit</button>
                           </div>
                         </td>

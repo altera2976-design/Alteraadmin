@@ -173,7 +173,7 @@ export default function AdministrationPage() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
             {DEFAULT_ROLES.map((r) => (
-              <div key={r.role} className="card" style={{ padding: 18, borderLeft: '4px solid #2563eb' }}>
+              <div key={r.role} className="card" style={{ padding: 18, borderLeft: '4px solid #7A131A' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontWeight: 800, fontSize: 16, color: '#0f172a' }}>{r.name}</span>
                   <span style={styles.badgeRole}>{r.role}</span>
@@ -386,8 +386,8 @@ const styles = {
   },
   tabBtnActive: {
     padding: '8px 16px',
-    background: '#2563eb',
-    border: '1px solid #2563eb',
+    background: '#7A131A',
+    border: '1px solid #7A131A',
     borderRadius: 8,
     fontWeight: 600,
     fontSize: 13,

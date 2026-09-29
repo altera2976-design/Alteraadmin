@@ -11,21 +11,7 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const [currentBg, setCurrentBg] = useState(0);
 
-  const backgrounds = [
-    '/backgrounds/bg1.jpg',
-    '/backgrounds/bg2.jpg',
-    '/backgrounds/bg3.jpg',
-    '/backgrounds/bg4.png'
-  ];
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentBg((prev) => (prev + 1) % backgrounds.length);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -58,23 +44,7 @@ export default function AdminLoginPage() {
 
   return (
     <div style={styles.container}>
-      {/* Background Carousel */}
-      {backgrounds.map((bg, index) => (
-        <div
-          key={bg}
-          style={{
-            ...styles.bgImage,
-            backgroundImage: `url(${bg})`,
-            opacity: index === currentBg ? 1 : 0,
-            transform: index === currentBg 
-              ? 'translateX(0) scale(1)' 
-              : index < currentBg 
-                ? 'translateX(-50px) scale(1.05)' 
-                : 'translateX(50px) scale(1.05)'
-          }}
-        />
-      ))}
-      {/* Dark Overlay */}
+      {/* Light Overlay */}
       <div style={styles.overlay} />
 
       <div style={styles.card}>
@@ -124,7 +94,7 @@ export default function AdminLoginPage() {
 
         <div style={styles.footer}>
           <span>Super Admin account? </span>
-          <a href="/login" style={{ color: '#93C5FD', textDecoration: 'none', fontWeight: 600 }}>
+          <a href="/login" style={{ color: '#2563EB', textDecoration: 'none', fontWeight: 600 }}>
             Super Admin Portal
           </a>
         </div>
@@ -139,7 +109,7 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: '#000000',
+    background: '#FFFFFF',
     padding: 20,
     fontFamily: "'Inter', system-ui, sans-serif",
     position: 'relative',
@@ -162,19 +132,17 @@ const styles = {
     left: 0,
     width: '100%',
     height: '100%',
-    backgroundColor: 'rgba(0, 0, 0, 0.45)', // Subtle dark overlay
+    backgroundColor: '#F8FAFC',
     zIndex: 2,
   },
   card: {
     width: '100%',
     maxWidth: 440,
-    background: 'rgba(25, 30, 40, 0.4)',
-    backdropFilter: 'blur(12px)',
-    WebkitBackdropFilter: 'blur(12px)',
-    border: '1px solid rgba(255, 255, 255, 0.15)',
+    background: '#FFFFFF',
+    border: '1px solid #E2E8F0',
     borderRadius: 24,
     padding: '40px 32px',
-    boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+    boxShadow: '0 10px 40px rgba(0,0,0,0.08)',
     position: 'relative',
     zIndex: 10,
   },
@@ -196,12 +164,12 @@ const styles = {
   title: {
     fontSize: 24,
     fontWeight: 800,
-    color: '#FFFFFF',
+    color: '#0F172A',
     margin: '0 0 6px 0',
   },
   subtitle: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.7)',
+    color: '#64748B',
     margin: 0,
     lineHeight: 1.5,
   },
@@ -230,14 +198,14 @@ const styles = {
   label: {
     fontSize: 12.5,
     fontWeight: 600,
-    color: '#FFFFFF',
+    color: '#0F172A',
   },
   input: {
     padding: '11px 14px',
     borderRadius: 8,
-    border: '1px solid rgba(255, 255, 255, 0.2)',
-    background: 'rgba(255, 255, 255, 0.1)',
-    color: '#FFFFFF',
+    border: '1px solid #E2E8F0',
+    background: '#F8FAFC',
+    color: '#0F172A',
     fontSize: 14,
     outline: 'none',
     transition: 'all 0.2s',
@@ -259,6 +227,6 @@ const styles = {
     marginTop: 24,
     textAlign: 'center',
     fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: '#64748B',
   },
 };

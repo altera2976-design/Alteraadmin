@@ -389,7 +389,7 @@ export function buildOfferLetterHtml(offer) {
         </tr>
         <tr>
           <td class="label-cell">Annual Total CTC Package</td>
-          <td class="val-cell" style="color: #2563EB; font-weight: 800;">${annualCtcStr} / annum</td>
+          <td class="val-cell" style="color: #7A131A; font-weight: 800;">${annualCtcStr} / annum</td>
         </tr>
         <tr>
           <td class="label-cell">Work Location</td>

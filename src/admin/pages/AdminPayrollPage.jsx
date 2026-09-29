@@ -152,7 +152,7 @@ export default function AdminPayrollPage({ activeTab = 'overview', payrollId = n
             <Box label="Present Days" val={selectedPayrollDoc.presentDays || 0} />
             <Box label="Absent Days" val={selectedPayrollDoc.absentDays || 0} />
             <Box label="Late Days" val={selectedPayrollDoc.lateDays || 0} />
-            <Box label="Bonuses" val={`₹${(selectedPayrollDoc.bonus || 0).toLocaleString('en-IN')}`} color="#10B981" />
+            <Box label="Bonuses" val={`₹${(selectedPayrollDoc.bonus || 0).toLocaleString('en-IN')}`} color="#7A131A" />
             <Box label="Deductions" val={`₹${(selectedPayrollDoc.deductions || 0).toLocaleString('en-IN')}`} color="#EF4444" />
             <Box label="Net Payable Salary" val={`₹${(selectedPayrollDoc.netSalary || selectedPayrollDoc.totalSalary || 0).toLocaleString('en-IN')}`} color="#C8102E" isHighlight />
           </div>
@@ -165,7 +165,7 @@ export default function AdminPayrollPage({ activeTab = 'overview', payrollId = n
           {/* Header Summary Cards */}
           <div style={styles.summaryStrip}>
             <SummaryBox label="Total Payroll Cost" val={`₹${totalPayrollCost.toLocaleString('en-IN')}`} color="#C8102E" />
-            <SummaryBox label="Employees Processed" val={payrolls.length} color="#10B981" />
+            <SummaryBox label="Employees Processed" val={payrolls.length} color="#7A131A" />
             <SummaryBox label="Selected Month" val={selectedMonth} color="#8B5CF6" />
           </div>
 
@@ -204,7 +204,7 @@ export default function AdminPayrollPage({ activeTab = 'overview', payrollId = n
                         </td>
                         <td style={styles.td}>₹{(p.baseSalary || 0).toLocaleString('en-IN')}</td>
                         <td style={styles.td}>{p.presentDays || 0} / {p.workingDays || 30} days</td>
-                        <td style={{ ...styles.td, color: '#10B981', fontWeight: 600 }}>+₹{(p.bonus || 0).toLocaleString('en-IN')}</td>
+                        <td style={{ ...styles.td, color: '#7A131A', fontWeight: 600 }}>+₹{(p.bonus || 0).toLocaleString('en-IN')}</td>
                         <td style={{ ...styles.td, color: '#EF4444', fontWeight: 600 }}>-₹{(p.deductions || 0).toLocaleString('en-IN')}</td>
                         <td style={{ ...styles.td, fontWeight: 800, color: '#C8102E' }}>₹{(p.netSalary || p.totalSalary || 0).toLocaleString('en-IN')}</td>
                         <td style={styles.td}>

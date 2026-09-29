@@ -8,7 +8,7 @@ export default function AdminProtectedRoute({ children, permissionKey = null, al
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: '#F4F6FA' }}>
-        <div style={{ width: 40, height: 40, border: '4px solid #E2E8F0', borderTopColor: '#2563EB', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+        <div style={{ width: 40, height: 40, border: '4px solid #E2E8F0', borderTopColor: '#7A131A', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
       </div>
     );
   }
