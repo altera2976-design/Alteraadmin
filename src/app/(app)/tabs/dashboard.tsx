@@ -439,31 +439,47 @@ export default function DashboardScreen() {
                     <Text style={styles.salaryCardTitle}>My Salary &amp; Overtime</Text>
                     <Text style={styles.salaryCardSub}>Monthly Base + Overtime Earnings</Text>
                   </View>
-                  <TouchableOpacity onPress={() => router.push('/(app)/salary')}>
-                    <Text style={styles.seeAllText}>View Payslips</Text>
-                  </TouchableOpacity>
+                  {(user?.accessStatus === 'APPROVED' && user?.salaryStatus !== 'NOT_SET') && (
+                    <TouchableOpacity onPress={() => router.push('/(app)/salary')}>
+                      <Text style={styles.seeAllText}>View Payslips</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
 
-                <View style={styles.salaryRow}>
-                  <View style={styles.salaryItem}>
-                    <Text style={styles.salaryItemLabel}>Base Salary</Text>
-                    <Text style={styles.salaryItemVal}>₹{Number(dashboardData?.mySalary?.basicSalary || user?.salary || 0).toLocaleString('en-IN')}</Text>
+                {(!user?.accessStatus || user?.accessStatus === 'PENDING' || user?.salaryStatus === 'NOT_SET') ? (
+                  <View style={{ paddingVertical: 15, alignItems: 'center' }}>
+                    <Ionicons name="time-outline" size={32} color="#9CA3AF" style={{ marginBottom: 8 }} />
+                    <Text style={{ color: '#4B5563', fontSize: 14, textAlign: 'center', fontWeight: '500' }}>
+                      Pending Admin Approval
+                    </Text>
+                    <Text style={{ color: '#6B7280', fontSize: 12, textAlign: 'center', marginTop: 4 }}>
+                      Your salary details will appear here once the admin sets them up.
+                    </Text>
                   </View>
-                  <View style={styles.salaryItem}>
-                    <Text style={styles.salaryItemLabel}>Overtime</Text>
-                    <Text style={[styles.salaryItemVal, { color: '#D97706' }]}>{dashboardData?.mySalary?.overtimeHours || 0} hrs</Text>
-                  </View>
-                  <View style={styles.salaryItem}>
-                    <Text style={styles.salaryItemLabel}>OT Payment</Text>
-                    <Text style={[styles.salaryItemVal, { color: '#10B981' }]}>+₹{Number(dashboardData?.mySalary?.overtimePayment || 0).toLocaleString('en-IN')}</Text>
-                  </View>
-                </View>
+                ) : (
+                  <>
+                    <View style={styles.salaryRow}>
+                      <View style={styles.salaryItem}>
+                        <Text style={styles.salaryItemLabel}>Base Salary</Text>
+                        <Text style={styles.salaryItemVal}>₹{Number(dashboardData?.mySalary?.basicSalary || user?.salary || 0).toLocaleString('en-IN')}</Text>
+                      </View>
+                      <View style={styles.salaryItem}>
+                        <Text style={styles.salaryItemLabel}>Overtime</Text>
+                        <Text style={[styles.salaryItemVal, { color: '#D97706' }]}>{dashboardData?.mySalary?.overtimeHours || 0} hrs</Text>
+                      </View>
+                      <View style={styles.salaryItem}>
+                        <Text style={styles.salaryItemLabel}>OT Payment</Text>
+                        <Text style={[styles.salaryItemVal, { color: '#10B981' }]}>+₹{Number(dashboardData?.mySalary?.overtimePayment || 0).toLocaleString('en-IN')}</Text>
+                      </View>
+                    </View>
 
-                <View style={styles.salaryTotalDivider} />
-                <View style={styles.salaryTotalRow}>
-                  <Text style={styles.salaryTotalLabel}>Total Payable Salary</Text>
-                  <Text style={styles.salaryTotalVal}>₹{Number(dashboardData?.mySalary?.netSalary || user?.salary || 0).toLocaleString('en-IN')}</Text>
-                </View>
+                    <View style={styles.salaryTotalDivider} />
+                    <View style={styles.salaryTotalRow}>
+                      <Text style={styles.salaryTotalLabel}>Total Payable Salary</Text>
+                      <Text style={styles.salaryTotalVal}>₹{Number(dashboardData?.mySalary?.netSalary || user?.salary || 0).toLocaleString('en-IN')}</Text>
+                    </View>
+                  </>
+                )}
               </View>
             </View>
 
