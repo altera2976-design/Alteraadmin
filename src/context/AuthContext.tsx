@@ -10,6 +10,7 @@ import {
 import { AppState, AppStateStatus } from "react-native";
 import { STORAGE_KEYS } from "../constants/config";
 import { authService, User, EmployeeAppPermissions } from "../services/authService";
+import { getSocket } from "../services/socket";
 
 interface AuthContextType {
   user: User | null;
@@ -60,11 +61,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (res?.success && res.permissions) {
         setUser((prevUser) => {
           if (!prevUser) return null;
-          const updatedUser = {
+          const updatedUser: User = {
             ...prevUser,
             employeeAppPermissions: res.permissions,
-            accessStatus: res.accessStatus || prevUser.accessStatus,
-            status: res.status || prevUser.status,
+            accessStatus: (res.accessStatus as User['accessStatus']) || prevUser.accessStatus,
+            status: (res.status as User['status']) || prevUser.status,
           };
           SecureStore.setItemAsync(
             STORAGE_KEYS.USER,
@@ -110,7 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     restore();
   }, []);
 
-  // Auto-refresh permissions when app returns to foreground
+  // Auto-refresh permissions when app returns to foreground and listen for live socket events
   useEffect(() => {
     if (!token) return;
     refreshPermissions();
@@ -121,8 +122,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
+    const socket = getSocket();
+    const handlePermissionsUpdated = (data: { employeeId: string; customId: string; employeeAppPermissions: EmployeeAppPermissions }) => {
+      setUser((prevUser) => {
+        if (!prevUser || (prevUser._id !== data.employeeId && prevUser.employeeId !== data.customId)) {
+          return prevUser;
+        }
+        console.log("⚡ Live Update: App Permissions changed by Admin. Syncing...");
+        const updatedUser: User = {
+          ...prevUser,
+          employeeAppPermissions: data.employeeAppPermissions,
+        };
+        SecureStore.setItemAsync(
+          STORAGE_KEYS.USER,
+          JSON.stringify(updatedUser)
+        ).catch(() => {});
+        return updatedUser;
+      });
+    };
+
+    socket.on("employee_permissions_updated", handlePermissionsUpdated);
+
     return () => {
       subscription.remove();
+      socket.off("employee_permissions_updated", handlePermissionsUpdated);
     };
   }, [token, refreshPermissions]);
 

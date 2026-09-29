@@ -245,7 +245,9 @@ export const quotationApi = {
   createQuotation: async (
     payload: any
   ): Promise<{ success: boolean; message: string; quotation: QuotationDoc }> => {
-    const res = await api.post('/quotations', payload);
+    const isFormData = payload instanceof FormData;
+    const config = isFormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {};
+    const res = await api.post('/quotations', payload, config);
     return res.data;
   },
 
@@ -256,7 +258,9 @@ export const quotationApi = {
     id: string,
     payload: any
   ): Promise<{ success: boolean; message: string; quotation: QuotationDoc }> => {
-    const res = await api.put(`/quotations/${id}`, payload);
+    const isFormData = payload instanceof FormData;
+    const config = isFormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {};
+    const res = await api.put(`/quotations/${id}`, payload, config);
     return res.data;
   },
 

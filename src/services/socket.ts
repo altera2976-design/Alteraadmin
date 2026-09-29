@@ -9,8 +9,10 @@ export const getSocket = () => {
     console.log("🔗 Attempting Socket.IO connection to:", socketUrl);
     socket = io(socketUrl, {
       autoConnect: true,
-      transports: ["polling", "websocket"], // Ensure fallback from polling to WS
-      forceNew: true,
+      transports: ["websocket", "polling"], // Prioritize WebSocket to prevent XHR polling errors on React Native / Render
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 2000,
     });
 
     socket.on("connect", () => {

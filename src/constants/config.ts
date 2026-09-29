@@ -6,7 +6,7 @@ import Constants from "expo-constants";
  */
 const extraApiUrl = Constants.expoConfig?.extra?.apiUrl;
 
-let apiUrl = 'http://192.168.1.52:5001/api';
+let apiUrl = 'http://192.168.1.36:5001/api';
 
 if (__DEV__) {
   if (process.env.EXPO_PUBLIC_API_URL) {
@@ -23,7 +23,7 @@ if (__DEV__) {
       const ip = hostUri.split(':')[0];
       apiUrl = `http://${ip}:5001/api`;
     } else {
-      apiUrl = 'http://192.168.1.52:5001/api';
+      apiUrl = 'http://192.168.1.36:5001/api';
     }
   }
 } else {
@@ -37,7 +37,12 @@ if (__DEV__) {
   }
 
   // Force HTTPS in production if unencrypted HTTP was configured
-  if (apiUrl.startsWith('http://') && !apiUrl.includes('localhost') && !apiUrl.includes('127.0.0.1')) {
+  if (
+    apiUrl.startsWith('http://') &&
+    !apiUrl.includes('localhost') &&
+    !apiUrl.includes('127.0.0.1') &&
+    !apiUrl.includes('192.168.')
+  ) {
     apiUrl = apiUrl.replace('http://', 'https://');
   }
 }

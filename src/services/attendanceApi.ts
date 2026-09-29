@@ -30,6 +30,8 @@ export interface AttendanceRecord {
   totalHours?: number;
   reviewNotes?: string;
   distance?: number;
+  dailyUpdate?: string;
+  otHours?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -52,6 +54,8 @@ export interface DailyEmployeeAttendance {
   distance: number | null;
   totalHours: number | null;
   reviewNotes: string | null;
+  dailyUpdate?: string;
+  otHours?: number;
 }
 
 export interface GeofenceConfig {

@@ -12,12 +12,14 @@ import {
   Modal,
   Alert,
   Linking,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as WebBrowser from 'expo-web-browser';
 import * as SecureStore from 'expo-secure-store';
+import * as IntentLauncher from 'expo-intent-launcher';
 import { THEME } from '../../../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../../context/AuthContext';
@@ -33,7 +35,7 @@ export default function ProjectsScreen() {
   const isAdmin = user?.role === 'ADMIN';
   const hasTaskPermission = isAdmin || user?.employeeAppPermissions?.tasks === true;
 
-  const [activeTab, setActiveTab] = useState<'projects' | 'tasks'>('projects');
+  const [activeTab, setActiveTab] = useState<'projects' | 'tasks' | 'history'>('projects');
   const [projects, setProjects] = useState<Project[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -238,13 +240,35 @@ Response status: ${downloadRes.status}
 Local file URI: ${downloadRes.uri}`);
 
       if (downloadRes.status === 200) {
+        if (Platform.OS === 'android') {
+          try {
+            const contentUri = await FileSystem.getContentUriAsync(downloadRes.uri);
+            await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+              data: contentUri,
+              flags: 1,
+              type: isPdf ? 'application/pdf' : (att?.mimeType || att?.fileType || '*/*'),
+            });
+            return;
+          } catch (e: any) {
+            console.log('IntentLauncher failed, falling back to Sharing', e);
+            if (e.message && e.message.includes('NoActivityFound')) {
+               Alert.alert('No PDF Viewer', 'No app found to open PDFs. Please install a PDF viewer from the Play Store.');
+               return;
+            }
+          }
+        }
+
         const canShare = await Sharing.isAvailableAsync();
         if (canShare) {
-          await Sharing.shareAsync(downloadRes.uri, {
-            mimeType: isPdf ? 'application/pdf' : (att?.mimeType || att?.fileType || 'application/octet-stream'),
-            dialogTitle: `Open ${rawName}`,
-            UTI: isPdf ? 'com.adobe.pdf' : undefined,
-          });
+          try {
+            await Sharing.shareAsync(downloadRes.uri, {
+              mimeType: isPdf ? 'application/pdf' : (att?.mimeType || att?.fileType || 'application/octet-stream'),
+              dialogTitle: `Open ${rawName}`,
+              UTI: isPdf ? 'com.adobe.pdf' : undefined,
+            });
+          } catch (shareErr) {
+            Alert.alert('Cannot Open File', 'There was an error opening the file. You may need to install an app that supports this file format.');
+          }
         } else {
           await WebBrowser.openBrowserAsync(downloadRes.uri);
         }
@@ -325,6 +349,9 @@ Local file URI: ${downloadRes.uri}`);
     }
   };
 
+  const activeProjects = projects.filter(p => p.status !== 'Completed');
+  const historyProjects = projects.filter(p => p.status === 'Completed');
+
   return (
     <View style={styles.root}>
       {/* Search and Filter Header */}
@@ -361,40 +388,50 @@ Local file URI: ${downloadRes.uri}`);
         </ScrollView>
       </View>
 
-      {/* Tab Switcher: Projects vs My Tasks */}
-      <View style={styles.tabToggleRow}>
-        <TouchableOpacity
-          style={[styles.tabToggleBtn, activeTab === 'projects' && styles.tabToggleBtnActive]}
-          onPress={() => setActiveTab('projects')}
-        >
-          <Ionicons name="briefcase-outline" size={16} color={activeTab === 'projects' ? '#fff' : '#555'} />
-          <Text style={[styles.tabToggleText, activeTab === 'projects' && styles.tabToggleTextActive]}>
-            Projects ({projects.length})
-          </Text>
-        </TouchableOpacity>
+            {/* Tab Switcher: Projects vs My Tasks vs History */}
+            <View style={styles.tabToggleRow}>
+              <TouchableOpacity
+                style={[styles.tabToggleBtn, activeTab === 'projects' && styles.tabToggleBtnActive]}
+                onPress={() => setActiveTab('projects')}
+              >
+                <Ionicons name="briefcase-outline" size={16} color={activeTab === 'projects' ? '#fff' : '#555'} />
+                <Text style={[styles.tabToggleText, activeTab === 'projects' && styles.tabToggleTextActive]}>
+                  Projects ({activeProjects.length})
+                </Text>
+              </TouchableOpacity>
 
-        {hasTaskPermission && (
-          <TouchableOpacity
-            style={[styles.tabToggleBtn, activeTab === 'tasks' && styles.tabToggleBtnActive]}
-            onPress={() => setActiveTab('tasks')}
-          >
-            <Ionicons name="checkbox-outline" size={16} color={activeTab === 'tasks' ? '#fff' : '#555'} />
-            <Text style={[styles.tabToggleText, activeTab === 'tasks' && styles.tabToggleTextActive]}>
-              My Tasks ({tasks.length})
-            </Text>
-          </TouchableOpacity>
-        )}
-      </View>
+              {hasTaskPermission && (
+                <TouchableOpacity
+                  style={[styles.tabToggleBtn, activeTab === 'tasks' && styles.tabToggleBtnActive]}
+                  onPress={() => setActiveTab('tasks')}
+                >
+                  <Ionicons name="checkbox-outline" size={16} color={activeTab === 'tasks' ? '#fff' : '#555'} />
+                  <Text style={[styles.tabToggleText, activeTab === 'tasks' && styles.tabToggleTextActive]}>
+                    Tasks ({tasks.length})
+                  </Text>
+                </TouchableOpacity>
+              )}
 
-      {/* Main Content View: Projects or Tasks */}
-      {loading && !refreshing ? (
-        <View style={styles.centerBox}>
-          <ActivityIndicator size="large" color={THEME.colors.primary} />
-          <Text style={styles.loadingText}>
-            {activeTab === 'projects' ? 'Loading Projects...' : 'Loading Assigned Tasks...'}
-          </Text>
-        </View>
-      ) : activeTab === 'projects' ? (
+              <TouchableOpacity
+                style={[styles.tabToggleBtn, activeTab === 'history' && styles.tabToggleBtnActive]}
+                onPress={() => setActiveTab('history')}
+              >
+                <Ionicons name="time-outline" size={16} color={activeTab === 'history' ? '#fff' : '#555'} />
+                <Text style={[styles.tabToggleText, activeTab === 'history' && styles.tabToggleTextActive]}>
+                  History ({historyProjects.length})
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Main Content View: Projects or Tasks or History */}
+            {loading && !refreshing ? (
+              <View style={styles.centerBox}>
+                <ActivityIndicator size="large" color={THEME.colors.primary} />
+                <Text style={styles.loadingText}>
+                  {activeTab === 'tasks' ? 'Loading Tasks...' : 'Loading Projects...'}
+                </Text>
+              </View>
+            ) : activeTab === 'projects' ? (
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
@@ -405,11 +442,11 @@ Local file URI: ${downloadRes.uri}`);
               {isAdmin ? 'All Projects' : 'My Assigned Projects'}
             </Text>
             <Text style={styles.listHeaderCount}>
-              {projects.length} {projects.length === 1 ? 'Project' : 'Projects'}
+              {activeProjects.length} {activeProjects.length === 1 ? 'Project' : 'Projects'}
             </Text>
           </View>
 
-          {projects.length === 0 ? (
+          {activeProjects.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Ionicons name="briefcase-outline" size={54} color="#ccc" />
               <Text style={styles.emptyTitle}>No Projects Found</Text>
@@ -420,7 +457,7 @@ Local file URI: ${downloadRes.uri}`);
               </Text>
             </View>
           ) : (
-            projects.map((project) => {
+            activeProjects.map((project) => {
               const myRole = project.myRole || (project.assignedTeam?.find(m => m.userId === user?._id)?.role);
               return (
                 <TouchableOpacity
@@ -529,7 +566,7 @@ Local file URI: ${downloadRes.uri}`);
             })
           )}
         </ScrollView>
-      ) : (
+      ) : activeTab === 'tasks' ? (
         /* ── MY ASSIGNED TASKS VIEW ─────────────────────────────────────── */
         <ScrollView
           style={styles.scroll}
@@ -686,7 +723,62 @@ Local file URI: ${downloadRes.uri}`);
             })
           )}
         </ScrollView>
-      )}
+      ) : activeTab === 'history' ? (
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[THEME.colors.primary]} />}
+        >
+          <View style={styles.listHeaderRow}>
+            <Text style={styles.listHeaderTitle}>Project History</Text>
+            <Text style={styles.listHeaderCount}>
+              {historyProjects.length} Completed
+            </Text>
+          </View>
+
+          {historyProjects.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="time-outline" size={54} color="#ccc" />
+              <Text style={styles.emptyTitle}>No History Found</Text>
+              <Text style={styles.emptySub}>
+                When projects are marked as Completed, they will appear here.
+              </Text>
+            </View>
+          ) : (
+            historyProjects.map((project) => (
+              <TouchableOpacity
+                key={project._id}
+                style={styles.card}
+                activeOpacity={0.85}
+                onPress={() => router.push({ pathname: '/(app)/project-detail', params: { id: project._id } })}
+              >
+                <View style={styles.cardBody}>
+                  <View style={styles.headerRow}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={styles.title} numberOfLines={1}>{project.name}</Text>
+                    </View>
+                    <View style={[styles.statusBadge, { backgroundColor: '#10b981' }]}>
+                      <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }}>
+                        Completed
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Text style={styles.client}>
+                    <Ionicons name="person-outline" size={12} color="#888" /> {project.client}
+                  </Text>
+                  
+                  <View style={styles.footerRow}>
+                    <Text style={{ fontSize: 12, color: '#666', fontWeight: '500' }}>
+                      Completed: {(project.actualCompletionDate || project.updatedAt) ? new Date(project.actualCompletionDate || project.updatedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
+        </ScrollView>
+      ) : null}
 
       {/* Admin Floating Action Button: Create Project */}
       {isAdmin && (
@@ -933,8 +1025,8 @@ Local file URI: ${downloadRes.uri}`);
               {/* Attachments Section */}
               {selectedTask?.pdfUrl ? (
                 <TouchableOpacity
-                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 16, padding: 12, backgroundColor: '#2563eb', borderRadius: 8 }}
-                  onPress={() => Linking.openURL(selectedTask.pdfUrl!).catch(() => Alert.alert('Error', 'Could not open Task PDF'))}
+                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 16, padding: 12, backgroundColor: THEME.colors.primary, borderRadius: 8 }}
+                  onPress={() => handleOpenAttachment({ fileUrl: selectedTask.pdfUrl, mimeType: 'application/pdf', originalName: 'Task_Document.pdf' })}
                 >
                   <Ionicons name="document-text" size={18} color="#fff" />
                   <Text style={{ fontSize: 14, color: '#fff', fontWeight: '700' }}>
@@ -1367,7 +1459,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 6,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#FFF1F2',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,

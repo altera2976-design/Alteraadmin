@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as FileSystem from "expo-file-system/legacy";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -19,6 +20,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { API_URL } from "../../constants/config";
 import { useAuth } from "../../context/AuthContext";
 import {
   quotationApi,
@@ -353,7 +355,9 @@ export default function QuotationScreen() {
   const [items, setItems] = useState<QuotationItemDoc[]>([]);
 
   // Step 3: Standalone Accessories
-  const [standaloneAccessories, setStandaloneAccessories] = useState<QuotationStandaloneAccessory[]>([]);
+  const [standaloneAccessories, setStandaloneAccessories] = useState<
+    QuotationStandaloneAccessory[]
+  >([]);
   const [stAccName, setStAccName] = useState("");
   const [stAccDesc, setStAccDesc] = useState("");
   const [stAccImage, setStAccImage] = useState("");
@@ -364,19 +368,15 @@ export default function QuotationScreen() {
   const handlePickAccImage = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
+        mediaTypes: ["images"],
         allowsEditing: true,
         quality: 0.6,
-        base64: true,
+        base64: false,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
-        if (asset.base64) {
-          setStAccImage(`data:image/jpeg;base64,${asset.base64}`);
-        } else if (asset.uri) {
-          setStAccImage(asset.uri);
-        }
+        setStAccImage(asset.uri);
       }
     } catch (error) {
       Alert.alert("Image Error", "Could not pick image.");
@@ -570,8 +570,10 @@ export default function QuotationScreen() {
     const currentDraftAmt = draftBaseAmt + draftAccAmt;
 
     const standaloneAccTotal = standaloneAccessories.reduce(
-      (sum, a) => sum + (Number(a.total) || (Number(a.quantity) || 1) * (Number(a.price) || 0)),
-      0
+      (sum, a) =>
+        sum +
+        (Number(a.total) || (Number(a.quantity) || 1) * (Number(a.price) || 0)),
+      0,
     );
 
     const rawSubtotal = addedSub + currentDraftAmt + standaloneAccTotal;
@@ -922,7 +924,6 @@ export default function QuotationScreen() {
       accessories: [],
       remarks: itemRemarks.trim(),
       scope: "COMPANY_SCOPE",
-      costVariationNote: "Cost may vary as per Design or Measurements.",
     };
 
     setItems((prev) => [...prev, newItem]);
@@ -1044,7 +1045,6 @@ export default function QuotationScreen() {
       accessories: itemAccessories,
       remarks: itemRemarks.trim(),
       scope: "COMPANY_SCOPE",
-      costVariationNote: "Cost may vary as per Design or Measurements.",
     };
 
     setItems((prev) => [...prev, newItem]);
@@ -1184,7 +1184,6 @@ export default function QuotationScreen() {
         accessories: itemAccessories,
         remarks: itemRemarks.trim(),
         scope: "COMPANY_SCOPE",
-        costVariationNote: "Cost may vary as per Design or Measurements.",
       };
       currentItems = [autoItem];
       setItems(currentItems);
@@ -1208,7 +1207,43 @@ export default function QuotationScreen() {
 
     setIsActionLoading(true);
     try {
-      const payload = {
+      const MAX_SIZE = 50 * 1024 * 1024; // 50MB
+      let hasFiles = false;
+      const formData = new FormData();
+      const updatedStandaloneAccessories = [...standaloneAccessories];
+
+      // File size validation and processing
+      for (let i = 0; i < updatedStandaloneAccessories.length; i++) {
+        const acc = updatedStandaloneAccessories[i];
+        if (acc.image && !acc.image.startsWith("http")) {
+          try {
+            const fileInfo = await FileSystem.getInfoAsync(acc.image);
+            if (fileInfo.exists && fileInfo.size > MAX_SIZE) {
+              Alert.alert(
+                "File Too Large",
+                `The image for accessory "${acc.name}" exceeds the maximum allowed size of 50MB.`,
+              );
+              setIsActionLoading(false);
+              return;
+            }
+            hasFiles = true;
+            const filename = acc.image.split("/").pop() || `image_${i}.jpg`;
+            // Append file with unique ID string to map it on the backend
+            formData.append("images", {
+              uri: acc.image,
+              name: `idx_${i}_${filename}`,
+              type: "image/jpeg",
+            } as any);
+
+            // Clear out local URI from the payload JSON string, it will be populated by the backend
+            updatedStandaloneAccessories[i].image = "";
+          } catch (e) {
+            console.log("Error checking file size", e);
+          }
+        }
+      }
+
+      const payloadObj = {
         client: {
           name: clientName.trim(),
           company: clientCompany.trim(),
@@ -1222,7 +1257,7 @@ export default function QuotationScreen() {
         projectType,
         siteLocation: siteLocation.trim() || clientAddress.trim(),
         items: currentItems,
-        standaloneAccessories,
+        standaloneAccessories: updatedStandaloneAccessories,
         pricing: {
           handlingFeePercent: parseFloat(handlingPercent) || 0,
           designFeePercent: parseFloat(designPercent) || 0,
@@ -1236,10 +1271,16 @@ export default function QuotationScreen() {
         notes: quotationNotes.trim(),
       };
 
+      let finalPayload: any = payloadObj;
+      if (hasFiles) {
+        formData.append("data", JSON.stringify(payloadObj));
+        finalPayload = formData;
+      }
+
       if (editingQuotationId) {
         const res = await quotationApi.updateQuotation(
           editingQuotationId,
-          payload,
+          finalPayload,
         );
         if (res?.success) {
           Alert.alert("Quotation Updated", res.message);
@@ -1247,7 +1288,7 @@ export default function QuotationScreen() {
           loadData();
         }
       } else {
-        const res = await quotationApi.createQuotation(payload);
+        const res = await quotationApi.createQuotation(finalPayload);
         if (res?.success) {
           Alert.alert(
             "Quotation Created",
@@ -1725,14 +1766,24 @@ export default function QuotationScreen() {
                         {formatINR(selectedQuotation.pricing?.subtotal)}
                       </Text>
                     </View>
-                    {selectedQuotation.standaloneAccessories && selectedQuotation.standaloneAccessories.length > 0 && (
-                      <View style={styles.priceRow}>
-                        <Text style={styles.priceLabel}>Accessories Total:</Text>
-                        <Text style={styles.priceVal}>
-                          {formatINR(selectedQuotation.pricing?.accessoriesTotal || selectedQuotation.standaloneAccessories.reduce((s, a) => s + (a.total || a.quantity * a.price), 0))}
-                        </Text>
-                      </View>
-                    )}
+                    {selectedQuotation.standaloneAccessories &&
+                      selectedQuotation.standaloneAccessories.length > 0 && (
+                        <View style={styles.priceRow}>
+                          <Text style={styles.priceLabel}>
+                            Accessories Total:
+                          </Text>
+                          <Text style={styles.priceVal}>
+                            {formatINR(
+                              selectedQuotation.pricing?.accessoriesTotal ||
+                                selectedQuotation.standaloneAccessories.reduce(
+                                  (s, a) =>
+                                    s + (a.total || a.quantity * a.price),
+                                  0,
+                                ),
+                            )}
+                          </Text>
+                        </View>
+                      )}
                     <View style={styles.priceRow}>
                       <Text style={styles.priceLabel}>
                         Handling Charges (
@@ -1755,9 +1806,13 @@ export default function QuotationScreen() {
                     </View>
                     {(selectedQuotation.pricing?.transportCharges || 0) > 0 && (
                       <View style={styles.priceRow}>
-                        <Text style={styles.priceLabel}>Transportation Charges:</Text>
+                        <Text style={styles.priceLabel}>
+                          Transportation Charges:
+                        </Text>
                         <Text style={styles.priceVal}>
-                          {formatINR(selectedQuotation.pricing?.transportCharges)}
+                          {formatINR(
+                            selectedQuotation.pricing?.transportCharges,
+                          )}
                         </Text>
                       </View>
                     )}
@@ -2112,39 +2167,88 @@ export default function QuotationScreen() {
                   </View>
 
                   {/* Standalone Accessories List in Detail Modal */}
-                  {selectedQuotation.standaloneAccessories && selectedQuotation.standaloneAccessories.length > 0 && (
-                    <View style={styles.sectionBox}>
-                      <Text style={styles.boxTitle}>
-                        Accessories ({selectedQuotation.standaloneAccessories.length})
-                      </Text>
-                      {selectedQuotation.standaloneAccessories.map((acc, idx) => (
-                        <View key={idx} style={[styles.itemCard, { flexDirection: "row", alignItems: "center", gap: 10 }]}>
-                          {acc.image ? (
-                            <Image
-                              source={{ uri: acc.image }}
-                              style={{ width: 50, height: 50, borderRadius: 6, borderWidth: 1, borderColor: "#CBD5E1" }}
-                            />
-                          ) : (
-                            <View style={{ width: 50, height: 50, borderRadius: 6, backgroundColor: "#F1F5F9", alignItems: "center", justifyContent: "center" }}>
-                              <Ionicons name="cube-outline" size={20} color="#94A3B8" />
+                  {selectedQuotation.standaloneAccessories &&
+                    selectedQuotation.standaloneAccessories.length > 0 && (
+                      <View style={styles.sectionBox}>
+                        <Text style={styles.boxTitle}>
+                          Accessories (
+                          {selectedQuotation.standaloneAccessories.length})
+                        </Text>
+                        {selectedQuotation.standaloneAccessories.map(
+                          (acc, idx) => (
+                            <View
+                              key={idx}
+                              style={[
+                                styles.itemCard,
+                                {
+                                  flexDirection: "row",
+                                  alignItems: "center",
+                                  gap: 10,
+                                },
+                              ]}
+                            >
+                              {acc.image ? (
+                                <Image
+                                  source={{
+                                    uri: acc.image.startsWith("/")
+                                      ? `${API_URL.replace(/\/api\/?$/, "")}${acc.image}`
+                                      : acc.image,
+                                  }}
+                                  style={{
+                                    width: 50,
+                                    height: 50,
+                                    borderRadius: 6,
+                                    borderWidth: 1,
+                                    borderColor: "#CBD5E1",
+                                  }}
+                                />
+                              ) : (
+                                <View
+                                  style={{
+                                    width: 50,
+                                    height: 50,
+                                    borderRadius: 6,
+                                    backgroundColor: "#F1F5F9",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                  }}
+                                >
+                                  <Ionicons
+                                    name="cube-outline"
+                                    size={20}
+                                    color="#94A3B8"
+                                  />
+                                </View>
+                              )}
+                              <View style={{ flex: 1 }}>
+                                <Text style={styles.itemCardName}>
+                                  {acc.name}
+                                </Text>
+                                {acc.description ? (
+                                  <Text style={styles.itemCardSpecs}>
+                                    {acc.description}
+                                  </Text>
+                                ) : null}
+                                <Text style={styles.itemCardQty}>
+                                  {acc.quantity} {acc.unit || "Nos"} @{" "}
+                                  {formatINR(acc.price)}
+                                </Text>
+                              </View>
+                              <Text
+                                style={[
+                                  styles.boldText,
+                                  { fontSize: 14, color: "#0F172A" },
+                                ]}
+                              >
+                                {formatINR(
+                                  acc.total || acc.quantity * acc.price,
+                                )}
+                              </Text>
                             </View>
-                          )}
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.itemCardName}>{acc.name}</Text>
-                            {acc.description ? (
-                              <Text style={styles.itemCardSpecs}>{acc.description}</Text>
-                            ) : null}
-                            <Text style={styles.itemCardQty}>
-                              {acc.quantity} {acc.unit || "Nos"} @ {formatINR(acc.price)}
-                            </Text>
-                          </View>
-                          <Text style={[styles.boldText, { fontSize: 14, color: "#0F172A" }]}>
-                            {formatINR(acc.total || (acc.quantity * acc.price))}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                  )}
+                          ),
+                        )}
+                      </View>
+                    )}
 
                   {/* Payment Milestones */}
                   {selectedQuotation.paymentMilestones &&
@@ -3083,318 +3187,6 @@ export default function QuotationScreen() {
                       </View>
                     )}
 
-                    {/* Accessories Specifications */}
-                    <Text
-                      style={[
-                        styles.inputLabel,
-                        { fontWeight: "700", marginTop: 6 },
-                      ]}
-                    >
-                      Add Accessories:
-                    </Text>
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      style={{ marginBottom: 8 }}
-                    >
-                      {accessoryOptions.map((acc) => {
-                        const isActive = accName === acc;
-                        const isAddMore = acc === "+ Add More";
-                        return (
-                          <TouchableOpacity
-                            key={acc}
-                            style={[
-                              styles.roomPill,
-                              isActive && styles.roomPillActive,
-                              isAddMore &&
-                                !isActive && {
-                                  borderColor: "#7A131A",
-                                  backgroundColor: "#FFF5F5",
-                                },
-                            ]}
-                            onPress={() => handleSelectAccessory(acc)}
-                          >
-                            <Text
-                              style={[
-                                styles.roomPillText,
-                                isActive && styles.roomPillTextActive,
-                                isAddMore &&
-                                  !isActive && {
-                                    color: "#7A131A",
-                                    fontWeight: "700",
-                                  },
-                              ]}
-                            >
-                              {acc}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </ScrollView>
-
-                    {showCustomAccessoryInput && (
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          gap: 8,
-                          marginBottom: 10,
-                        }}
-                      >
-                        <TextInput
-                          style={[styles.textInput, { flex: 1 }]}
-                          placeholder="Type custom accessory..."
-                          value={customAccessoryName}
-                          onChangeText={(val) => {
-                            setCustomAccessoryName(val);
-                            if (val.trim()) setAccName(val);
-                          }}
-                          autoFocus
-                        />
-                        <TouchableOpacity
-                          style={styles.addCustomBtn}
-                          onPress={() => handleConfirmCustomAccessory()}
-                        >
-                          <Text style={styles.addCustomBtnText}>+ Option</Text>
-                        </TouchableOpacity>
-                      </View>
-                    )}
-
-                    {/* Accessory Input Form with Price & Quantity */}
-                    <View style={{ marginBottom: 12 }}>
-                      <Text style={styles.inputLabel}>Accessory Name</Text>
-                      <TextInput
-                        style={styles.textInput}
-                        placeholder="Accessory name (e.g. Wicker Basket)"
-                        value={accName}
-                        onChangeText={setAccName}
-                      />
-                    </View>
-
-                    <View
-                      style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}
-                    >
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.inputLabel}>Unit Price (₹)</Text>
-                        <TextInput
-                          style={styles.textInput}
-                          placeholder="Unit Price"
-                          keyboardType="numeric"
-                          value={accUnitPrice}
-                          onChangeText={setAccUnitPrice}
-                        />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.inputLabel}>Quantity</Text>
-                        <TextInput
-                          style={styles.textInput}
-                          placeholder="Qty"
-                          keyboardType="numeric"
-                          value={accQty}
-                          onChangeText={setAccQty}
-                        />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.inputLabel}>Total Price (₹)</Text>
-                        <View
-                          style={[
-                            styles.textInput,
-                            {
-                              backgroundColor: "#F1F5F9",
-                              justifyContent: "center",
-                            },
-                          ]}
-                        >
-                          <Text
-                            style={{
-                              fontWeight: "800",
-                              color: "#0F172A",
-                              fontSize: 13,
-                            }}
-                          >
-                            {formatINR(
-                              Math.round(
-                                (parseFloat(accUnitPrice) || 0) *
-                                  (parseInt(accQty, 10) || 1),
-                              ),
-                            )}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-
-                    <View
-                      style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}
-                    >
-                      <TouchableOpacity
-                        style={[
-                          styles.addAccBtn,
-                          {
-                            flex: 1,
-                            height: 40,
-                            borderRadius: 8,
-                            backgroundColor: "#475569",
-                          },
-                        ]}
-                        onPress={handleAddAccessory}
-                      >
-                        <Ionicons
-                          name="attach-outline"
-                          size={16}
-                          color="#ffffff"
-                        />
-                        <Text
-                          style={{
-                            color: "#ffffff",
-                            fontWeight: "700",
-                            fontSize: 12,
-                            marginLeft: 4,
-                          }}
-                        >
-                          + Attach Accessory
-                        </Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={[
-                          styles.addAccBtn,
-                          {
-                            flex: 1,
-                            height: 40,
-                            borderRadius: 8,
-                            backgroundColor: "#7A131A",
-                          },
-                        ]}
-                        onPress={handleAddAccessoryToScope}
-                      >
-                        <Ionicons
-                          name="add-circle-outline"
-                          size={16}
-                          color="#ffffff"
-                        />
-                        <Text
-                          style={{
-                            color: "#ffffff",
-                            fontWeight: "700",
-                            fontSize: 12,
-                            marginLeft: 4,
-                          }}
-                        >
-                          + Add to Scope
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-
-                    {/* Attached Accessories List */}
-                    {itemAccessories.length > 0 && (
-                      <View
-                        style={{
-                          backgroundColor: "#FFF5F5",
-                          borderColor: "#FECDD3",
-                          borderWidth: 1,
-                          borderRadius: 8,
-                          padding: 10,
-                          marginBottom: 12,
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontSize: 11,
-                            fontWeight: "700",
-                            color: "#881337",
-                            marginBottom: 6,
-                          }}
-                        >
-                          Attached Accessories ({itemAccessories.length}):
-                        </Text>
-                        {itemAccessories.map((a, i) => (
-                          <View
-                            key={i}
-                            style={{
-                              flexDirection: "row",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              backgroundColor: "#FFFFFF",
-                              borderColor: "#FDA4AF",
-                              borderWidth: 1,
-                              borderRadius: 6,
-                              padding: 8,
-                              marginBottom: 4,
-                            }}
-                          >
-                            <View style={{ flex: 1 }}>
-                              <Text
-                                style={{
-                                  fontWeight: "700",
-                                  fontSize: 12,
-                                  color: "#0F172A",
-                                }}
-                              >
-                                {a.name}
-                              </Text>
-                              <Text style={{ fontSize: 11, color: "#475569" }}>
-                                Unit: {formatINR(a.unitPrice)} | Total:{" "}
-                                <Text
-                                  style={{
-                                    fontWeight: "700",
-                                    color: "#881337",
-                                  }}
-                                >
-                                  {formatINR(a.cost)}
-                                </Text>
-                              </Text>
-                            </View>
-
-                            <View
-                              style={{
-                                flexDirection: "row",
-                                alignItems: "center",
-                                gap: 8,
-                              }}
-                            >
-                              <Text style={{ fontSize: 11, color: "#475569" }}>
-                                Qty:
-                              </Text>
-                              <TextInput
-                                style={{
-                                  width: 40,
-                                  height: 30,
-                                  borderBottomWidth: 1,
-                                  borderBottomColor: "#CBD5E1",
-                                  textAlign: "center",
-                                  fontSize: 12,
-                                  fontWeight: "700",
-                                }}
-                                keyboardType="numeric"
-                                value={String(a.qty)}
-                                onChangeText={(val) =>
-                                  handleUpdateAccessoryQty(i, val)
-                                }
-                              />
-                              <TouchableOpacity
-                                onPress={() =>
-                                  setItemAccessories((prev) =>
-                                    prev.filter((_, idx) => idx !== i),
-                                  )
-                                }
-                                hitSlop={{
-                                  top: 8,
-                                  bottom: 8,
-                                  left: 8,
-                                  right: 8,
-                                }}
-                              >
-                                <Ionicons
-                                  name="close-circle"
-                                  size={18}
-                                  color="#EF4444"
-                                />
-                              </TouchableOpacity>
-                            </View>
-                          </View>
-                        ))}
-                      </View>
-                    )}
-
                     <TouchableOpacity
                       style={styles.addItemSubmitBtn}
                       onPress={handleAddItemToRoom}
@@ -3640,8 +3432,11 @@ export default function QuotationScreen() {
                   <Text style={styles.formSectionTitle}>
                     Add Standalone Accessories
                   </Text>
-                  <Text style={{ fontSize: 12, color: "#64748B", marginBottom: 16 }}>
-                    Add hardware accessories, appliances, or fittings with images to include in quotation.
+                  <Text
+                    style={{ fontSize: 12, color: "#64748B", marginBottom: 16 }}
+                  >
+                    Add hardware accessories, appliances, or fittings with
+                    images to include in quotation.
                   </Text>
 
                   <View style={styles.itemComposerCard}>
@@ -3651,35 +3446,49 @@ export default function QuotationScreen() {
 
                     {/* Image Picker */}
                     <Text style={styles.inputLabel}>Accessory Image</Text>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12 }}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 12,
+                        marginBottom: 12,
+                      }}
+                    >
                       {stAccImage ? (
                         <View style={{ position: "relative" }}>
                           <Image
                             source={{ uri: stAccImage }}
-                            style={{ width: 64, height: 64, borderRadius: 8, borderWidth: 1, borderColor: "#CBD5E1" }}
+                            style={{
+                              width: 80,
+                              height: 80,
+                              borderRadius: 8,
+                              borderWidth: 1,
+                              borderColor: "#CBD5E1",
+                            }}
                           />
                           <TouchableOpacity
                             style={{
                               position: "absolute",
-                              top: -6,
-                              right: -6,
+                              top: -8,
+                              right: -8,
                               backgroundColor: "#EF4444",
-                              borderRadius: 10,
-                              width: 20,
-                              height: 20,
+                              borderRadius: 12,
+                              width: 24,
+                              height: 24,
                               alignItems: "center",
                               justifyContent: "center",
+                              elevation: 2,
                             }}
                             onPress={() => setStAccImage("")}
                           >
-                            <Ionicons name="close" size={14} color="#FFFFFF" />
+                            <Ionicons name="close" size={16} color="#FFFFFF" />
                           </TouchableOpacity>
                         </View>
                       ) : (
                         <TouchableOpacity
                           style={{
-                            width: 64,
-                            height: 64,
+                            width: 100,
+                            height: 80,
                             borderRadius: 8,
                             borderWidth: 1.5,
                             borderColor: "#CBD5E1",
@@ -3690,18 +3499,23 @@ export default function QuotationScreen() {
                           }}
                           onPress={handlePickAccImage}
                         >
-                          <Ionicons name="camera-outline" size={24} color="#64748B" />
+                          <Ionicons
+                            name="camera-outline"
+                            size={24}
+                            color="#64748B"
+                            style={{ marginBottom: 4 }}
+                          />
+                          <Text
+                            style={{
+                              color: "#64748B",
+                              fontSize: 12,
+                              fontWeight: "600",
+                            }}
+                          >
+                            Upload
+                          </Text>
                         </TouchableOpacity>
                       )}
-                      <TouchableOpacity
-                        style={[styles.smallPill, { backgroundColor: "#7A131A", paddingHorizontal: 12, paddingVertical: 8 }]}
-                        onPress={handlePickAccImage}
-                      >
-                        <Ionicons name="image-outline" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
-                        <Text style={{ color: "#FFFFFF", fontWeight: "700", fontSize: 12 }}>
-                          {stAccImage ? "Change Image" : "Upload Image"}
-                        </Text>
-                      </TouchableOpacity>
                     </View>
 
                     <Text style={styles.inputLabel}>Accessory Name *</Text>
@@ -3712,7 +3526,9 @@ export default function QuotationScreen() {
                       onChangeText={setStAccName}
                     />
 
-                    <Text style={styles.inputLabel}>Description (Optional)</Text>
+                    <Text style={styles.inputLabel}>
+                      Description (Optional)
+                    </Text>
                     <TextInput
                       style={[styles.textInput, { height: 48 }]}
                       placeholder="Specification or brand details..."
@@ -3721,7 +3537,13 @@ export default function QuotationScreen() {
                       onChangeText={setStAccDesc}
                     />
 
-                    <View style={{ flexDirection: "row", gap: 10, marginBottom: 12 }}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        gap: 10,
+                        marginBottom: 12,
+                      }}
+                    >
                       <View style={{ flex: 1 }}>
                         <Text style={styles.inputLabel}>Qty *</Text>
                         <TextInput
@@ -3754,10 +3576,36 @@ export default function QuotationScreen() {
                       </View>
                     </View>
 
-                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                      <Text style={{ fontSize: 12, color: "#64748B", fontWeight: "600" }}>Total Amount:</Text>
-                      <Text style={{ fontSize: 15, fontWeight: "800", color: "#7A131A" }}>
-                        {formatINR(Math.round((parseInt(stAccQty, 10) || 1) * (parseFloat(stAccPrice) || 0)))}
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: 12,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          color: "#64748B",
+                          fontWeight: "600",
+                        }}
+                      >
+                        Total Amount:
+                      </Text>
+                      <Text
+                        style={{
+                          fontSize: 15,
+                          fontWeight: "800",
+                          color: "#7A131A",
+                        }}
+                      >
+                        {formatINR(
+                          Math.round(
+                            (parseInt(stAccQty, 10) || 1) *
+                              (parseFloat(stAccPrice) || 0),
+                          ),
+                        )}
                       </Text>
                     </View>
 
@@ -3765,8 +3613,14 @@ export default function QuotationScreen() {
                       style={styles.addItemSubmitBtn}
                       onPress={handleAddStandaloneAccessory}
                     >
-                      <Ionicons name="add-circle-outline" size={18} color="#FFFFFF" />
-                      <Text style={styles.addItemSubmitText}>Add Accessory</Text>
+                      <Ionicons
+                        name="add-circle-outline"
+                        size={18}
+                        color="#FFFFFF"
+                      />
+                      <Text style={styles.addItemSubmitText}>
+                        Add Accessory
+                      </Text>
                     </TouchableOpacity>
                   </View>
 
@@ -3776,42 +3630,103 @@ export default function QuotationScreen() {
                   </Text>
 
                   {standaloneAccessories.length === 0 ? (
-                    <Text style={{ color: "#94A3B8", fontStyle: "italic", marginBottom: 20 }}>
-                      No standalone accessories added yet. Add one using the form above.
+                    <Text
+                      style={{
+                        color: "#94A3B8",
+                        fontStyle: "italic",
+                        marginBottom: 20,
+                      }}
+                    >
+                      No standalone accessories added yet. Add one using the
+                      form above.
                     </Text>
                   ) : (
                     standaloneAccessories.map((acc, index) => (
-                      <View key={index} style={[styles.addedItemRow, { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10 }]}>
+                      <View
+                        key={index}
+                        style={[
+                          styles.addedItemRow,
+                          {
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 10,
+                            paddingVertical: 10,
+                          },
+                        ]}
+                      >
                         {acc.image ? (
                           <Image
-                            source={{ uri: acc.image }}
-                            style={{ width: 48, height: 48, borderRadius: 6, borderWidth: 1, borderColor: "#CBD5E1" }}
+                            source={{
+                              uri: acc.image.startsWith("/")
+                                ? `${API_URL.replace(/\/api\/?$/, "")}${acc.image}`
+                                : acc.image,
+                            }}
+                            style={{
+                              width: 48,
+                              height: 48,
+                              borderRadius: 6,
+                              borderWidth: 1,
+                              borderColor: "#CBD5E1",
+                            }}
                           />
                         ) : (
-                          <View style={{ width: 48, height: 48, borderRadius: 6, backgroundColor: "#F1F5F9", alignItems: "center", justifyContent: "center" }}>
-                            <Ionicons name="cube-outline" size={20} color="#94A3B8" />
+                          <View
+                            style={{
+                              width: 48,
+                              height: 48,
+                              borderRadius: 6,
+                              backgroundColor: "#F1F5F9",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            <Ionicons
+                              name="cube-outline"
+                              size={20}
+                              color="#94A3B8"
+                            />
                           </View>
                         )}
 
                         <View style={{ flex: 1 }}>
                           <Text style={styles.addedItemName}>{acc.name}</Text>
                           {acc.description ? (
-                            <Text style={{ fontSize: 11, color: "#64748B" }}>{acc.description}</Text>
+                            <Text style={{ fontSize: 11, color: "#64748B" }}>
+                              {acc.description}
+                            </Text>
                           ) : null}
-                          <Text style={{ fontSize: 11, color: "#475569", marginTop: 2 }}>
-                            {acc.quantity} {acc.unit || "Nos"} × {formatINR(acc.price)}
+                          <Text
+                            style={{
+                              fontSize: 11,
+                              color: "#475569",
+                              marginTop: 2,
+                            }}
+                          >
+                            {acc.quantity} {acc.unit || "Nos"} ×{" "}
+                            {formatINR(acc.price)}
                           </Text>
                         </View>
 
                         <View style={{ alignItems: "flex-end", gap: 4 }}>
-                          <Text style={[styles.boldText, { fontSize: 13, color: "#0F172A" }]}>
+                          <Text
+                            style={[
+                              styles.boldText,
+                              { fontSize: 13, color: "#0F172A" },
+                            ]}
+                          >
                             {formatINR(acc.total || acc.quantity * acc.price)}
                           </Text>
                           <TouchableOpacity
-                            onPress={() => handleRemoveStandaloneAccessory(index)}
+                            onPress={() =>
+                              handleRemoveStandaloneAccessory(index)
+                            }
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                           >
-                            <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                            <Ionicons
+                              name="trash-outline"
+                              size={16}
+                              color="#EF4444"
+                            />
                           </TouchableOpacity>
                         </View>
                       </View>
@@ -3834,10 +3749,23 @@ export default function QuotationScreen() {
                       marginBottom: 16,
                     }}
                   >
-                    <Text style={{ fontWeight: "700", fontSize: 13, color: "#7A131A" }}>
-                      Accessories Subtotal ({standaloneAccessories.length} items):
+                    <Text
+                      style={{
+                        fontWeight: "700",
+                        fontSize: 13,
+                        color: "#7A131A",
+                      }}
+                    >
+                      Accessories Subtotal ({standaloneAccessories.length}{" "}
+                      items):
                     </Text>
-                    <Text style={{ fontWeight: "800", fontSize: 16, color: "#7A131A" }}>
+                    <Text
+                      style={{
+                        fontWeight: "800",
+                        fontSize: 16,
+                        color: "#7A131A",
+                      }}
+                    >
                       {formatINR(liveCalculation.standaloneAccTotal)}
                     </Text>
                   </View>
@@ -3884,7 +3812,9 @@ export default function QuotationScreen() {
                   </View>
 
                   <View style={{ marginTop: 12 }}>
-                    <Text style={styles.inputLabel}>Transportation Charges (₹ Fixed)</Text>
+                    <Text style={styles.inputLabel}>
+                      Transportation Charges (₹ Fixed)
+                    </Text>
                     <TextInput
                       style={styles.textInput}
                       placeholder="0"
@@ -3892,12 +3822,16 @@ export default function QuotationScreen() {
                       value={transportCharges}
                       onChangeText={setTransportCharges}
                     />
-                    <Text style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}>
+                    <Text
+                      style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}
+                    >
                       Fixed amount in Rupees (NOT percentage)
                     </Text>
                   </View>
 
-                  <View style={{ flexDirection: "row", gap: 12, marginTop: 12 }}>
+                  <View
+                    style={{ flexDirection: "row", gap: 12, marginTop: 12 }}
+                  >
                     <View style={{ flex: 1 }}>
                       <Text style={styles.inputLabel}>Discount Type</Text>
                       <View
@@ -3980,7 +3914,7 @@ export default function QuotationScreen() {
                             styles.roomPillTextActive,
                         ]}
                       >
-                        18% (As per actuals)
+                        18%
                       </Text>
                     </TouchableOpacity>
 
@@ -4195,7 +4129,9 @@ export default function QuotationScreen() {
                       </Text>
                     </View>
                     <View style={styles.priceRow}>
-                      <Text style={styles.priceLabel}>Transportation Charges:</Text>
+                      <Text style={styles.priceLabel}>
+                        Transportation Charges:
+                      </Text>
                       <Text style={styles.priceVal}>
                         {formatINR(liveCalculation.transportAmt)}
                       </Text>
@@ -4213,12 +4149,12 @@ export default function QuotationScreen() {
                     <View style={styles.priceRow}>
                       <Text style={styles.priceLabel}>
                         GST/Taxes ({gstPercent}%
-                        {gstType === "AS_PER_ACTUAL" ? " – As per Actuals" : ""}
+                        {gstType === "AS_PER_ACTUAL" ? " - Extra" : ""}
                         ):
                       </Text>
                       <Text style={styles.priceVal}>
                         {gstType === "AS_PER_ACTUAL"
-                          ? "18% – As per Actuals"
+                          ? "Extra at Actuals"
                           : formatINR(liveCalculation.gstAmt)}
                       </Text>
                     </View>
@@ -4229,9 +4165,7 @@ export default function QuotationScreen() {
                         { marginTop: 8 },
                       ]}
                     >
-                      <Text style={styles.grandTotalLabel}>
-                        Grand Total:
-                      </Text>
+                      <Text style={styles.grandTotalLabel}>Grand Total:</Text>
                       <Text style={styles.grandTotalVal}>
                         {formatINR(liveCalculation.grandTotal)}
                       </Text>
@@ -5173,15 +5107,15 @@ const styles = StyleSheet.create({
     color: "#0F172A",
   },
   saveHeaderBtn: {
-    backgroundColor: "#FFF1F2",
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    backgroundColor: "#7A131A",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 6,
   },
   saveHeaderText: {
-    color: "#7A131A",
+    color: "#FFFFFF",
     fontWeight: "800",
-    fontSize: 12,
+    fontSize: 13,
   },
   stepTabs: {
     flexDirection: "row",

@@ -17,9 +17,11 @@
 
 import * as FileSystem from "expo-file-system/legacy";
 import * as Print from "expo-print";
+import * as SecureStore from "expo-secure-store";
 import * as Sharing from "expo-sharing";
 import { Alert, Platform } from "react-native";
 import { COMPANY_LOGO_DATA_URL } from "../constants/companyLogo";
+import { API_URL, STORAGE_KEYS } from "../constants/config";
 import { QuotationItemDoc } from "./quotationApi";
 
 function inr(v: number | undefined): string {
@@ -231,7 +233,6 @@ export function buildQuotationHtml(q: any): string {
                 ${specsHtml}
                 ${accsHtml}
                 ${it.remarks ? `<div class="item-note">Note: ${esc(it.remarks)}</div>` : ""}
-                ${it.costVariationNote ? `<div class="item-note" style="color: #DC2626;">${esc(it.costVariationNote)}</div>` : ""}
               </td>
               <td class="center">${esc(it.unit || "Nos")}</td>
               <td class="center font-bold">${it.quantity || 1}</td>
@@ -305,7 +306,7 @@ export function buildQuotationHtml(q: any): string {
             <tr>
               <td class="center font-bold">${idx + 1}</td>
               <td class="center">
-                ${acc.image ? `<img src="${esc(acc.image)}" style="width: 55px; height: 55px; object-fit: cover; border-radius: 4px; border: 1px solid #CBD5E1;" />` : '<span style="color: #94A3B8; font-size: 7.5pt;">No Image</span>'}
+                ${acc.image ? `<img src="${acc.image}" style="max-width: 80px; max-height: 80px; object-fit: contain; border-radius: 4px; border: 1px solid #CBD5E1;" />` : '<span style="color: #94A3B8; font-size: 7.5pt;">No Image</span>'}
               </td>
               <td>
                 <div class="item-name">${esc(acc.name)}</div>
@@ -522,9 +523,9 @@ export function buildQuotationHtml(q: any): string {
       vertical-align: top;
     }
     .company-logo {
-      height: 48px;
+      height: 62px;
       width: auto;
-      max-width: 240px;
+      max-width: 280px;
       object-fit: contain;
       margin-bottom: 6px;
       display: block;
@@ -716,10 +717,11 @@ export function buildQuotationHtml(q: any): string {
       border-bottom: 1px solid #E2E8F0;
     }
     .summary-table tr.grand-row td {
-      background: #0F172A;
-      color: #FFFFFF;
+      background: transparent;
+      color: #0F172A;
+      border-top: 2px solid #0F172A;
       font-weight: 800;
-      font-size: 10.5pt;
+      font-size: 11pt;
       border-bottom: none;
     }
 
@@ -796,7 +798,6 @@ export function buildQuotationHtml(q: any): string {
       vertical-align: bottom;
     }
     .signature-line {
-      border-top: 1px solid #0F172A;
       margin-top: 40px;
       padding-top: 4px;
       font-size: 9pt;
@@ -835,7 +836,6 @@ export function buildQuotationHtml(q: any): string {
           <strong>Date:</strong> ${qDate}<br />
           <strong>Valid Until:</strong> ${vUntil}
         </div>
-        <div class="doc-status">${esc(status)}</div>
       </td>
     </tr>
   </table>
@@ -924,7 +924,7 @@ export function buildQuotationHtml(q: any): string {
         pricing.gstType === "AS_PER_ACTUAL"
           ? `
       <tr>
-        <td>GST (18% – As per Actuals):</td>
+        <td>GST (18%):</td>
         <td class="right" style="color: #2563EB; font-weight: 600;">As per Actuals</td>
       </tr>`
           : `
@@ -938,7 +938,7 @@ export function buildQuotationHtml(q: any): string {
       </tr>`
       }
       <tr class="grand-row">
-        <td>ESTIMATED GRAND TOTAL:</td>
+        <td>Estimated Grand Total:</td>
         <td class="right">${inr(grandTotal)}</td>
       </tr>
     </table>
@@ -950,7 +950,7 @@ export function buildQuotationHtml(q: any): string {
   }
   ${
     pricing.gstType === "AS_PER_ACTUAL"
-      ? `<div style="font-size: 8.5pt; color: #1D4ED8; background: #EFF6FF; border: 1px solid #BFDBFE; padding: 6px 10px; margin-bottom: 12px; font-weight: 600;">GST @ 18% will be charged separately as applicable on the actual/final invoice and is not included in this estimated total.</div>`
+      ? `<div style="font-size: 8.5pt; color: #475569; margin-bottom: 12px;"><strong>Note:</strong> GST @ 18% will be charged separately as applicable on the actual/final invoice and is not included in this estimated total.</div>`
       : ""
   }
 
@@ -1001,6 +1001,40 @@ export function buildQuotationHtml(q: any): string {
 export async function generatePdf(
   q: any,
 ): Promise<{ uri: string; base64: string; filename: string }> {
+  if (q.standaloneAccessories && Array.isArray(q.standaloneAccessories)) {
+    const token = await SecureStore.getItemAsync(STORAGE_KEYS.TOKEN);
+    // API_URL might be http://192.168.1.36:5001/api, so we replace '/api' to get the base host
+    const host = API_URL.replace(/\/api\/?$/, "");
+
+    for (let i = 0; i < q.standaloneAccessories.length; i++) {
+      const acc = q.standaloneAccessories[i];
+      if (acc.image && acc.image.startsWith("/")) {
+        try {
+          const downloadUrl = `${host}${acc.image}`;
+          const response = await fetch(downloadUrl, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          });
+          
+          if (response.ok) {
+            const blob = await response.blob();
+            const base64DataUrl = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            });
+            acc.image = base64DataUrl;
+          } else {
+            acc.image = downloadUrl; // fallback to absolute URL
+          }
+        } catch (e) {
+          console.error("Failed to fetch accessory image for PDF:", e);
+          acc.image = `${host}${acc.image}`; // fallback to absolute URL on exception
+        }
+      }
+    }
+  }
+
   const html = buildQuotationHtml(q);
   const filename = getPdfFileName(q);
 

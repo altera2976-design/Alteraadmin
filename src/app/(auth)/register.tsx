@@ -73,6 +73,13 @@ export default function RegisterScreen() {
         ]
       );
     } catch (err: any) {
+      console.error('[Registration Error Details]:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+        configUrl: err.config?.url,
+        baseURL: err.config?.baseURL,
+      });
       const msg =
         err?.response?.data?.message ||
         err?.message ||

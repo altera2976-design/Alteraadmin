@@ -55,9 +55,9 @@ function getStatusBadgeStyle(status: string) {
     case 'COMPLETED':
       return { bg: '#DEF7EC', text: '#03543F', border: '#84E1BC' };
     case 'PENDING':
-      return { bg: '#FEF08A', text: '#713F12', border: '#FDE047' };
+      return { bg: '#FFEDD5', text: '#C2410C', border: '#FED7AA' };
     case 'REFUNDED':
-      return { bg: '#E1F5FE', text: '#0288D1', border: '#81D4FA' };
+      return { bg: '#E2E8F0', text: '#334155', border: '#94A3B8' };
     case 'FAILED':
       return { bg: '#FDE8E8', text: '#9B1C1C', border: '#F8B4B4' };
     case 'CANCELLED':
@@ -377,17 +377,17 @@ export default function TransactionsScreen() {
             <Text style={styles.summarySubtext}>{summary.totalPendingCount} pending</Text>
           </View>
 
-          <View style={[styles.summaryCard, { borderLeftColor: '#2563EB' }]}>
+          <View style={[styles.summaryCard, { borderLeftColor: '#475569' }]}>
             <Text style={styles.summaryLabel}>Refunded</Text>
-            <Text style={[styles.summaryValue, { color: '#2563EB' }]}>
+            <Text style={[styles.summaryValue, { color: '#475569' }]}>
               {formatINR(summary.refundedAmount)}
             </Text>
             <Text style={styles.summarySubtext}>{summary.totalRefundedCount} refunded</Text>
           </View>
 
-          <View style={[styles.summaryCard, { borderLeftColor: '#7C3AED' }]}>
+          <View style={[styles.summaryCard, { borderLeftColor: '#DC2626' }]}>
             <Text style={styles.summaryLabel}>Today's Total</Text>
-            <Text style={[styles.summaryValue, { color: '#7C3AED' }]}>
+            <Text style={[styles.summaryValue, { color: '#DC2626' }]}>
               {formatINR(summary.todayTotal)}
             </Text>
           </View>
@@ -453,7 +453,7 @@ export default function TransactionsScreen() {
             return (
               <TouchableOpacity
                 key={tp}
-                style={[styles.pill, isActive && styles.pillActiveBlue]}
+                style={[styles.pill, isActive && styles.pillActive]}
                 onPress={() => setSelectedType(tp)}
               >
                 <Text style={[styles.pillText, isActive && styles.pillTextActive]}>
@@ -874,9 +874,7 @@ const styles = StyleSheet.create({
   pillActive: {
     backgroundColor: '#DC2626',
   },
-  pillActiveBlue: {
-    backgroundColor: '#2563EB',
-  },
+
   pillText: {
     fontSize: 12,
     fontWeight: '600',

@@ -13,9 +13,15 @@ import {
   Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import * as WebBrowser from 'expo-web-browser';
+import * as SecureStore from 'expo-secure-store';
+import * as IntentLauncher from 'expo-intent-launcher';
 import { THEME } from '../../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
+import { API_URL, STORAGE_KEYS } from '../../constants/config';
 import {
   projectApi,
   Project,
@@ -170,6 +176,95 @@ export default function ProjectDetailScreen() {
       Alert.alert('Error', err.response?.data?.message || 'Failed to create task.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const [openingFileId, setOpeningFileId] = useState<string | null>(null);
+
+  const getFullAttachmentUrl = (rawUrl?: string) => {
+    if (!rawUrl) return '';
+    if (rawUrl.startsWith('data:')) return rawUrl;
+    const baseHost = API_URL.replace(/\/api\/?$/, '');
+    if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
+      if (/http:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?/i.test(rawUrl)) {
+        const pathPart = rawUrl.replace(/^http:\/\/[^\/]+/, '');
+        return `${baseHost}/${pathPart.replace(/^\/+/, '')}`;
+      }
+      return rawUrl;
+    }
+    return `${baseHost}/${rawUrl.replace(/^\/+/, '')}`;
+  };
+
+  const handleOpenAttachment = async (att: any) => {
+    const rawUrl = att?.fileUrl || att?.url || (att?.driveFileId ? `/api/files/drive/${att.driveFileId}` : att?.driveUrl);
+    const finalUrl = getFullAttachmentUrl(rawUrl);
+    const rawName = att?.fileName || att?.originalName || att?.name || 'attachment.pdf';
+    const mimeType = (att?.mimeType || att?.fileType || '').toLowerCase();
+    const attId = att?._id || att?.id || att?.driveFileId || rawName;
+
+    if (!finalUrl) {
+      Alert.alert('Invalid File', 'This attachment has no valid file URL.');
+      return;
+    }
+
+    try {
+      setOpeningFileId(attId);
+      const token = await SecureStore.getItemAsync(STORAGE_KEYS.TOKEN);
+      
+      let ext = '.pdf';
+      const isPdf = mimeType.includes('pdf') || /\.pdf$/i.test(rawName) || finalUrl.toLowerCase().includes('.pdf');
+      if (!isPdf && rawName.includes('.')) ext = `.${rawName.split('.').pop()}`;
+      
+      const safeBaseName = rawName.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const filenameWithExt = safeBaseName.toLowerCase().endsWith(ext.toLowerCase()) ? safeBaseName : `${safeBaseName}${ext}`;
+      const localFileUri = `${FileSystem.cacheDirectory}${Date.now()}_${filenameWithExt}`;
+
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const downloadRes = await FileSystem.downloadAsync(finalUrl, localFileUri, { headers });
+
+      if (downloadRes.status === 200) {
+        if (Platform.OS === 'android') {
+          try {
+            const contentUri = await FileSystem.getContentUriAsync(downloadRes.uri);
+            await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+              data: contentUri,
+              flags: 1,
+              type: isPdf ? 'application/pdf' : (att?.mimeType || '*/*'),
+            });
+            return;
+          } catch (e: any) {
+            console.log('IntentLauncher failed, falling back to Sharing', e);
+            if (e.message && e.message.includes('NoActivityFound')) {
+               Alert.alert('No PDF Viewer', 'No app found to open PDFs. Please install a PDF viewer from the Play Store.');
+               return;
+            }
+          }
+        }
+
+        const canShare = await Sharing.isAvailableAsync();
+        if (canShare) {
+          try {
+            await Sharing.shareAsync(downloadRes.uri, {
+              mimeType: isPdf ? 'application/pdf' : (att?.mimeType || 'application/octet-stream'),
+              dialogTitle: `Open ${rawName}`,
+              UTI: isPdf ? 'com.adobe.pdf' : undefined,
+            });
+          } catch (shareErr) {
+            Alert.alert('Cannot Open File', 'There was an error opening the file. You may need to install an app that supports this file format.');
+          }
+        } else {
+          await WebBrowser.openBrowserAsync(downloadRes.uri);
+        }
+      } else {
+        Alert.alert('Download Failed', 'Could not fetch the document.');
+      }
+    } catch (err) {
+      console.error('File open error:', err);
+      Alert.alert('Error', 'Unable to open file.');
+    } finally {
+      setOpeningFileId(null);
     }
   };
 
@@ -1026,6 +1121,23 @@ export default function ProjectDetailScreen() {
             {updateTaskModal && (
               <View style={styles.formContainer}>
                 <Text style={styles.taskModalTitle}>{updateTaskModal.name}</Text>
+
+                {updateTaskModal.pdfUrl ? (
+                  <TouchableOpacity
+                    style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginVertical: 12, padding: 12, backgroundColor: THEME.colors.primary, borderRadius: 8, opacity: openingFileId ? 0.7 : 1 }}
+                    onPress={() => handleOpenAttachment({ fileUrl: updateTaskModal.pdfUrl, mimeType: 'application/pdf', originalName: 'Task_Document.pdf' })}
+                    disabled={!!openingFileId}
+                  >
+                    {openingFileId ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Ionicons name="document-text" size={18} color="#fff" />
+                    )}
+                    <Text style={{ fontSize: 14, color: '#fff', fontWeight: '700' }}>
+                      {openingFileId ? 'Opening PDF...' : 'View Attached PDF'}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
 
                 <Text style={styles.inputLabel}>Progress (0 - 100%):</Text>
                 <TextInput
