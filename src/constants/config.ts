@@ -27,9 +27,19 @@ if (__DEV__) {
   }
 } else {
   // Production / Preview APK: Enforce HTTPS for encrypted traffic
-  if (process.env.EXPO_PUBLIC_API_URL) {
+  if (
+    process.env.EXPO_PUBLIC_API_URL && 
+    !process.env.EXPO_PUBLIC_API_URL.includes('localhost') && 
+    !process.env.EXPO_PUBLIC_API_URL.includes('127.0.0.1') && 
+    !process.env.EXPO_PUBLIC_API_URL.includes('192.168.')
+  ) {
     apiUrl = process.env.EXPO_PUBLIC_API_URL;
-  } else if (extraApiUrl && !extraApiUrl.includes('localhost') && !extraApiUrl.includes('127.0.0.1')) {
+  } else if (
+    extraApiUrl && 
+    !extraApiUrl.includes('localhost') && 
+    !extraApiUrl.includes('127.0.0.1') && 
+    !extraApiUrl.includes('192.168.')
+  ) {
     apiUrl = extraApiUrl;
   } else {
     apiUrl = 'https://alterabackend.onrender.com/api';
