@@ -52,6 +52,14 @@ export default function AdminLoginPage() {
 
   return (
     <div style={styles.container}>
+      {/* Background Image */}
+      <div style={{
+          ...styles.bgImage,
+          backgroundImage: "url('/assets/interior-login-bg.jpg')",
+          filter: 'blur(3px)',
+          transform: 'scale(1.03)'
+      }} />
+      
       {/* Light Overlay */}
       <div style={styles.overlay} />
 
@@ -140,7 +148,7 @@ const styles = {
     left: 0,
     width: '100%',
     height: '100%',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: 'rgba(248, 250, 252, 0.45)', // Semi-transparent overlay to reveal bg
     zIndex: 2,
   },
   card: {

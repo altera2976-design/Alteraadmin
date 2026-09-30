@@ -41,10 +41,12 @@ export default function LoginPage() {
       <div
         style={{
           ...s.bgImage,
-          background: '#FFFFFF'
+          backgroundImage: "url('/assets/interior-login-bg.jpg')",
+          filter: 'blur(2px)',
+          transform: 'scale(1.02)'
         }}
       />
-      {/* Light Overlay if needed (optional) */}
+      {/* Light Overlay */}
       <div style={s.overlay} />
 
       <div style={s.card}>
@@ -181,7 +183,7 @@ const s = {
     left: 0,
     width: '100%',
     height: '100%',
-    backgroundColor: 'rgba(255, 255, 255, 0.8)', // Light overlay
+    backgroundColor: 'rgba(255, 255, 255, 0.45)', // Semi-transparent overlay to show bg
     zIndex: 2,
   },
   card: {
