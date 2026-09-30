@@ -1,164 +1,334 @@
-import axios from 'axios';
-import { useEffect, useState } from 'react';
-import { Dimensions, Image, StyleSheet, Text, View } from 'react-native';
-import { getApiUrl } from '../services/api';
+import { useEffect, useRef, useState } from "react";
+import {
+  Animated,
+  Dimensions,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 
-const { width } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const BANNER_WIDTH = SCREEN_WIDTH - 32;
+const BANNER_HEIGHT = 240;
+const INTERVAL = 3500;
 
-// Local Static Assets
-const STATIC_IMAGES = {
-  morning: require('../../assets/devotional/khatu-shyam-morning.webp'),
-  afternoon: require('../../assets/devotional/khatu-shyam-afternoon.webp'),
-  evening: require('../../assets/devotional/khatu-shyam-evening.webp'),
-  night: require('../../assets/devotional/khatu-shyam-night.webp'),
-  lateNight: require('../../assets/devotional/khatu-shyam-late-night.webp')
-};
-
-const STATIC_BANNERS = {
-  morning: {
-    source: STATIC_IMAGES.morning,
-    title: 'जय श्री श्याम',
-    message: 'जिसके सिर पर हाथ हो श्याम का, उसका जीवन खुशियों से भर जाता है।'
+const DEITIES = [
+  {
+    id: "shyam",
+    source: require("../../assets/images/devotional/shyam_ji.jpg"),
+    title: "जय श्री श्याम",
+    subtitle: "🙏 Khatu Shyam Ji",
+    accent: "#60a5fa",
+    message: "जिसके सिर पर हाथ हो श्याम का, उसका जीवन खुशियों से भर जाता है।",
   },
-  afternoon: {
-    source: STATIC_IMAGES.afternoon,
-    title: 'जय श्री श्याम',
-    message: 'श्याम नाम का सहारा रखो, हर मुश्किल किनारा बन जाएगी।'
+  {
+    id: "hanuman",
+    source: require("../../assets/images/devotional/hanuman_ji.jpg"),
+    title: "जय श्री राम 🚩",
+    subtitle: "🙏 Sankat Mochan Hanuman Ji",
+    accent: "#fb923c",
+    message: "संकट मोचन हनुमान आपके सभी कष्टों को दूर करें। जय बजरंगबली!",
   },
-  evening: {
-    source: STATIC_IMAGES.evening,
-    title: 'जय श्री श्याम',
-    message: 'जहाँ श्याम का नाम है, वहाँ हर पल सुख और शांति है।'
+  {
+    id: "shiva",
+    source: require("../../assets/images/devotional/shiva_ji.jpg"),
+    title: "हर हर महादेव 🔱",
+    subtitle: "🙏 Bholenath Shiva Ji",
+    accent: "#a78bfa",
+    message: "ॐ नमः शिवाय! भोलेनाथ की कृपा से आपके जीवन में सुख-शांति आए।",
   },
-  night: {
-    source: STATIC_IMAGES.night,
-    title: 'जय श्री श्याम',
-    message: 'आज की सारी चिंताएँ श्याम को सौंप दो, कल की राह वही आसान करेंगे।'
+  {
+    id: "krishna",
+    source: require("../../assets/images/devotional/radha_krishna.png"),
+    title: "राधे राधे ❤️",
+    subtitle: "🙏 Shri Radha Krishna Ji",
+    accent: "#4ade80",
+    message: "राधे राधे! श्री कृष्णा की कृपा से आपका जीवन प्रेम और खुशियों से भरा रहे।",
   },
-  lateNight: {
-    source: STATIC_IMAGES.lateNight,
-    title: 'जय श्री श्याम',
-    message: 'सोने से पहले बस इतना कहना—हारे के सहारे, मेरे खाटू वाले श्याम।'
-  }
-};
-
-const getStaticBanner = () => {
-  const hour = new Date().getHours();
-  if (hour >= 5 && hour < 12) return STATIC_BANNERS.morning;
-  if (hour >= 12 && hour < 16) return STATIC_BANNERS.afternoon;
-  if (hour >= 16 && hour < 20) return STATIC_BANNERS.evening;
-  if (hour >= 20 && hour <= 23) return STATIC_BANNERS.night;
-  return STATIC_BANNERS.lateNight; // 00:00 - 04:59
-};
+  {
+    id: "durga",
+    source: require("../../assets/images/devotional/maa_durga.jpg"),
+    title: "जय माता दी 🙏",
+    subtitle: "🙏 Maa Durga Ji",
+    accent: "#f472b6",
+    message: "माँ दुर्गा की कृपा से आपके जीवन से सभी कष्ट दूर हों। जय माता दी!",
+  },
+];
 
 export default function DevotionalBanner() {
-  const [banner, setBanner] = useState(getStaticBanner());
+  const [current, setCurrent] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const scrollX = useRef(new Animated.Value(0)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  const scrollRef = useRef<any>(null);
+  const timerRef = useRef<any>(null);
+  const total = DEITIES.length;
 
+  const goTo = (idx: number) => {
+    const next = ((idx % total) + total) % total;
+    setCurrent(next);
+    scrollRef.current?.scrollTo({ x: next * BANNER_WIDTH, animated: true });
+    // Reset progress bar
+    progressAnim.stopAnimation();
+    progressAnim.setValue(0);
+  };
+
+  // Auto-slide timer
   useEffect(() => {
-    let isMounted = true;
+    if (paused) {
+      progressAnim.stopAnimation();
+      return;
+    }
+    // Animate progress bar
+    progressAnim.setValue(0);
+    Animated.timing(progressAnim, {
+      toValue: 1,
+      duration: INTERVAL,
+      useNativeDriver: false,
+    }).start();
 
-    const fetchFestival = async () => {
-      try {
-        const apiUrl = getApiUrl();
-        const response = await axios.get(`${apiUrl}/festivals/active`);
-        if (isMounted) {
-          if (response.data?.success && response.data?.data) {
-            const festival = response.data.data;
-            setBanner({
-              isFestival: true,
-              source: { uri: festival.imageUrl },
-              title: festival.hindiTitle,
-              message: festival.hindiMessage
-            });
-          } else {
-            setBanner(getStaticBanner());
-          }
-        }
-      } catch (error) {
-        if (isMounted) {
-          setBanner(getStaticBanner());
-        }
-      }
-    };
-
-    fetchFestival();
-
-    const interval = setInterval(() => {
-      if (!banner.isFestival) {
-        setBanner(getStaticBanner());
-      }
-    }, 60000);
+    timerRef.current = setTimeout(() => {
+      const next = (current + 1) % total;
+      setCurrent(next);
+      scrollRef.current?.scrollTo({ x: next * BANNER_WIDTH, animated: true });
+    }, INTERVAL);
 
     return () => {
-      isMounted = false;
-      clearInterval(interval);
+      clearTimeout(timerRef.current);
     };
-  }, [banner.isFestival]);
+  }, [current, paused]);
+
+  const d = DEITIES[current];
 
   return (
-    <View style={styles.container}>
-      <Image
-        source={banner.source}
-        style={styles.image}
-        resizeMode="cover"
-        defaultSource={getStaticBanner().source} // fallback
-        onError={() => {
-          if (banner.isFestival) {
-            setBanner(getStaticBanner());
-          }
-        }}
-      />
-      <View style={styles.overlay}>
-        <Text style={styles.title}>{banner.title}</Text>
-        <Text style={styles.message} numberOfLines={2}>{banner.message}</Text>
+    <View style={styles.wrapper}>
+      {/* Carousel frame */}
+      <View style={styles.container}>
+        <Animated.ScrollView
+          ref={scrollRef}
+          horizontal
+          pagingEnabled
+          scrollEnabled={false}
+          showsHorizontalScrollIndicator={false}
+          style={{ width: BANNER_WIDTH, height: BANNER_HEIGHT }}
+          scrollEventThrottle={16}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+            { useNativeDriver: false }
+          )}
+        >
+          {DEITIES.map((deity) => (
+            <View key={deity.id} style={{ width: BANNER_WIDTH, height: BANNER_HEIGHT }}>
+              <Image
+                source={deity.source}
+                style={styles.image}
+                resizeMode="cover"
+              />
+              {/* Dark gradient at bottom for text visibility */}
+              <LinearGradient
+                colors={["transparent", "rgba(0,0,0,0.55)", "rgba(0,0,0,0.92)"]}
+                locations={[0.2, 0.6, 1]}
+                style={StyleSheet.absoluteFillObject}
+              />
+            </View>
+          ))}
+        </Animated.ScrollView>
+
+        {/* Content overlay */}
+        <View style={styles.content} pointerEvents="none">
+          <Text style={styles.title}>{d.title}</Text>
+          <Text style={styles.subtitle}>{d.subtitle}</Text>
+          <Text style={styles.message} numberOfLines={2}>{d.message}</Text>
+          <View style={[styles.accentLine, { backgroundColor: d.accent }]} />
+        </View>
+
+        {/* Dot indicators */}
+        <View style={styles.dotsRow} pointerEvents="box-none">
+          {DEITIES.map((deity, i) => (
+            <TouchableOpacity
+              key={deity.id}
+              onPress={() => goTo(i)}
+              style={[
+                styles.dot,
+                i === current && { width: 20, borderRadius: 4, backgroundColor: d.accent },
+              ]}
+            />
+          ))}
+        </View>
+
+        {/* Prev arrow */}
+        <TouchableOpacity
+          style={[styles.arrow, styles.arrowLeft]}
+          onPress={() => goTo(current - 1)}
+          activeOpacity={0.75}
+        >
+          <Text style={styles.arrowText}>‹</Text>
+        </TouchableOpacity>
+
+        {/* Next arrow */}
+        <TouchableOpacity
+          style={[styles.arrow, styles.arrowRight]}
+          onPress={() => goTo(current + 1)}
+          activeOpacity={0.75}
+        >
+          <Text style={styles.arrowText}>›</Text>
+        </TouchableOpacity>
+
+        {/* Progress bar */}
+        {!paused && (
+          <View style={styles.progressTrack}>
+            <Animated.View
+              style={[
+                styles.progressBar,
+                {
+                  backgroundColor: d.accent,
+                  width: progressAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ["0%", "100%"],
+                  }),
+                },
+              ]}
+            />
+          </View>
+        )}
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    width: width - 32, // assuming 16px padding on sides
-    height: 140,
-    borderRadius: 16,
-    overflow: 'hidden',
-    alignSelf: 'center',
+  wrapper: {
+    alignSelf: "center",
     marginBottom: 20,
-    backgroundColor: '#000',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+  },
+  container: {
+    width: BANNER_WIDTH,
+    height: BANNER_HEIGHT,
+    borderRadius: 16,
+    overflow: "hidden",
+    backgroundColor: "#111",
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
   },
   image: {
-    width: '100%',
-    height: '100%',
-    position: 'absolute',
+    width: BANNER_WIDTH,
+    height: BANNER_HEIGHT,
+    position: "absolute",
+    top: 0,
+    left: 0,
   },
-  overlay: {
-    position: 'absolute',
+  gradientOverlay: {
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 16,
-    backgroundColor: 'rgba(0,0,0,0.5)', // fallback
+    height: "65%",
+    backgroundColor: "transparent",
+    // Simulate gradient with layered transparency
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  content: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    paddingTop: 32,
+    backgroundColor: "rgba(0,0,0,0.0)",
+    // Strong bottom overlay
+    background: "rgba(0,0,0,0)",
   },
   title: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 4,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: -1, height: 1 },
-    textShadowRadius: 10,
+    color: "#fff",
+    fontSize: 22,
+    fontWeight: "900",
+    marginBottom: 2,
+    textShadowColor: "rgba(0,0,0,0.85)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
+  },
+  subtitle: {
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 12,
+    fontWeight: "600",
+    marginBottom: 6,
+    textShadowColor: "rgba(0,0,0,0.6)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   message: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 13,
-    opacity: 0.95,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: -1, height: 1 },
-    textShadowRadius: 10,
+    fontWeight: "500",
+    lineHeight: 19,
+    textShadowColor: "rgba(0,0,0,0.75)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
+  },
+  accentLine: {
+    height: 2,
+    width: 44,
+    borderRadius: 2,
+    marginTop: 8,
+    opacity: 0.9,
+  },
+  dotsRow: {
+    position: "absolute",
+    top: 12,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "rgba(255,255,255,0.4)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.6)",
+  },
+  arrow: {
+    position: "absolute",
+    top: "50%",
+    marginTop: -18,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  arrowLeft: { left: 10 },
+  arrowRight: { right: 10 },
+  arrowText: {
+    color: "#fff",
+    fontSize: 22,
+    fontWeight: "300",
+    lineHeight: 28,
+  },
+  progressTrack: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: "rgba(255,255,255,0.18)",
+  },
+  progressBar: {
+    height: 3,
+    borderRadius: 2,
   },
 });

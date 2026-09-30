@@ -75,8 +75,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         return res.permissions;
       }
-    } catch (err) {
-      console.warn("⚠️ Failed to refresh employee app permissions:", err);
+    } catch (err: any) {
+      console.warn("⚠️ Failed to refresh employee app permissions:", err?.message || err);
+      if (err?.response?.status === 401) {
+        console.warn("⚠️ [SECURITY] Token expired or invalid. Logging out.");
+        SecureStore.deleteItemAsync(STORAGE_KEYS.TOKEN).catch(() => {});
+        SecureStore.deleteItemAsync(STORAGE_KEYS.USER).catch(() => {});
+        setToken(null);
+        setUser(null);
+      }
     }
     return null;
   }, []);

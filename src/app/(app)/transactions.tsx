@@ -55,11 +55,11 @@ function getStatusBadgeStyle(status: string) {
     case 'COMPLETED':
       return { bg: '#DEF7EC', text: '#03543F', border: '#84E1BC' };
     case 'PENDING':
-      return { bg: '#FFEDD5', text: '#C2410C', border: '#FED7AA' };
+      return { bg: '#FFEDD5', text: '#7A131A', border: '#FED7AA' };
     case 'REFUNDED':
       return { bg: '#E2E8F0', text: '#334155', border: '#94A3B8' };
     case 'FAILED':
-      return { bg: '#FDE8E8', text: '#9B1C1C', border: '#F8B4B4' };
+      return { bg: '#F5E0E1', text: '#5A0E13', border: '#D4737A' };
     case 'CANCELLED':
       return { bg: '#F3F4F6', text: '#4B5563', border: '#E5E7EB' };
     default:
@@ -300,7 +300,7 @@ export default function TransactionsScreen() {
               {
                 color:
                   item.type?.toLowerCase().includes('refund') || item.type?.toLowerCase().includes('expense')
-                    ? '#DC2626'
+                    ? '#7A131A'
                     : '#7A131A',
               },
             ]}
@@ -397,9 +397,9 @@ export default function TransactionsScreen() {
             <Text style={styles.summarySubtext}>{summary.totalRefundedCount} refunded</Text>
           </View>
 
-          <View style={[styles.summaryCard, { borderLeftColor: '#DC2626' }]}>
+          <View style={[styles.summaryCard, { borderLeftColor: '#7A131A' }]}>
             <Text style={styles.summaryLabel}>Today's Total</Text>
-            <Text style={[styles.summaryValue, { color: '#DC2626' }]}>
+            <Text style={[styles.summaryValue, { color: '#7A131A' }]}>
               {formatINR(summary.todayTotal)}
             </Text>
           </View>
@@ -480,7 +480,7 @@ export default function TransactionsScreen() {
       {/* Transactions List */}
       {loading && !refreshing ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#DC2626" />
+          <ActivityIndicator size="large" color="#7A131A" />
         </View>
       ) : (
         <FlatList
@@ -492,7 +492,7 @@ export default function TransactionsScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => loadData(true)}
-              tintColor="#DC2626"
+              tintColor="#7A131A"
             />
           }
           ListEmptyComponent={
@@ -729,7 +729,7 @@ export default function TransactionsScreen() {
                     style={styles.refundBtn}
                     onPress={() => setShowRefundModal(true)}
                   >
-                    <Ionicons name="refresh-circle-outline" size={18} color="#DC2626" />
+                    <Ionicons name="refresh-circle-outline" size={18} color="#7A131A" />
                     <Text style={styles.refundBtnText}>Issue Refund for this Transaction</Text>
                   </TouchableOpacity>
                 )}
@@ -779,7 +779,7 @@ export default function TransactionsScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.submitBtn, { flex: 1, backgroundColor: '#DC2626', marginTop: 0 }]}
+                style={[styles.submitBtn, { flex: 1, backgroundColor: '#7A131A', marginTop: 0 }]}
                 onPress={handleRefundSubmit}
                 disabled={isRefunding}
               >
@@ -805,7 +805,7 @@ const styles = StyleSheet.create({
   },
   headerBar: {
     height: 56,
-    backgroundColor: '#DC2626',
+    backgroundColor: '#7A131A',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -896,7 +896,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E5E7EB',
   },
   pillActive: {
-    backgroundColor: '#DC2626',
+    backgroundColor: '#7A131A',
   },
 
   pillText: {
@@ -1111,7 +1111,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#DC2626',
+    backgroundColor: '#7A131A',
     marginTop: 4,
   },
   timelineStatus: {
@@ -1163,7 +1163,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E5E7EB',
   },
   smallPillActive: {
-    backgroundColor: '#DC2626',
+    backgroundColor: '#7A131A',
   },
   smallPillText: {
     fontSize: 11,
@@ -1192,9 +1192,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FEE2E2',
+    backgroundColor: '#F5E0E1',
     borderWidth: 1,
-    borderColor: '#FCA5A5',
+    borderColor: '#D4737A',
     paddingVertical: 9,
     borderRadius: 8,
     gap: 6,
@@ -1203,6 +1203,6 @@ const styles = StyleSheet.create({
   refundBtnText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#DC2626',
+    color: '#7A131A',
   },
 });

@@ -505,8 +505,8 @@ export function buildQuotationHtml(q: any): string {
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       font-size: 9.5pt;
-      color: #1E293B;
-      background: #FFFFFF;
+      color: #0F172A; /* Dark Navy */
+      background: #FFFFFF; /* White */
       line-height: 1.4;
       padding: 10px 0;
     }
@@ -515,7 +515,7 @@ export function buildQuotationHtml(q: any): string {
     .header-table {
       width: 100%;
       border-collapse: collapse;
-      border-bottom: 2px solid #0F172A;
+      border-bottom: 2px solid #7A131A; /* Deep Maroon */
       padding-bottom: 12px;
       margin-bottom: 16px;
     }
@@ -533,12 +533,12 @@ export function buildQuotationHtml(q: any): string {
     .company-name {
       font-size: 14pt;
       font-weight: 800;
-      color: #0F172A;
+      color: #7A131A; /* Deep Maroon */
       letter-spacing: 0.5px;
     }
     .company-details {
       font-size: 8.5pt;
-      color: #475569;
+      color: #0F172A;
       line-height: 1.35;
       margin-top: 2px;
     }
@@ -548,13 +548,13 @@ export function buildQuotationHtml(q: any): string {
     .doc-title {
       font-size: 16pt;
       font-weight: 800;
-      color: #0F172A;
+      color: #7A131A; /* Deep Maroon */
       letter-spacing: 1px;
       text-transform: uppercase;
     }
     .doc-meta {
       font-size: 9pt;
-      color: #334155;
+      color: #0F172A;
       margin-top: 4px;
       line-height: 1.4;
     }
@@ -562,12 +562,12 @@ export function buildQuotationHtml(q: any): string {
       display: inline-block;
       margin-top: 4px;
       padding: 2px 8px;
-      border: 1px solid #CBD5E1;
+      border: 1px solid #E2E8F0; /* Light Grey */
       font-size: 8pt;
       font-weight: 700;
       text-transform: uppercase;
-      color: #334155;
-      background: #F8FAFC;
+      color: #7A131A;
+      background: #FDF2F2; /* Light Pink */
     }
 
     /* ── Client & Project Info ── */
@@ -580,17 +580,17 @@ export function buildQuotationHtml(q: any): string {
     .info-card {
       width: 49%;
       vertical-align: top;
-      border: 1px solid #CBD5E1;
-      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      background: #FFFFFF;
       padding: 10px 12px;
     }
     .info-card-title {
       font-size: 9pt;
       font-weight: 800;
       text-transform: uppercase;
-      color: #0F172A;
+      color: #7A131A;
       letter-spacing: 0.5px;
-      border-bottom: 1px solid #CBD5E1;
+      border-bottom: 1px solid #E2E8F0;
       padding-bottom: 4px;
       margin-bottom: 6px;
     }
@@ -602,7 +602,7 @@ export function buildQuotationHtml(q: any): string {
     }
     .info-row {
       font-size: 8.5pt;
-      color: #334155;
+      color: #0F172A;
       margin-bottom: 2px;
     }
 
@@ -611,9 +611,9 @@ export function buildQuotationHtml(q: any): string {
       font-size: 10pt;
       font-weight: 800;
       text-transform: uppercase;
-      color: #0F172A;
+      color: #7A131A;
       letter-spacing: 0.5px;
-      border-bottom: 1.5px solid #0F172A;
+      border-bottom: 1.5px solid #7A131A;
       padding-bottom: 3px;
       margin-top: 16px;
       margin-bottom: 8px;
@@ -626,13 +626,13 @@ export function buildQuotationHtml(q: any): string {
       page-break-inside: avoid;
     }
     .room-header {
-      background: #F1F5F9;
-      border: 1px solid #CBD5E1;
+      background: #FDF2F2;
+      border: 1px solid #E2E8F0;
       border-bottom: none;
       padding: 6px 10px;
       font-size: 9.5pt;
       font-weight: 800;
-      color: #0F172A;
+      color: #7A131A;
       display: flex;
       justify-content: space-between;
     }
@@ -641,17 +641,17 @@ export function buildQuotationHtml(q: any): string {
     .item-table {
       width: 100%;
       border-collapse: collapse;
-      border: 1px solid #CBD5E1;
+      border: 1px solid #E2E8F0;
       font-size: 8.5pt;
     }
     .item-table th {
-      background: #F8FAFC;
-      color: #334155;
+      background: #FDF2F2;
+      color: #7A131A;
       font-size: 8pt;
       font-weight: 700;
       text-transform: uppercase;
       padding: 6px 8px;
-      border-bottom: 1px solid #CBD5E1;
+      border-bottom: 1px solid #E2E8F0;
       border-right: 1px solid #E2E8F0;
     }
     .item-table th:last-child {
@@ -662,7 +662,7 @@ export function buildQuotationHtml(q: any): string {
       border-bottom: 1px solid #E2E8F0;
       border-right: 1px solid #E2E8F0;
       vertical-align: top;
-      color: #1E293B;
+      color: #0F172A;
     }
     .item-table td:last-child {
       border-right: none;
@@ -677,23 +677,23 @@ export function buildQuotationHtml(q: any): string {
       margin-bottom: 2px;
     }
     .item-desc {
-      color: #475569;
+      color: #0F172A;
       margin-bottom: 3px;
       font-size: 8pt;
     }
     .item-specs {
       font-size: 8pt;
-      color: #475569;
+      color: #0F172A;
       margin-top: 2px;
     }
     .item-accs {
       font-size: 8pt;
-      color: #475569;
+      color: #0F172A;
       margin-top: 2px;
     }
     .item-note {
       font-size: 7.5pt;
-      color: #64748B;
+      color: #7A131A;
       font-style: italic;
       margin-top: 2px;
     }
@@ -710,16 +710,17 @@ export function buildQuotationHtml(q: any): string {
       margin-left: auto;
       border-collapse: collapse;
       font-size: 9pt;
-      border: 1px solid #CBD5E1;
+      border: 1px solid #E2E8F0;
     }
     .summary-table td {
       padding: 5px 10px;
       border-bottom: 1px solid #E2E8F0;
+      color: #0F172A;
     }
     .summary-table tr.grand-row td {
-      background: transparent;
-      color: #0F172A;
-      border-top: 2px solid #0F172A;
+      background: #7A131A;
+      color: #FFFFFF;
+      border-top: none;
       font-weight: 800;
       font-size: 11pt;
       border-bottom: none;
@@ -729,19 +730,19 @@ export function buildQuotationHtml(q: any): string {
     .standard-table {
       width: 100%;
       border-collapse: collapse;
-      border: 1px solid #CBD5E1;
+      border: 1px solid #E2E8F0;
       font-size: 8.5pt;
       margin-bottom: 14px;
       page-break-inside: avoid;
     }
     .standard-table th {
-      background: #F8FAFC;
-      color: #334155;
+      background: #FDF2F2;
+      color: #7A131A;
       font-size: 8pt;
       font-weight: 700;
       text-transform: uppercase;
       padding: 6px 8px;
-      border-bottom: 1px solid #CBD5E1;
+      border-bottom: 1px solid #E2E8F0;
       border-right: 1px solid #E2E8F0;
     }
     .standard-table th:last-child {
@@ -751,7 +752,7 @@ export function buildQuotationHtml(q: any): string {
       padding: 6px 8px;
       border-bottom: 1px solid #E2E8F0;
       border-right: 1px solid #E2E8F0;
-      color: #1E293B;
+      color: #0F172A;
     }
     .standard-table td:last-child {
       border-right: none;
@@ -761,7 +762,7 @@ export function buildQuotationHtml(q: any): string {
     .bank-table {
       width: 100%;
       border-collapse: collapse;
-      border: 1px solid #CBD5E1;
+      border: 1px solid #E2E8F0;
       font-size: 8.5pt;
       margin-bottom: 14px;
       page-break-inside: avoid;
@@ -770,6 +771,7 @@ export function buildQuotationHtml(q: any): string {
       padding: 8px 10px;
       border-right: 1px solid #E2E8F0;
       vertical-align: top;
+      color: #0F172A;
     }
     .bank-table td:last-child {
       border-right: none;
@@ -778,10 +780,10 @@ export function buildQuotationHtml(q: any): string {
     /* ── Terms & Notes ── */
     .terms-block {
       border: 1px solid #E2E8F0;
-      background: #F8FAFC;
+      background: #FAFAFA;
       padding: 8px 12px;
       font-size: 8pt;
-      color: #475569;
+      color: #0F172A;
       line-height: 1.4;
       margin-bottom: 16px;
       page-break-inside: avoid;
@@ -806,7 +808,7 @@ export function buildQuotationHtml(q: any): string {
     }
     .signature-sub {
       font-size: 8pt;
-      color: #64748B;
+      color: #0F172A;
     }
 
     /* Helper Utilities */
@@ -1038,8 +1040,7 @@ export async function generatePdf(
   const html = buildQuotationHtml(q);
   const filename = getPdfFileName(q);
 
-  const { uri } = await Print.printToFileAsync({ html });
-  const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+  const { uri, base64 } = await Print.printToFileAsync({ html, base64: true });
 
   const baseDir =
     FileSystem.documentDirectory || FileSystem.cacheDirectory || "";

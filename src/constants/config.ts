@@ -6,7 +6,7 @@ import Constants from "expo-constants";
  */
 const extraApiUrl = Constants.expoConfig?.extra?.apiUrl;
 
-let apiUrl = 'http://192.168.1.36:5001/api';
+let apiUrl = 'https://alterabackend.onrender.com/api';
 
 if (__DEV__) {
   if (process.env.EXPO_PUBLIC_API_URL) {
@@ -15,15 +15,14 @@ if (__DEV__) {
     apiUrl = extraApiUrl;
   } else if (Platform.OS === 'web') {
     const host = typeof window !== 'undefined' && window.location?.hostname ? window.location.hostname : 'localhost';
-    apiUrl = `http://${host}:5001/api`;
+    apiUrl = `https://alterabackend.onrender.com/api`;
   } else {
     // Determine local network IP from Expo debugger host if running via Expo Go / Metro when env/config is missing
     const hostUri = Constants.expoConfig?.hostUri || Constants.manifest?.hostUri || (Constants.manifest2 as any)?.extra?.expoGo?.debuggerHost;
     if (hostUri) {
-      const ip = hostUri.split(':')[0];
-      apiUrl = `http://${ip}:5001/api`;
+      apiUrl = `https://alterabackend.onrender.com/api`;
     } else {
-      apiUrl = 'http://192.168.1.36:5001/api';
+      apiUrl = 'https://alterabackend.onrender.com/api';
     }
   }
 } else {

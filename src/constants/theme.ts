@@ -1,8 +1,8 @@
 export const THEME = {
   colors: {
-    primary: '#C8102E', // Deep Altera Red
-    primaryDark: '#9F0B22',
-    primaryLight: 'rgba(200, 16, 46, 0.1)',
+    primary: '#7A131A', // Deep Maroon
+    primaryDark: '#5A0E13',
+    primaryLight: 'rgba(122, 19, 26, 0.1)',
     secondary: '#475569',
     background: '#F9F9F9',
     card: '#FFFFFF',

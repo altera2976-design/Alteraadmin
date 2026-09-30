@@ -359,6 +359,7 @@ export default function QuotationScreen() {
     QuotationStandaloneAccessory[]
   >([]);
   const [stAccName, setStAccName] = useState("");
+  const [showStAccForm, setShowStAccForm] = useState(false);
   const [stAccDesc, setStAccDesc] = useState("");
   const [stAccImage, setStAccImage] = useState("");
   const [stAccQty, setStAccQty] = useState("1");
@@ -418,6 +419,7 @@ export default function QuotationScreen() {
 
     setStandaloneAccessories((prev) => [...prev, newAcc]);
     setStAccName("");
+    setShowStAccForm(false);
     setStAccDesc("");
     setShowStAccCustomHardware(false);
     setStAccCustomHardware("");
@@ -1735,7 +1737,7 @@ export default function QuotationScreen() {
 
                 <ScrollView
                   style={styles.modalScroll}
-                  contentContainerStyle={{ padding: 18 }}
+                  contentContainerStyle={{ padding: 12 }}
                 >
                   {/* Client Summary */}
                   <View style={styles.sectionBox}>
@@ -1987,12 +1989,12 @@ export default function QuotationScreen() {
                       style={{
                         backgroundColor: "#7A131A",
                         paddingVertical: 10,
-                        paddingHorizontal: 14,
+                        paddingHorizontal: 10,
                         borderRadius: 8,
                         flexDirection: "row",
                         alignItems: "center",
                         justifyContent: "center",
-                        gap: 6,
+                        gap: 4,
                         marginBottom: 12,
                       }}
                       onPress={() => {
@@ -2054,7 +2056,7 @@ export default function QuotationScreen() {
                                 borderWidth: 1,
                                 borderColor: "#E2E8F0",
                                 borderRadius: 6,
-                                padding: 10,
+                                padding: 8,
                                 marginBottom: 8,
                               }}
                             >
@@ -2198,7 +2200,7 @@ export default function QuotationScreen() {
                                 {
                                   flexDirection: "row",
                                   alignItems: "center",
-                                  gap: 10,
+                                  gap: 4,
                                 },
                               ]}
                             >
@@ -2544,7 +2546,7 @@ export default function QuotationScreen() {
             {/* Form Content */}
             <ScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ padding: 18, paddingBottom: 80 }}
+              contentContainerStyle={{ padding: 12, paddingBottom: 80 }}
               keyboardShouldPersistTaps="handled"
               automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
               showsVerticalScrollIndicator={true}
@@ -2571,7 +2573,7 @@ export default function QuotationScreen() {
                     onChangeText={setClientCompany}
                   />
 
-                  <View style={{ flexDirection: "row", gap: 12 }}>
+                  <View style={{ flexDirection: "row", gap: 4 }}>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.inputLabel}>Phone</Text>
                       <TextInput
@@ -2704,7 +2706,7 @@ export default function QuotationScreen() {
                           Enter Custom Category Name *
                         </Text>
                         <View
-                          style={{ flexDirection: "row", gap: 8, marginTop: 4 }}
+                          style={{ flexDirection: "row", gap: 4, marginTop: 4 }}
                         >
                           <TextInput
                             style={[styles.textInput, { flex: 1 }]}
@@ -2730,7 +2732,7 @@ export default function QuotationScreen() {
                     style={{
                       marginBottom: 14,
                       backgroundColor: "#ffffff",
-                      padding: 12,
+                      padding: 8,
                       borderRadius: 12,
                       borderWidth: 1,
                       borderColor: "#E2E8F0",
@@ -2792,7 +2794,7 @@ export default function QuotationScreen() {
 
                     {showCustomSubItemInput && (
                       <View
-                        style={{ flexDirection: "row", gap: 8, marginTop: 10 }}
+                        style={{ flexDirection: "row", gap: 4, marginTop: 10 }}
                       >
                         <TextInput
                           style={[styles.textInput, { flex: 1 }]}
@@ -2896,7 +2898,7 @@ export default function QuotationScreen() {
                       <View
                         style={{
                           flexDirection: "row",
-                          gap: 8,
+                          gap: 4,
                           marginBottom: 10,
                         }}
                       >
@@ -2967,7 +2969,7 @@ export default function QuotationScreen() {
                       <View
                         style={{
                           flexDirection: "row",
-                          gap: 8,
+                          gap: 4,
                           marginBottom: 10,
                         }}
                       >
@@ -2994,7 +2996,7 @@ export default function QuotationScreen() {
                     <View
                       style={{
                         flexDirection: "row",
-                        gap: 12,
+                        gap: 4,
                         marginBottom: 12,
                       }}
                     >
@@ -3099,7 +3101,7 @@ export default function QuotationScreen() {
                       <View
                         style={{
                           flexDirection: "row",
-                          gap: 8,
+                          gap: 4,
                           marginBottom: 10,
                         }}
                       >
@@ -3177,7 +3179,7 @@ export default function QuotationScreen() {
                       <View
                         style={{
                           flexDirection: "row",
-                          gap: 8,
+                          gap: 4,
                           marginBottom: 10,
                         }}
                       >
@@ -3308,7 +3310,7 @@ export default function QuotationScreen() {
                             style={{
                               flexDirection: "row",
                               alignItems: "center",
-                              gap: 10,
+                              gap: 4,
                             }}
                           >
                             <Text
@@ -3402,7 +3404,7 @@ export default function QuotationScreen() {
                       alignItems: "center",
                       backgroundColor: "#FFF5F5",
                       paddingVertical: 12,
-                      paddingHorizontal: 14,
+                      paddingHorizontal: 10,
                       borderRadius: 8,
                       borderWidth: 1,
                       borderColor: "#FECDD3",
@@ -3455,18 +3457,155 @@ export default function QuotationScreen() {
                   </Text>
 
                   <View style={styles.itemComposerCard}>
-                    <Text style={styles.composerHeader}>
-                      New Accessory Item
-                    </Text>
+                    {/* 1. Accessory Name Input */}
+                    <Text style={styles.inputLabel}>Accessory Name *</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. Soft Close Hinges"
+                      value={stAccName}
+                      onChangeText={setStAccName}
+                    />
 
-                    {/* Image Picker */}
+                    {/* 2. Select Accessories Pills */}
+                    <Text style={[styles.inputLabel, { fontSize: 11, color: "#64748B", marginBottom: 4 }]}>Select Accessories</Text>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      style={{ marginBottom: 8 }}
+                      contentContainerStyle={{ gap: 4, paddingVertical: 4 }}
+                    >
+                      {[
+                        "Soft Close Hinges",
+                        "Cutlery Basket",
+                        "Drawer Channel",
+                        "Bottle Pull-Out",
+                        "Tandem Box",
+                        "Magic Corner",
+                        "Wardrobe Accessories",
+                        "Kitchen Accessories",
+                        "Other Accessories",
+                      ].map((cat) => (
+                        <TouchableOpacity
+                          key={cat}
+                          style={[
+                            styles.smallPill,
+                            { paddingVertical: 6, paddingHorizontal: 10 },
+                            (!showStAccForm && stAccName === cat) && styles.smallPillActive,
+                          ]}
+                          onPress={() => {
+                            setShowStAccForm(false);
+                            setStAccName(cat);
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.smallPillText,
+                              (!showStAccForm && stAccName === cat) && styles.smallPillTextActive,
+                            ]}
+                          >
+                            {cat}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                      <TouchableOpacity
+                        style={[
+                          styles.smallPill,
+                          { paddingVertical: 6, paddingHorizontal: 10 },
+                          showStAccForm && styles.smallPillActive,
+                        ]}
+                        onPress={() => {
+                          setShowStAccForm(true);
+                          setStAccName("");
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.smallPillText,
+                            showStAccForm && styles.smallPillTextActive,
+                          ]}
+                        >
+                          + Add More
+                        </Text>
+                      </TouchableOpacity>
+                    </ScrollView>
+
+                    {/* 3. Hardware Name Input */}
+                    <Text style={styles.inputLabel}>Hardware Name</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. Hettich Soft Close"
+                      value={stAccDesc}
+                      onChangeText={setStAccDesc}
+                    />
+
+                    {/* 4. Select Hardware Pills */}
+                    <Text style={[styles.inputLabel, { fontSize: 11, color: "#64748B", marginBottom: 4 }]}>Select Hardware</Text>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      style={{ marginBottom: 8 }}
+                      contentContainerStyle={{ gap: 4, paddingVertical: 4 }}
+                    >
+                      {[
+                        "Hettich Soft Close",
+                        "Hafele Soft Close",
+                        "Ebco Soft Close",
+                        "Blum",
+                        "Godrej",
+                        "Other Hardware",
+                      ].map((opt) => (
+                        <TouchableOpacity
+                          key={opt}
+                          style={[
+                            styles.smallPill,
+                            { paddingVertical: 6, paddingHorizontal: 10 },
+                            (!showStAccCustomHardware && stAccDesc === opt) && styles.smallPillActive,
+                          ]}
+                          onPress={() => {
+                            setShowStAccCustomHardware(false);
+                            setStAccDesc(opt);
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.smallPillText,
+                              (!showStAccCustomHardware && stAccDesc === opt) && styles.smallPillTextActive,
+                            ]}
+                          >
+                            {opt}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                      <TouchableOpacity
+                        style={[
+                          styles.smallPill,
+                          { paddingVertical: 6, paddingHorizontal: 10 },
+                          showStAccCustomHardware && styles.smallPillActive,
+                        ]}
+                        onPress={() => {
+                          setShowStAccCustomHardware(true);
+                          setStAccDesc("");
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.smallPillText,
+                            showStAccCustomHardware && styles.smallPillTextActive,
+                          ]}
+                        >
+                          + Add More
+                        </Text>
+                      </TouchableOpacity>
+                    </ScrollView>
+
+                    {/* 5. Accessory Image */}
                     <Text style={styles.inputLabel}>Accessory Image</Text>
                     <View
                       style={{
                         flexDirection: "row",
                         alignItems: "center",
-                        gap: 12,
-                        marginBottom: 12,
+                        gap: 4,
+                        marginBottom: 8,
                       }}
                     >
                       {stAccImage ? (
@@ -3533,71 +3672,11 @@ export default function QuotationScreen() {
                       )}
                     </View>
 
-                    <Text style={styles.inputLabel}>Accessory Name *</Text>
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="e.g. Hafele Soft Close Hinges / Cutlery Baskets"
-                      value={stAccName}
-                      onChangeText={setStAccName}
-                    />
-
-                    <Text style={styles.inputLabel}>
-                      Select Hardware Option:
-                    </Text>
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      style={{ marginBottom: 12 }}
-                      contentContainerStyle={{ gap: 8, paddingVertical: 4 }}
-                    >
-                      {stAccHardwareOptions.map((opt) => (
-                        <TouchableOpacity
-                          key={opt}
-                          style={[
-                            styles.smallPill,
-                            { paddingVertical: 8, paddingHorizontal: 16 },
-                            (showStAccCustomHardware ? opt === "+ Add More" : stAccDesc === opt) && styles.smallPillActive,
-                          ]}
-                          onPress={() => {
-                            if (opt === "+ Add More") {
-                              setShowStAccCustomHardware(true);
-                              setStAccDesc("+ Add More");
-                            } else {
-                              setShowStAccCustomHardware(false);
-                              setStAccDesc(opt);
-                            }
-                          }}
-                        >
-                          <Text
-                            style={[
-                              styles.smallPillText,
-                              { fontSize: 13 },
-                              (showStAccCustomHardware ? opt === "+ Add More" : stAccDesc === opt) && styles.smallPillTextActive,
-                            ]}
-                          >
-                            {opt === "+ Add More" ? "Custom" : opt}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-
-                    {showStAccCustomHardware && (
-                      <View style={{ marginBottom: 12 }}>
-                        <TextInput
-                          style={[styles.textInput, { height: 48 }]}
-                          placeholder="Type custom hardware details..."
-                          multiline
-                          value={stAccCustomHardware}
-                          onChangeText={setStAccCustomHardware}
-                        />
-                      </View>
-                    )}
-
                     <View
                       style={{
                         flexDirection: "row",
-                        gap: 10,
-                        marginBottom: 12,
+                        gap: 4,
+                        marginBottom: 8,
                       }}
                     >
                       <View style={{ flex: 1 }}>
@@ -3637,7 +3716,7 @@ export default function QuotationScreen() {
                         flexDirection: "row",
                         justifyContent: "space-between",
                         alignItems: "center",
-                        marginBottom: 12,
+                        marginBottom: 8,
                       }}
                     >
                       <Text
@@ -3705,7 +3784,7 @@ export default function QuotationScreen() {
                           {
                             flexDirection: "row",
                             alignItems: "center",
-                            gap: 10,
+                            gap: 4,
                             paddingVertical: 10,
                           },
                         ]}
@@ -3797,7 +3876,7 @@ export default function QuotationScreen() {
                       alignItems: "center",
                       backgroundColor: "#FFF5F5",
                       paddingVertical: 12,
-                      paddingHorizontal: 14,
+                      paddingHorizontal: 10,
                       borderRadius: 8,
                       borderWidth: 1,
                       borderColor: "#FECDD3",
@@ -3844,7 +3923,7 @@ export default function QuotationScreen() {
                     Additional Fees &amp; Discounts
                   </Text>
 
-                  <View style={{ flexDirection: "row", gap: 12 }}>
+                  <View style={{ flexDirection: "row", gap: 4 }}>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.inputLabel}>
                         Handling Charges (%)
@@ -3886,12 +3965,12 @@ export default function QuotationScreen() {
                   </View>
 
                   <View
-                    style={{ flexDirection: "row", gap: 12, marginTop: 12 }}
+                    style={{ flexDirection: "row", gap: 4, marginTop: 12 }}
                   >
                     <View style={{ flex: 1 }}>
                       <Text style={styles.inputLabel}>Discount Type</Text>
                       <View
-                        style={{ flexDirection: "row", gap: 6, marginTop: 4 }}
+                        style={{ flexDirection: "row", gap: 4, marginTop: 4 }}
                       >
                         <TouchableOpacity
                           style={[
@@ -4027,7 +4106,7 @@ export default function QuotationScreen() {
                     ))}
                   </ScrollView>
 
-                  <View style={{ flexDirection: "row", gap: 12, marginTop: 4 }}>
+                  <View style={{ flexDirection: "row", gap: 4, marginTop: 4 }}>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.inputLabel}>GST Rate (%)</Text>
                       <TextInput
@@ -4106,7 +4185,7 @@ export default function QuotationScreen() {
                     <View
                       style={{
                         backgroundColor: "#FFF5F5",
-                        padding: 10,
+                        padding: 8,
                         borderRadius: 8,
                         borderColor: "#FECDD3",
                         borderWidth: 1,
@@ -4128,7 +4207,7 @@ export default function QuotationScreen() {
                     <View
                       style={{
                         backgroundColor: "#ECFDF5",
-                        padding: 10,
+                        padding: 8,
                         borderRadius: 8,
                         borderColor: "#A7F3D0",
                         borderWidth: 1,
@@ -4394,7 +4473,7 @@ export default function QuotationScreen() {
               </View>
 
               <ScrollView
-                style={{ padding: 18 }}
+                style={{ padding: 12 }}
                 keyboardShouldPersistTaps="handled"
                 automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
               >
@@ -4484,7 +4563,7 @@ export default function QuotationScreen() {
               </View>
 
               <ScrollView
-                style={{ padding: 18 }}
+                style={{ padding: 12 }}
                 keyboardShouldPersistTaps="handled"
                 automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
               >
@@ -4502,7 +4581,7 @@ export default function QuotationScreen() {
                   <View
                     style={{
                       backgroundColor: "#F8FAFC",
-                      padding: 10,
+                      padding: 8,
                       borderRadius: 8,
                       marginBottom: 14,
                       borderWidth: 1,
@@ -4554,7 +4633,7 @@ export default function QuotationScreen() {
                   style={{
                     flexDirection: "row",
                     flexWrap: "wrap",
-                    gap: 6,
+                    gap: 4,
                     marginVertical: 6,
                   }}
                 >
@@ -4643,7 +4722,7 @@ const styles = StyleSheet.create({
   // Header
   header: {
     backgroundColor: "#7A131A",
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     paddingTop: 6,
     paddingBottom: 10,
     borderBottomLeftRadius: 16,
@@ -4653,7 +4732,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 8,
-    gap: 8,
+    gap: 4,
   },
   backBtn: {
     width: 30,
@@ -4664,7 +4743,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#7A131A',
     letterSpacing: 0.3,
@@ -4712,14 +4791,14 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   kpiContainer: {
-    paddingHorizontal: 14,
-    gap: 8,
+    paddingHorizontal: 10,
+    gap: 4,
   },
   kpiCard: {
     backgroundColor: "#ffffff",
     borderRadius: 10,
     paddingVertical: 6,
-    paddingHorizontal: 12,
+    paddingHorizontal: 6,
     borderLeftWidth: 3,
     borderWidth: 1,
     borderColor: "#E2E8F0",
@@ -4732,7 +4811,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   kpiVal: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '600',
     color: '#7A131A',
     marginTop: 1,
@@ -4746,9 +4825,9 @@ const styles = StyleSheet.create({
   // Status Filter Pills
   pillsRow: {
     flexDirection: "row",
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     paddingVertical: 6,
-    gap: 6,
+    gap: 4,
     flexWrap: "wrap",
   },
   pill: {
@@ -4775,7 +4854,7 @@ const styles = StyleSheet.create({
 
   // List
   listScroll: { flex: 1 },
-  listContent: { padding: 16, paddingBottom: 40 },
+  listContent: { padding: 8, paddingBottom: 40 },
   centerBox: { padding: 40, alignItems: "center" },
   loadingText: { marginTop: 12, color: "#64748B", fontSize: 13 },
   emptyBox: {
@@ -4784,7 +4863,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   emptyTitle: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#7A131A',
     marginTop: 12,
@@ -4809,8 +4888,8 @@ const styles = StyleSheet.create({
   quoteCard: {
     backgroundColor: "#ffffff",
     borderRadius: 16,
-    padding: 14,
-    marginBottom: 12,
+    padding: 8,
+    marginBottom: 6,
     borderWidth: 1,
     borderColor: "#E2E8F0",
     shadowColor: "#000",
@@ -4826,7 +4905,7 @@ const styles = StyleSheet.create({
   quoteNoRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 4,
   },
   quoteNo: {
     fontSize: 14,
@@ -4860,7 +4939,7 @@ const styles = StyleSheet.create({
   },
 
   statusTag: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
     paddingVertical: 3,
     borderRadius: 6,
     backgroundColor: "#F1F5F9",
@@ -4900,7 +4979,7 @@ const styles = StyleSheet.create({
   },
   actionPills: {
     flexDirection: "row",
-    gap: 6,
+    gap: 4,
   },
   quickIconBtn: {
     width: 28,
@@ -4933,12 +5012,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 18,
+    padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#F1F5F9",
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#7A131A',
   },
@@ -4963,13 +5042,13 @@ const styles = StyleSheet.create({
   sectionBox: {
     backgroundColor: "#F8FAFC",
     borderRadius: 12,
-    padding: 14,
-    marginBottom: 14,
+    padding: 8,
+    marginBottom: 8,
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
   boxTitle: {
-    fontSize: 17,
+    fontSize: 13,
     fontWeight: '600',
     color: '#7A131A',
     textTransform: "uppercase",
@@ -4989,11 +5068,11 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   priceLabel: {
-    fontSize: 15,
+    fontSize: 11,
     color: '#4B5563',
   },
   priceVal: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: "700",
     color: '#111827',
   },
@@ -5004,12 +5083,12 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   grandTotalLabel: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#7A131A',
   },
   grandTotalVal: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#7A131A',
   },
@@ -5023,8 +5102,8 @@ const styles = StyleSheet.create({
   itemCard: {
     backgroundColor: "#ffffff",
     borderRadius: 8,
-    padding: 10,
-    marginBottom: 8,
+    padding: 6,
+    marginBottom: 4,
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
@@ -5043,7 +5122,7 @@ const styles = StyleSheet.create({
     color: "#0F172A",
   },
   itemCardName: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: "700",
     color: '#111827',
     marginTop: 2,
@@ -5077,7 +5156,7 @@ const styles = StyleSheet.create({
   msAmt: { fontSize: 10.5, fontWeight: "600", color: "#334155" },
 
   actionButtonsCol: {
-    gap: 8,
+    gap: 4,
     marginTop: 10,
     marginBottom: 24,
   },
@@ -5086,18 +5165,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#7A131A",
-    paddingVertical: 12,
-    borderRadius: 10,
-    gap: 6,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 4,
   },
   primaryActionBtnText: {
     color: "#ffffff",
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: "800",
   },
   actionButtonsRow: {
     flexDirection: "row",
-    gap: 8,
+    gap: 4,
   },
   secondaryActionBtn: {
     flex: 1,
@@ -5107,12 +5186,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF1F2",
     borderWidth: 1,
     borderColor: "#FECDD3",
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderRadius: 8,
     gap: 4,
   },
   secondaryActionBtnText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "700",
     color: "#7A131A",
   },
@@ -5121,12 +5200,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#F1F5F9",
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderRadius: 8,
     gap: 4,
   },
   editActionBtnText: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: "700",
     color: "#475569",
   },
@@ -5137,7 +5216,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#7A131A",
     paddingVertical: 12,
     borderRadius: 10,
-    gap: 6,
+    gap: 4,
     marginTop: 4,
   },
   convertBtnText: {
@@ -5152,19 +5231,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#E2E8F0",
   },
   creatorTitle: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#7A131A',
   },
   saveHeaderBtn: {
     backgroundColor: "#7A131A",
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
     paddingVertical: 8,
     borderRadius: 6,
   },
@@ -5209,48 +5288,48 @@ const styles = StyleSheet.create({
   },
 
   formSectionTitle: {
-    fontSize: 20,
+    fontSize: 15,
     fontWeight: 'bold',
     color: '#7A131A',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   inputLabel: {
-    fontSize: 15,
+    fontSize: 12,
     fontWeight: "700",
     color: '#4B5563',
     marginBottom: 4,
-    marginTop: 6,
+    marginTop: 8,
   },
   textInput: {
     backgroundColor: "#F8FAFC",
     borderWidth: 1,
     borderColor: "#CBD5E1",
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 10,
     fontSize: 12,
     color: "#0F172A",
   },
   nextStepBtn: {
     backgroundColor: "#1E293B",
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderRadius: 8,
     alignItems: "center",
-    marginTop: 20,
+    marginTop: 24,
     marginBottom: 40,
   },
   nextStepBtnText: {
     color: "#ffffff",
     fontWeight: "700",
-    fontSize: 13,
+    fontSize: 12,
   },
 
   roomPill: {
     paddingVertical: 6,
-    paddingHorizontal: 12,
+    paddingHorizontal: 6,
     borderRadius: 16,
     backgroundColor: "#F1F5F9",
-    marginRight: 6,
+    marginRight: 2,
   },
   roomPillActive: {
     backgroundColor: "#7A131A",
@@ -5270,8 +5349,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E2E8F0",
     borderRadius: 12,
-    padding: 14,
-    marginBottom: 16,
+    padding: 6,
+    marginBottom: 12,
   },
   composerHeader: {
     fontSize: 12,
@@ -5281,8 +5360,8 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   addAccBtn: {
-    width: 40,
-    height: 40,
+    width: 32,
+    height: 32,
     backgroundColor: "#7A131A",
     borderRadius: 8,
     justifyContent: "center",
@@ -5293,14 +5372,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#7A131A",
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderRadius: 8,
-    gap: 6,
-    marginTop: 6,
+    gap: 4,
+    marginTop: 4,
   },
   addItemSubmitText: {
     color: "#ffffff",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "700",
   },
   addedItemRow: {
@@ -5310,7 +5389,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E2E8F0",
     borderRadius: 8,
-    padding: 10,
+    padding: 8,
     marginBottom: 8,
   },
   addedItemName: {
@@ -5326,7 +5405,7 @@ const styles = StyleSheet.create({
 
   smallPill: {
     paddingVertical: 6,
-    paddingHorizontal: 12,
+    paddingHorizontal: 6,
     borderRadius: 6,
     backgroundColor: "#E2E8F0",
   },
@@ -5357,7 +5436,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E2E8F0",
     borderRadius: 8,
-    padding: 10,
+    padding: 8,
     marginBottom: 8,
   },
 
@@ -5367,10 +5446,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF1F2",
     borderWidth: 1,
     borderColor: "#FECDD3",
-    padding: 10,
+    padding: 8,
     borderRadius: 8,
     marginTop: 12,
-    gap: 6,
+    gap: 4,
   },
   attachText: {
     fontSize: 11,
@@ -5387,14 +5466,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#FECDD3",
     borderRadius: 10,
-    padding: 12,
+    padding: 8,
     marginBottom: 16,
   },
   addCustomBtn: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#7A131A",
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     borderRadius: 8,
     gap: 4,
   },
