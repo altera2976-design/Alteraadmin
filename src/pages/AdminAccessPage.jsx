@@ -57,6 +57,7 @@ export default function AdminAccessPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [adminLink, setAdminLink] = useState('');
 
   // Modals state
   const [showAddAdminModal, setShowAddAdminModal] = useState(false);
@@ -144,6 +145,12 @@ export default function AdminAccessPage() {
     try {
       await api.post('/employees', adminForm);
       setSuccess(`Account for ${adminForm.name} created successfully!`);
+      if (adminForm.role === 'ADMIN') {
+        const url = `${window.location.origin}/admin/login?invite=${btoa(adminForm.email)}`;
+        setAdminLink(url);
+      } else {
+        setAdminLink('');
+      }
       setShowAddAdminModal(false);
       setAdminForm({
         name: '',
@@ -318,29 +325,29 @@ export default function AdminAccessPage() {
 
   const renderPermissionGrid = (permissionsObj, setPermissionsFn) => {
     return (
-      <div style={{ marginTop: 16, padding: 14, background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <label style={{ fontSize: 13, fontWeight: 800, color: '#1e293b', margin: 0 }}>
+      <div style={{ marginTop: 16, padding: 18, background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <label style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', margin: 0 }}>
             Granular Module Action Permissions
           </label>
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
             <button
               type="button"
-              style={{ fontSize: 11, padding: '3px 8px', background: '#e0f2fe', color: '#0369a1', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 700 }}
+              style={{ fontSize: 12, padding: '4px 12px', background: '#e0f2fe', color: '#0284c7', border: 'none', borderRadius: 16, cursor: 'pointer', fontWeight: 700 }}
               onClick={() => setPermissionsFn(getDefaultFullPermissions())}
             >
               Full Access
             </button>
             <button
               type="button"
-              style={{ fontSize: 11, padding: '3px 8px', background: '#fef3c7', color: '#b45309', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 700 }}
+              style={{ fontSize: 12, padding: '4px 12px', background: '#fef3c7', color: '#b45309', border: 'none', borderRadius: 16, cursor: 'pointer', fontWeight: 700 }}
               onClick={() => setPermissionsFn(getDefaultViewOnlyPermissions())}
             >
               View Only
             </button>
             <button
               type="button"
-              style={{ fontSize: 11, padding: '3px 8px', background: '#f1f5f9', color: '#64748b', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 700 }}
+              style={{ fontSize: 12, padding: '4px 12px', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 16, cursor: 'pointer', fontWeight: 700 }}
               onClick={() => {
                 const empty = {};
                 GRANULAR_MODULES.forEach((m) => {
@@ -355,22 +362,23 @@ export default function AdminAccessPage() {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
           {GRANULAR_MODULES.map((mod) => (
-            <div key={mod.key} style={{ padding: 10, background: '#ffffff', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-              <div style={{ fontWeight: 800, fontSize: 12, color: '#0f172a', marginBottom: 6 }}>
+            <div key={mod.key} style={{ padding: 14, background: '#ffffff', borderRadius: 10, border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+              <div style={{ fontWeight: 800, fontSize: 13, color: '#0f172a', marginBottom: 8 }}>
                 {mod.label}
               </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
                 {mod.actions.map((action) => {
                   const currentVal = typeof permissionsObj?.[mod.key] === 'boolean'
                     ? permissionsObj[mod.key]
                     : !!permissionsObj?.[mod.key]?.[action];
 
                   return (
-                    <label key={action} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, cursor: 'pointer', color: '#475569' }}>
+                    <label key={action} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, cursor: 'pointer', color: '#475569' }}>
                       <input
                         type="checkbox"
+                        style={{ width: 14, height: 14, accentColor: '#0f172a', cursor: 'pointer' }}
                         checked={currentVal}
                         onChange={(e) => {
                           const nextPerms = { ...permissionsObj };
@@ -384,7 +392,7 @@ export default function AdminAccessPage() {
                           setPermissionsFn(nextPerms);
                         }}
                       />
-                      <span style={{ textTransform: 'uppercase', fontWeight: 700 }}>{action}</span>
+                      <span style={{ textTransform: 'uppercase', fontWeight: 700, marginTop: 1 }}>{action}</span>
                     </label>
                   );
                 })}
@@ -419,6 +427,13 @@ export default function AdminAccessPage() {
 
       {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>}
       {success && <div className="alert alert-success" style={{ marginBottom: 16 }}>{success}</div>}
+      {adminLink && (
+        <div className="alert alert-info" style={{ marginBottom: 16, background: '#e0f2fe', color: '#0369a1', padding: 16, borderRadius: 8, border: '1px solid #bae6fd' }}>
+          <strong>Admin Login Access Link:</strong><br/>
+          Provide this link to the new Admin to log in securely:<br/>
+          <a href={adminLink} target="_blank" rel="noreferrer" style={{ color: '#0284c7', fontWeight: 'bold', textDecoration: 'underline' }}>{adminLink}</a>
+        </div>
+      )}
 
       {/* ── KPI Grid ─────────────────────────────────────────── */}
       <div style={styles.kpiGrid}>
@@ -1072,7 +1087,7 @@ const styles = {
     background: '#ffffff',
     borderRadius: 16,
     width: '100%',
-    maxWidth: 620,
+    maxWidth: 720,
     maxHeight: '90vh',
     overflowY: 'auto',
     boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',

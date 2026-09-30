@@ -452,9 +452,9 @@ export default function TaskManagementPage() {
         <div style={styles.modalBackdrop}>
           <div style={styles.modalCard}>
             <div style={styles.modalHeader}>
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Assign New Task</h3>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#1e293b' }}>Assign New Task</h3>
               <button
-                style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#64748b' }}
+                style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#64748b', padding: 0 }}
                 onClick={() => {
                   setShowModal(false);
                   setSelectedFiles([]);
@@ -467,11 +467,12 @@ export default function TaskManagementPage() {
 
             <form onSubmit={handleCreateTask}>
               <div style={styles.modalBody}>
-                <div style={{ marginBottom: 14 }}>
+                <div style={{ marginBottom: 16 }}>
                   <label style={styles.label}>Assign To (Super Admin ➔ Admin or Employee) *</label>
                   <select
                     className="form-control"
                     required
+                    style={{ ...styles.input, appearance: 'auto' }}
                     value={form.assignedTo}
                     onChange={(e) => setForm({ ...form, assignedTo: e.target.value })}
                   >
@@ -487,34 +488,37 @@ export default function TaskManagementPage() {
                   </select>
                 </div>
 
-                <div style={{ marginBottom: 14 }}>
+                <div style={{ marginBottom: 16 }}>
                   <label style={styles.label}>Task Title / Subject *</label>
                   <input
                     type="text"
                     className="form-control"
                     required
-                    placeholder="e.g. Prepare Quotation for Bandra Villa / Site Inspection"
+                    style={styles.input}
+                    placeholder="e.g. Prepare Quotation"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                   />
                 </div>
 
-                <div style={{ marginBottom: 14 }}>
+                <div style={{ marginBottom: 16 }}>
                   <label style={styles.label}>Task Description & Notes</label>
                   <textarea
                     className="form-control"
-                    rows={3}
+                    rows={4}
+                    style={styles.input}
                     placeholder="Detailed instructions for the assigned admin or employee..."
                     value={form.description}
                     onChange={(e) => setForm({ ...form, description: e.target.value })}
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
                   <div>
                     <label style={styles.label}>Priority Level</label>
                     <select
                       className="form-control"
+                      style={{ ...styles.input, appearance: 'auto' }}
                       value={form.priority}
                       onChange={(e) => setForm({ ...form, priority: e.target.value })}
                     >
@@ -530,16 +534,18 @@ export default function TaskManagementPage() {
                     <input
                       type="date"
                       className="form-control"
+                      style={styles.input}
                       value={form.dueDate}
                       onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
                     />
                   </div>
                 </div>
 
-                <div style={{ marginBottom: 14 }}>
+                <div style={{ marginBottom: 16 }}>
                   <label style={styles.label}>Link to Project (Optional)</label>
                   <select
                     className="form-control"
+                    style={{ ...styles.input, appearance: 'auto' }}
                     value={form.projectId}
                     onChange={(e) => setForm({ ...form, projectId: e.target.value })}
                   >
@@ -553,9 +559,11 @@ export default function TaskManagementPage() {
                 </div>
 
                 {/* ── File Attachments Upload Section ────────────────── */}
-                <div style={{ marginBottom: 14, background: '#f8fafc', padding: 12, borderRadius: 8, border: '1px dashed #cbd5e1' }}>
-                  <label style={styles.label}>Attachments / Reference Files (Optional)</label>
-                  <p style={{ fontSize: 11, color: '#64748b', margin: '0 0 8px 0' }}>
+                <div style={{ marginBottom: 16, background: '#ffffff', padding: 16, borderRadius: 8, border: '1px dashed #cbd5e1' }}>
+                  <label style={{ fontSize: 13, fontWeight: 700, color: '#475569', marginBottom: 4, display: 'block' }}>
+                    Attachments / Reference Files (Optional)
+                  </label>
+                  <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 12px 0' }}>
                     Upload JPG, PNG, WEBP, PDF, DOC/DOCX, XLS/XLSX (Max 10MB per file)
                   </p>
 
@@ -564,17 +572,17 @@ export default function TaskManagementPage() {
                     multiple
                     accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.xls,.xlsx"
                     onChange={handleFileSelect}
-                    style={{ fontSize: 12 }}
+                    style={{ fontSize: 13, color: '#475569' }}
                   />
 
                   {fileError ? (
-                    <div style={{ color: '#ef4444', fontSize: 11, marginTop: 6, fontWeight: 700 }}>
+                    <div style={{ color: '#ef4444', fontSize: 12, marginTop: 8, fontWeight: 700 }}>
                       ⚠️ {fileError}
                     </div>
                   ) : null}
 
                   {selectedFiles.length > 0 && (
-                    <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {selectedFiles.map((file, idx) => (
                         <div
                           key={idx}
@@ -582,19 +590,19 @@ export default function TaskManagementPage() {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
-                            background: '#ffffff',
-                            padding: '6px 10px',
+                            background: '#f8fafc',
+                            padding: '8px 12px',
                             borderRadius: 6,
                             border: '1px solid #e2e8f0',
-                            fontSize: 12,
+                            fontSize: 13,
                           }}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
                             <span>📎</span>
-                            <span style={{ fontWeight: 600, color: '#1e293b', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: 220 }}>
+                            <span style={{ fontWeight: 600, color: '#1e293b', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: 280 }}>
                               {file.name}
                             </span>
-                            <span style={{ color: '#64748b', fontSize: 11 }}>({formatFileSize(file.size)})</span>
+                            <span style={{ color: '#64748b', fontSize: 12 }}>({formatFileSize(file.size)})</span>
                           </div>
                           <button
                             type="button"
@@ -606,6 +614,7 @@ export default function TaskManagementPage() {
                               fontWeight: 'bold',
                               cursor: 'pointer',
                               padding: '2px 6px',
+                              fontSize: 14,
                             }}
                           >
                             ✖
@@ -620,7 +629,16 @@ export default function TaskManagementPage() {
               <div style={styles.modalFooter}>
                 <button
                   type="button"
-                  className="btn btn-secondary"
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: 8,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    background: '#ffffff',
+                    color: '#475569',
+                    border: '1px solid #cbd5e1',
+                    cursor: 'pointer'
+                  }}
                   onClick={() => {
                     setShowModal(false);
                     setSelectedFiles([]);
@@ -632,7 +650,16 @@ export default function TaskManagementPage() {
                 </button>
                 <button
                   type="submit"
-                  className="btn btn-primary"
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: 8,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    background: '#B91C1C',
+                    color: '#ffffff',
+                    border: 'none',
+                    cursor: 'pointer'
+                  }}
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? 'Uploading & Assigning...' : 'Assign Task'}
@@ -836,6 +863,6 @@ const styles = {
     display: 'flex',
     justifyContent: 'flex-end',
     gap: 10,
-    background: '#f8fafc',
+    background: '#ffffff',
   },
 };

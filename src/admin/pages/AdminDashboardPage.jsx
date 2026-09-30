@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import AdminAppLayout from '../layouts/AdminAppLayout';
+import DevotionalBanner from '../../components/DevotionalBanner';
 import api, { SOCKET_URL } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -174,6 +175,7 @@ export default function AdminDashboardPage() {
   return (
     <AdminAppLayout title="Dashboard Overview">
       <div style={styles.dashboardContainer}>
+        <DevotionalBanner />
         {/* Dynamic Greeting Header Banner */}
         <div style={styles.greetingBanner}>
           <div>

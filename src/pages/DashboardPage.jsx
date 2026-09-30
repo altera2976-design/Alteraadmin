@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import LoadingSpinner from '../components/LoadingSpinner';
+import DevotionalBanner from '../components/DevotionalBanner';
 import { useAuth } from '../context/AuthContext';
 import AdminLayout from '../layouts/AdminLayout';
 import api, { SOCKET_URL } from '../services/api';
@@ -159,6 +160,8 @@ export default function DashboardPage() {
       </div>
 
 
+
+      <DevotionalBanner />
 
       {/* ── Welcome Banner ───────────────────────────────────── */}
       <div style={styles.welcomeBanner}>

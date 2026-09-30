@@ -11,9 +11,17 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-
-
-  const handleSubmit = async (e) => {
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const invite = params.get('invite');
+    if (invite) {
+      try {
+        setEmail(atob(invite));
+      } catch (e) {
+        // invalid base64
+      }
+    }
+  }, []);  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email || !password) {
       setError('Please provide both email and password.');

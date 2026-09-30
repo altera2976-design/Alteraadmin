@@ -1,124 +1,169 @@
-import axios from 'axios';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
-const STATIC_BANNERS = {
-  morning: {
-    image: '/assets/devotional/khatu-shyam-morning.webp',
+const DEITIES = [
+  {
+    id: 'shyam',
+    image: '/assets/devotional/shyam_ji.jpg',
     title: 'जय श्री श्याम',
-    message: 'जिसके सिर पर हाथ हो श्याम का, उसका जीवन खुशियों से भर जाता है।'
+    subtitle: '🙏 Khatu Shyam Ji',
+    accent: '#60a5fa',
+    objectPos: 'center 20%',
+    message: 'जिसके सिर पर हाथ हो श्याम का, उसका जीवन खुशियों से भर जाता है।',
   },
-  afternoon: {
-    image: '/assets/devotional/khatu-shyam-afternoon.webp',
-    title: 'जय श्री श्याम',
-    message: 'श्याम नाम का सहारा रखो, हर मुश्किल किनारा बन जाएगी।'
+  {
+    id: 'hanuman',
+    image: '/assets/devotional/hanuman_ji.jpg',
+    title: 'जय श्री राम 🚩',
+    subtitle: '🙏 Sankat Mochan Hanuman Ji',
+    accent: '#fb923c',
+    objectPos: 'center 10%',
+    message: 'संकट मोचन हनुमान आपके सभी कष्टों को दूर करें। जय बजरंगबली!',
   },
-  evening: {
-    image: '/assets/devotional/khatu-shyam-evening.webp',
-    title: 'जय श्री श्याम',
-    message: 'जहाँ श्याम का नाम है, वहाँ हर पल सुख और शांति है।'
+  {
+    id: 'shiva',
+    image: '/assets/devotional/shiva_ji.jpg',
+    title: 'हर हर महादेव 🔱',
+    subtitle: '🙏 Bholenath Shiva Ji',
+    accent: '#a78bfa',
+    objectPos: 'center 5%',
+    message: 'ॐ नमः शिवाय! भोलेनाथ की कृपा से आपके जीवन में सुख-शांति आए।',
   },
-  night: {
-    image: '/assets/devotional/khatu-shyam-night.webp',
-    title: 'जय श्री श्याम',
-    message: 'आज की सारी चिंताएँ श्याम को सौंप दो, कल की राह वही आसान करेंगे।'
+  {
+    id: 'krishna',
+    image: '/assets/devotional/radha_krishna.png',
+    title: 'राधे राधे ❤️',
+    subtitle: '🙏 Shri Radha Krishna Ji',
+    accent: '#4ade80',
+    objectPos: 'center 15%',
+    message: 'राधे राधे! श्री कृष्णा की कृपा से आपका जीवन प्रेम और खुशियों से भरा रहे।',
   },
-  lateNight: {
-    image: '/assets/devotional/khatu-shyam-late-night.webp',
-    title: 'जय श्री श्याम',
-    message: 'सोने से पहले बस इतना कहना—हारे के सहारे, मेरे खाटू वाले श्याम।'
+  {
+    id: 'durga',
+    image: '/assets/devotional/maa_durga.jpg',
+    title: 'जय माता दी 🙏',
+    subtitle: '🙏 Maa Durga Ji',
+    accent: '#f472b6',
+    objectPos: 'center 10%',
+    message: 'माँ दुर्गा की कृपा से आपके जीवन से सभी कष्ट दूर हों। जय माता दी!',
+  },
+];
+
+const INTERVAL = 3500;
+
+const CSS = `
+  @keyframes slideProgress {
+    from { width: 0%; }
+    to { width: 100%; }
   }
-};
-
-const getStaticBanner = () => {
-  const hour = new Date().getHours();
-  if (hour >= 5 && hour < 12) return STATIC_BANNERS.morning;
-  if (hour >= 12 && hour < 16) return STATIC_BANNERS.afternoon;
-  if (hour >= 16 && hour < 20) return STATIC_BANNERS.evening;
-  if (hour >= 20 && hour <= 23) return STATIC_BANNERS.night;
-  return STATIC_BANNERS.lateNight; // 00:00 - 04:59
-};
+  .dbanner-wrap { position: relative; width: 100%; height: 280px; border-radius: 18px; overflow: hidden; margin-bottom: 24px; box-shadow: 0 12px 36px rgba(0,0,0,0.22); cursor: pointer; }
+  .dbanner-track { display: flex; height: 100%; transition: transform 0.65s cubic-bezier(0.77,0,0.18,1); will-change: transform; }
+  .dbanner-slide { flex: 0 0 100%; height: 100%; position: relative; }
+  .dbanner-slide img { width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block; }
+  .dbanner-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.08) 100%); }
+  .dbanner-content { position: absolute; bottom: 0; left: 0; right: 0; padding: 20px 28px 18px; color: #fff; }
+  .dbanner-title { font-size: 26px; font-weight: 900; margin: 0 0 4px; text-shadow: 0 2px 8px rgba(0,0,0,0.7); letter-spacing: 0.5px; }
+  .dbanner-sub { font-size: 13px; font-weight: 600; opacity: 0.75; margin: 0 0 8px; letter-spacing: 0.3px; }
+  .dbanner-msg { font-size: 14px; font-weight: 500; opacity: 0.95; margin: 0; line-height: 1.6; text-shadow: 0 1px 4px rgba(0,0,0,0.6); max-width: 680px; }
+  .dbanner-progress { position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: rgba(255,255,255,0.18); z-index: 10; }
+  .dbanner-bar { height: 100%; animation: slideProgress var(--dur) linear forwards; border-radius: 2px; }
+  .dbanner-dots { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; z-index: 10; }
+  .dbanner-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.4); border: 1.5px solid rgba(255,255,255,0.6); cursor: pointer; transition: all 0.3s ease; }
+  .dbanner-dot.active { width: 22px; border-radius: 4px; background: #fff; border-color: #fff; }
+  .dbanner-arrow { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.45); backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,0.2); color: #fff; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; z-index: 10; transition: background 0.25s, transform 0.25s; }
+  .dbanner-arrow:hover { background: rgba(0,0,0,0.7); transform: translateY(-50%) scale(1.1); }
+  .dbanner-arrow.left { left: 14px; }
+  .dbanner-arrow.right { right: 14px; }
+  .dbanner-accent-line { width: 48px; height: 3px; border-radius: 2px; margin-top: 10px; opacity: 0.85; }
+`;
 
 const DevotionalBanner = () => {
-  const [banner, setBanner] = useState(getStaticBanner());
+  const [current, setCurrent] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [key, setKey] = useState(0);
+  const timerRef = useRef(null);
+  const total = DEITIES.length;
+
+  const goTo = (idx) => {
+    const next = (idx + total) % total;
+    setCurrent(next);
+    setKey(k => k + 1);
+  };
 
   useEffect(() => {
-    let isMounted = true;
+    if (paused) return;
+    timerRef.current = setInterval(() => {
+      setCurrent(c => (c + 1) % total);
+      setKey(k => k + 1);
+    }, INTERVAL);
+    return () => clearInterval(timerRef.current);
+  }, [paused, total]);
 
-    const fetchFestival = async () => {
-      try {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
-        const response = await axios.get(`${apiUrl}/festivals/active`);
-        if (isMounted) {
-          if (response.data?.success && response.data?.data) {
-            const festival = response.data.data;
-            setBanner({
-              isFestival: true,
-              image: festival.imageUrl,
-              title: festival.hindiTitle,
-              message: festival.hindiMessage
-            });
-          } else {
-            setBanner(getStaticBanner());
-          }
-        }
-      } catch (error) {
-        if (isMounted) {
-          setBanner(getStaticBanner());
-        }
-      }
-    };
-
-    fetchFestival();
-
-    const interval = setInterval(() => {
-      if (!banner.isFestival) {
-        setBanner(getStaticBanner());
-      }
-    }, 60000);
-
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-    };
-  }, [banner.isFestival]);
+  const d = DEITIES[current];
 
   return (
-    <div style={{
-      width: '100%',
-      height: '180px',
-      borderRadius: '16px',
-      overflow: 'hidden',
-      position: 'relative',
-      marginBottom: '24px',
-      boxShadow: '0 10px 25px rgba(0,0,0,0.15)'
-    }}>
-      <img
-        src={banner.image}
-        alt="Banner"
-        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-        onError={(e) => {
-          e.target.src = getStaticBanner().image;
-        }}
-      />
-      <div style={{
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        background: 'linear-gradient(to top, rgba(0,0,0,0.85), transparent)',
-        padding: '24px 20px 16px',
-        color: 'white',
-        textAlign: 'center'
-      }}>
-        <h2 style={{ margin: '0 0 6px 0', fontSize: '22px', fontWeight: 'bold', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
-          {banner.title}
-        </h2>
-        <p style={{ margin: 0, fontSize: '15px', opacity: 0.95, textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>
-          {banner.message}
-        </p>
+    <>
+      <style>{CSS}</style>
+      <div
+        className='dbanner-wrap'
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+      >
+        {/* Sliding track */}
+        <div
+          className='dbanner-track'
+          style={{ transform: `translateX(-${current * 100}%)` }}
+        >
+          {DEITIES.map((deity) => (
+            <div key={deity.id} className='dbanner-slide'>
+              <img
+                src={deity.image}
+                alt={deity.title}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: deity.objectPos || 'center 15%' }}
+                onError={e => { e.currentTarget.style.display = 'none'; }}
+              />
+              <div className='dbanner-overlay' />
+            </div>
+          ))}
+        </div>
+
+        {/* Content overlay on current slide */}
+        <div className='dbanner-content'>
+          <div className='dbanner-title'>{d.title}</div>
+          <div className='dbanner-sub'>{d.subtitle}</div>
+          <div className='dbanner-msg'>{d.message}</div>
+          <div className='dbanner-accent-line' style={{ background: d.accent }} />
+        </div>
+
+        {/* Dot indicators */}
+        <div className='dbanner-dots'>
+          {DEITIES.map((deity, i) => (
+            <div
+              key={deity.id}
+              className={`dbanner-dot${i === current ? ' active' : ''}`}
+              style={i === current ? { background: d.accent, borderColor: d.accent } : {}}
+              onClick={() => goTo(i)}
+            />
+          ))}
+        </div>
+
+        {/* Prev / Next arrows */}
+        <div className='dbanner-arrow left' onClick={() => goTo(current - 1)}>‹</div>
+        <div className='dbanner-arrow right' onClick={() => goTo(current + 1)}>›</div>
+
+        {/* Progress bar */}
+        {!paused && (
+          <div className='dbanner-progress'>
+            <div
+              key={key}
+              className='dbanner-bar'
+              style={{ '--dur': INTERVAL + 'ms', background: d.accent }}
+            />
+          </div>
+        )}
       </div>
-    </div>
+    </>
   );
 };
 
 export default DevotionalBanner;
+

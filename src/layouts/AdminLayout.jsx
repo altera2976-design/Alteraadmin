@@ -13,7 +13,7 @@ const NAV_ITEMS = [
   { to: "/super-admin/crm", label: "CRM", key: "crm", icon: "👥" },
   { to: "/super-admin/quotations", label: "Quotations", key: "quotation", icon: "🧾" },
   { to: "/super-admin/projects", label: "Projects", key: "projects", icon: "📁" },
-  { to: "/super-admin/festivals", label: "Festivals", key: "administration", icon: "🎉", superAdminOnly: true },
+
   { to: "/super-admin/reports", label: "Reports", key: "reports", icon: "📈" },
   { to: "/super-admin/settings", label: "System Settings", key: "administration", icon: "⚙️" },
 ];

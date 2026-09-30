@@ -1,52 +1,54 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap");
 
 /* ── Altera Interior Luxury Design Tokens ────────────────────────────────── */
 :root {
-  --primary: #9F0B22;
-  --primary-hover: #80071A;
+  --primary: #9f0b22;
+  --primary-hover: #80071a;
   --primary-dark: #660514;
-  --primary-light: #FDF2F4;
+  --primary-light: #fdf2f4;
   --primary-glow: rgba(159, 11, 34, 0.16);
-  --accent-red: #C8102E;
+  --accent-red: #c8102e;
   --accent-burgundy: #800020;
-  --accent-gold: #C5A059;
-  --accent-gold-light: #FAF5EA;
+  --accent-gold: #c5a059;
+  --accent-gold-light: #faf5ea;
 
   --sidebar: #121316;
-  --sidebar-surface: #1A1B20;
+  --sidebar-surface: #1a1b20;
   --sidebar-hover: rgba(255, 255, 255, 0.06);
-  --sidebar-active: linear-gradient(135deg, #9F0B22 0%, #C8102E 100%);
+  --sidebar-active: linear-gradient(135deg, #9f0b22 0%, #c8102e 100%);
   --sidebar-border: rgba(255, 255, 255, 0.08);
 
-  --danger: #DC2626;
-  --danger-light: #FEF2F2;
-  --success: #0D9488;
-  --success-light: #F0FDFA;
-  --warning: #D97706;
-  --warning-light: #FFFBEB;
+  --danger: #dc2626;
+  --danger-light: #fef2f2;
+  --success: #0d9488;
+  --success-light: #f0fdfa;
+  --warning: #d97706;
+  --warning-light: #fffbeb;
 
-  --gray-50: #FAF8F5;
-  --gray-100: #F3EFEA;
-  --gray-200: #E7E2D8;
-  --gray-300: #D3CCC0;
-  --gray-400: #9E978C;
-  --gray-500: #6F6960;
-  --gray-600: #4F4A42;
-  --gray-700: #36322C;
-  --gray-800: #201E1A;
-  --gray-900: #12110E;
+  --gray-50: #faf8f5;
+  --gray-100: #f3efea;
+  --gray-200: #e7e2d8;
+  --gray-300: #d3ccc0;
+  --gray-400: #9e978c;
+  --gray-500: #6f6960;
+  --gray-600: #4f4a42;
+  --gray-700: #36322c;
+  --gray-800: #201e1a;
+  --gray-900: #12110e;
 
   --white: #ffffff;
-  --bg-app: #FFFFFF;
+  --bg-app: #ffffff;
   --surface: #ffffff;
-  --border: #E8E3DA;
-  --border-subtle: #F0ECE4;
+  --border: #e8e3da;
+  --border-subtle: #f0ece4;
 
   --shadow-xs: 0 1px 2px rgba(28, 20, 16, 0.04);
   --shadow-sm: 0 2px 8px rgba(28, 20, 16, 0.04);
   --shadow: 0 4px 16px rgba(28, 20, 16, 0.05), 0 1px 3px rgba(28, 20, 16, 0.03);
-  --shadow-md: 0 8px 24px rgba(28, 20, 16, 0.07), 0 2px 6px rgba(28, 20, 16, 0.03);
-  --shadow-lg: 0 16px 36px rgba(28, 20, 16, 0.09), 0 4px 12px rgba(28, 20, 16, 0.04);
+  --shadow-md:
+    0 8px 24px rgba(28, 20, 16, 0.07), 0 2px 6px rgba(28, 20, 16, 0.03);
+  --shadow-lg:
+    0 16px 36px rgba(28, 20, 16, 0.09), 0 4px 12px rgba(28, 20, 16, 0.04);
 
   --radius-sm: 6px;
   --radius: 10px;
@@ -55,7 +57,9 @@
 }
 
 /* ── Reset ───────────────────────────────────────────────────────────────── */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -67,15 +71,23 @@ html {
 }
 
 body {
-  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  font-family:
+    "Plus Jakarta Sans",
+    system-ui,
+    -apple-system,
+    sans-serif;
   background-color: var(--bg-app);
   color: var(--gray-800);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
 
-h1, h2, h3, h4, .font-heading {
-  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+h1,
+h2,
+h3,
+h4,
+.font-heading {
+  font-family: "Outfit", "Plus Jakarta Sans", sans-serif;
   letter-spacing: -0.01em;
 }
 
@@ -92,25 +104,53 @@ button {
   font-size: inherit;
 }
 
-input, select, textarea {
+input,
+select,
+textarea {
   font-family: inherit;
   font-size: inherit;
 }
 
 /* ── Utility Classes ─────────────────────────────────────────────────────── */
-.flex { display: flex; }
-.flex-col { flex-direction: column; }
-.items-center { align-items: center; }
-.justify-between { justify-content: space-between; }
-.gap-1 { gap: 4px; }
-.gap-2 { gap: 8px; }
-.gap-3 { gap: 12px; }
-.gap-4 { gap: 16px; }
-.w-full { width: 100%; }
-.text-center { text-align: center; }
-.font-bold { font-weight: 700; }
-.font-semibold { font-weight: 600; }
-.font-medium { font-weight: 500; }
+.flex {
+  display: flex;
+}
+.flex-col {
+  flex-direction: column;
+}
+.items-center {
+  align-items: center;
+}
+.justify-between {
+  justify-content: space-between;
+}
+.gap-1 {
+  gap: 4px;
+}
+.gap-2 {
+  gap: 8px;
+}
+.gap-3 {
+  gap: 12px;
+}
+.gap-4 {
+  gap: 16px;
+}
+.w-full {
+  width: 100%;
+}
+.text-center {
+  text-align: center;
+}
+.font-bold {
+  font-weight: 700;
+}
+.font-semibold {
+  font-weight: 600;
+}
+.font-medium {
+  font-weight: 500;
+}
 
 /* ── Buttons ─────────────────────────────────────────────────────────────── */
 .btn {
@@ -137,7 +177,11 @@ input, select, textarea {
   box-shadow: 0 2px 8px var(--primary-glow);
 }
 .btn-primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, var(--primary-hover) 0%, var(--primary-dark) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--primary-hover) 0%,
+    var(--primary-dark) 100%
+  );
   border-color: var(--primary-dark);
   box-shadow: 0 4px 14px rgba(159, 11, 34, 0.28);
   transform: translateY(-1px);
@@ -213,7 +257,9 @@ input, select, textarea {
   font-size: 14px;
   color: var(--gray-800);
   background: var(--white);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
   outline: none;
 }
 .form-input:focus {
@@ -238,7 +284,9 @@ input, select, textarea {
   background: var(--white);
   outline: none;
   cursor: pointer;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 .form-select:focus {
   border-color: var(--primary);
@@ -259,7 +307,9 @@ input, select, textarea {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
 }
 .card-header {
   padding: 18px 24px;
@@ -272,7 +322,7 @@ input, select, textarea {
   font-size: 16px;
   font-weight: 700;
   color: var(--gray-800);
-  font-family: 'Outfit', sans-serif;
+  font-family: "Outfit", sans-serif;
 }
 .card-body {
   padding: 24px;
@@ -350,7 +400,9 @@ tr:hover td {
 
 /* ── Loading ─────────────────────────────────────────────────────────────── */
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 .spinner {
   width: 32px;
@@ -390,7 +442,7 @@ tr:hover td {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -447,12 +499,24 @@ tr:hover td {
   font-weight: 700;
   line-height: 1;
 }
-.stat-card.blue .stat-value { color: var(--primary); }
-.stat-card.green .stat-value { color: var(--success); }
-.stat-card.red .stat-value { color: var(--danger); }
-.stat-card.blue { border-top: 3px solid var(--primary); }
-.stat-card.green { border-top: 3px solid var(--success); }
-.stat-card.red { border-top: 3px solid var(--danger); }
+.stat-card.blue .stat-value {
+  color: var(--primary);
+}
+.stat-card.green .stat-value {
+  color: var(--success);
+}
+.stat-card.red .stat-value {
+  color: var(--danger);
+}
+.stat-card.blue {
+  border-top: 3px solid var(--primary);
+}
+.stat-card.green {
+  border-top: 3px solid var(--success);
+}
+.stat-card.red {
+  border-top: 3px solid var(--danger);
+}
 
 /* ── Filter Bar ──────────────────────────────────────────────────────────── */
 .filter-bar {
@@ -485,7 +549,7 @@ tr:hover td {
 }
 .search-input:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
 /* ── Detail Page ─────────────────────────────────────────────────────────── */
@@ -574,4 +638,3 @@ tr:hover td {
     display: none !important;
   }
 }
-

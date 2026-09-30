@@ -119,6 +119,29 @@ const DEFAULT_HARDWARE_OPTIONS = [
   "+ Add More",
 ];
 
+const DEFAULT_STANDALONE_ACCESSORY_OPTIONS = [
+  "Soft Close Hinges",
+  "Cutlery Basket",
+  "Drawer Channel",
+  "Bottle Pull-Out",
+  "Tandem Box",
+  "Magic Corner",
+  "Wardrobe Accessories",
+  "Kitchen Accessories",
+  "Other Accessories",
+  "+ Add More",
+];
+
+const DEFAULT_STANDALONE_HARDWARE_OPTIONS = [
+  "Hettich Soft Close",
+  "Hafele Soft Close",
+  "Ebco Soft Close",
+  "Blum",
+  "Godrej",
+  "Other Hardware",
+  "+ Add More",
+];
+
 const DEFAULT_ACCESSORY_OPTIONS = [
   "Wicker Basket",
   "BPO (Bottle Pull Out)",
@@ -308,7 +331,15 @@ export default function QuotationModule({
   const [accFormPrice, setAccFormPrice] = useState("");
   const [editingAccIndex, setEditingAccIndex] = useState(null);
 
-  const [stAccHardwareOptions, setStAccHardwareOptions] = useState(DEFAULT_HARDWARE_OPTIONS);
+  const [stAccessoryOptions, setStAccessoryOptions] = useState(
+    DEFAULT_STANDALONE_ACCESSORY_OPTIONS,
+  );
+  const [showStAccCustomAccessory, setShowStAccCustomAccessory] = useState(false);
+  const [stAccCustomAccessory, setStAccCustomAccessory] = useState("");
+
+  const [stAccHardwareOptions, setStAccHardwareOptions] = useState(
+    DEFAULT_STANDALONE_HARDWARE_OPTIONS,
+  );
   const [showStAccCustomHardware, setShowStAccCustomHardware] = useState(false);
   const [stAccCustomHardware, setStAccCustomHardware] = useState("");
 
@@ -465,7 +496,9 @@ export default function QuotationModule({
     const standaloneAccSubtotal = standaloneAccessories.reduce((sum, acc) => {
       const q = parseFloat(acc.quantity) || 0;
       const p = parseFloat(acc.price) || 0;
-      return sum + (acc.total !== undefined ? Number(acc.total) : Math.round(q * p));
+      return (
+        sum + (acc.total !== undefined ? Number(acc.total) : Math.round(q * p))
+      );
     }, 0);
 
     const sub = itemsSubtotal + standaloneAccSubtotal;
@@ -483,7 +516,10 @@ export default function QuotationModule({
       discountType === "PERCENT"
         ? Math.round(sub * (discVal / 100))
         : Math.min(sub, discVal);
-    const taxable = Math.max(0, sub + handlingFee + designFee + transportAmt - discountAmt);
+    const taxable = Math.max(
+      0,
+      sub + handlingFee + designFee + transportAmt - discountAmt,
+    );
     const gstPct = parseFloat(gstPercent) || 0;
     const gstAmt =
       gstType === "AS_PER_ACTUAL" ? 0 : Math.round(taxable * (gstPct / 100));
@@ -561,8 +597,14 @@ export default function QuotationModule({
     const price = Math.max(0, parseFloat(accFormPrice) || 0);
     const total = Math.round(qty * price);
 
-    const finalHardware = showStAccCustomHardware ? stAccCustomHardware.trim() : accFormDesc.trim();
-    if (showStAccCustomHardware && finalHardware && !stAccHardwareOptions.includes(finalHardware)) {
+    const finalHardware = showStAccCustomHardware
+      ? stAccCustomHardware.trim()
+      : accFormDesc.trim();
+    if (
+      showStAccCustomHardware &&
+      finalHardware &&
+      !stAccHardwareOptions.includes(finalHardware)
+    ) {
       setStAccHardwareOptions((prev) => {
         const copy = [...prev];
         copy.splice(copy.length - 1, 0, finalHardware);
@@ -620,7 +662,9 @@ export default function QuotationModule({
   };
 
   const handleDeleteStandaloneAccessory = (index) => {
-    setStandaloneAccessories(standaloneAccessories.filter((_, i) => i !== index));
+    setStandaloneAccessories(
+      standaloneAccessories.filter((_, i) => i !== index),
+    );
     if (editingAccIndex === index) {
       setEditingAccIndex(null);
       setAccFormName("");
@@ -848,6 +892,26 @@ export default function QuotationModule({
     setSpecHardware(trimmed);
     setCustomHardwareName("");
     setShowCustomHardwareInput(false);
+  };
+
+  const handleConfirmCustomStAccAccessory = (overrideName) => {
+    const trimmed = (overrideName || stAccCustomAccessory).trim();
+    if (!trimmed) return;
+
+    if (!stAccessoryOptions.includes(trimmed)) {
+      const updated = [...stAccessoryOptions];
+      const addMoreIdx = updated.indexOf("+ Add More");
+      if (addMoreIdx !== -1) {
+        updated.splice(addMoreIdx, 0, trimmed);
+      } else {
+        updated.push(trimmed);
+      }
+      setStAccessoryOptions(updated);
+    }
+
+    setAccFormName(trimmed);
+    setStAccCustomAccessory("");
+    setShowStAccCustomAccessory(false);
   };
 
   const handleSelectAccessory = (acc) => {
@@ -1193,7 +1257,12 @@ export default function QuotationModule({
         name: itemName.trim() || selectedRoom || "Modular Kitchen",
         description: itemDesc.trim(),
         unit: itemUnit || "Sq Ft",
-        measurements: { length: 0, width: 0, height: 0, calculatedArea: sizeNum },
+        measurements: {
+          length: 0,
+          width: 0,
+          height: 0,
+          calculatedArea: sizeNum,
+        },
         quantity: sizeNum || 1,
         rate: rateNum,
         amount: baseAmt + accTotalAmt,
@@ -1214,7 +1283,9 @@ export default function QuotationModule({
       setItems(currentItems);
     }
     if (currentItems.length === 0 && standaloneAccessories.length === 0) {
-      alert("Please add at least one scope item or accessory to the quotation.");
+      alert(
+        "Please add at least one scope item or accessory to the quotation.",
+      );
       setFormStep(2);
       return;
     }
@@ -1239,19 +1310,21 @@ export default function QuotationModule({
           // Convert base64 to Blob
           const res = await fetch(acc.image);
           const blob = await res.blob();
-          
+
           if (blob.size > MAX_SIZE) {
-            alert(`The image for accessory "${acc.name}" exceeds the maximum allowed size of 50MB.`);
+            alert(
+              `The image for accessory "${acc.name}" exceeds the maximum allowed size of 50MB.`,
+            );
             setIsActionLoading(false);
             return;
           }
-          
+
           hasFiles = true;
-          const ext = blob.type.split('/')[1] || 'jpg';
+          const ext = blob.type.split("/")[1] || "jpg";
           const filename = `image_${i}.${ext}`;
-          
+
           formData.append("images", blob, `idx_${i}_${filename}`);
-          
+
           // Clear out the base64 from the payload JSON so it doesn't get sent twice
           updatedStandaloneAccessories[i].image = "";
         }
@@ -1296,7 +1369,11 @@ export default function QuotationModule({
       }
 
       if (editingQuotationId) {
-        await api.put(`/quotations/${editingQuotationId}`, finalPayload, config);
+        await api.put(
+          `/quotations/${editingQuotationId}`,
+          finalPayload,
+          config,
+        );
         setSuccess("Quotation updated successfully!");
       } else {
         await api.post("/quotations", finalPayload, config);
@@ -3210,7 +3287,7 @@ export default function QuotationModule({
                   <div
                     style={{
                       background: "#ffffff",
-                      padding: 14,
+                      padding: 16,
                       borderRadius: 8,
                       border: "1px solid #cbd5e1",
                       marginBottom: 16,
@@ -3218,93 +3295,253 @@ export default function QuotationModule({
                   >
                     <div
                       style={{
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: 700,
                         color: "#0f172a",
-                        marginBottom: 10,
+                        marginBottom: 14,
                       }}
                     >
-                      {editingAccIndex !== null ? "Edit Accessory" : "+ Add New Accessory"}
+                      {editingAccIndex !== null
+                        ? "Edit Accessory"
+                        : "+ Add New Accessory"}
                     </div>
 
+                    {/* 1. Accessory Name * */}
+                    <div style={{ marginBottom: 12 }}>
+                      <label style={styles.label}>Accessory Name *</label>
+                      <input
+                        type="text"
+                        value={accFormName}
+                        onChange={(e) => setAccFormName(e.target.value)}
+                        style={styles.formInput}
+                        placeholder="e.g. Cutlery Tray / Magic Corner"
+                      />
+                    </div>
+
+                    {/* 2. Select Accessories */}
+                    <div style={{ marginBottom: 16 }}>
+                      <label
+                        style={{
+                          ...styles.label,
+                          color: "#64748b",
+                          fontSize: 11,
+                          marginBottom: 4,
+                        }}
+                      >
+                        Select Accessories
+                      </label>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "8px",
+                          overflowX: "auto",
+                          paddingBottom: "4px",
+                          alignItems: "center",
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        {stAccessoryOptions.map((opt) => {
+                          const isActive = showStAccCustomAccessory
+                            ? opt === "+ Add More"
+                            : accFormName === opt;
+                          return (
+                            <div
+                              key={opt}
+                              style={{
+                                padding: "6px 12px",
+                                borderRadius: "6px",
+                                fontSize: "12px",
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                backgroundColor: isActive
+                                  ? "#7A131A"
+                                  : "#E2E8F0",
+                                color: isActive ? "#ffffff" : "#475569",
+                                whiteSpace: "nowrap",
+                              }}
+                              onClick={() => {
+                                if (opt === "+ Add More") {
+                                  setShowStAccCustomAccessory(true);
+                                } else {
+                                  setShowStAccCustomAccessory(false);
+                                  setAccFormName(opt);
+                                }
+                              }}
+                            >
+                              {opt}
+                            </div>
+                          );
+                        })}
+                        {showStAccCustomAccessory && (
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: "6px",
+                              alignItems: "center",
+                              marginTop: "4px",
+                              width: "100%",
+                            }}
+                          >
+                            <input
+                              type="text"
+                              value={stAccCustomAccessory}
+                              onChange={(e) =>
+                                setStAccCustomAccessory(e.target.value)
+                              }
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  handleConfirmCustomStAccAccessory();
+                                }
+                              }}
+                              style={{
+                                ...styles.formInput,
+                                width: 220,
+                                minWidth: 200,
+                              }}
+                              placeholder="Custom Accessory Name..."
+                              autoFocus
+                            />
+                            <button
+                              type="button"
+                              className="btn btn-primary"
+                              onClick={handleConfirmCustomStAccAccessory}
+                              style={{
+                                padding: "6px 12px",
+                                fontSize: 12,
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              Add Option
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 3. Hardware Name */}
+                    <div style={{ marginBottom: 12 }}>
+                      <label style={styles.label}>Hardware Name</label>
+                      <input
+                        type="text"
+                        value={accFormDesc}
+                        onChange={(e) => setAccFormDesc(e.target.value)}
+                        style={styles.formInput}
+                        placeholder="e.g. Hettich Soft Close"
+                      />
+                    </div>
+
+                    {/* 4. Select Hardware */}
+                    <div style={{ marginBottom: 16 }}>
+                      <label
+                        style={{
+                          ...styles.label,
+                          color: "#64748b",
+                          fontSize: 11,
+                          marginBottom: 4,
+                        }}
+                      >
+                        Select Hardware
+                      </label>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "8px",
+                          overflowX: "auto",
+                          paddingBottom: "4px",
+                          alignItems: "center",
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        {stAccHardwareOptions.map((opt) => {
+                          const isActive = showStAccCustomHardware
+                            ? opt === "+ Add More"
+                            : accFormDesc === opt;
+                          return (
+                            <div
+                              key={opt}
+                              style={{
+                                padding: "6px 12px",
+                                borderRadius: "6px",
+                                fontSize: "12px",
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                backgroundColor: isActive
+                                  ? "#7A131A"
+                                  : "#E2E8F0",
+                                color: isActive ? "#ffffff" : "#475569",
+                                whiteSpace: "nowrap",
+                              }}
+                              onClick={() => {
+                                if (opt === "+ Add More") {
+                                  setShowStAccCustomHardware(true);
+                                } else {
+                                  setShowStAccCustomHardware(false);
+                                  setAccFormDesc(opt);
+                                }
+                              }}
+                            >
+                              {opt}
+                            </div>
+                          );
+                        })}
+                        {showStAccCustomHardware && (
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: "6px",
+                              alignItems: "center",
+                              marginTop: "4px",
+                              width: "100%",
+                            }}
+                          >
+                            <input
+                              type="text"
+                              value={stAccCustomHardware}
+                              onChange={(e) =>
+                                setStAccCustomHardware(e.target.value)
+                              }
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  handleConfirmCustomStAccHardware();
+                                }
+                              }}
+                              style={{
+                                ...styles.formInput,
+                                width: 220,
+                                minWidth: 200,
+                              }}
+                              placeholder="Custom Hardware Name..."
+                              autoFocus
+                            />
+                            <button
+                              type="button"
+                              className="btn btn-primary"
+                              onClick={handleConfirmCustomStAccHardware}
+                              style={{
+                                padding: "6px 12px",
+                                fontSize: 12,
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              Add Option
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Unit, Quantity, Price, Image & Total Grid */}
                     <div
                       style={{
                         display: "grid",
-                        gridTemplateColumns: "1.5fr 2fr 1fr",
+                        gridTemplateColumns: "1fr 1fr 1fr 1.5fr auto",
                         gap: 12,
-                        marginBottom: 10,
+                        alignItems: "center",
+                        marginBottom: 14,
                       }}
                     >
-                      <div>
-                        <label style={styles.label}>Accessory Name *</label>
-                        <input
-                          type="text"
-                          value={accFormName}
-                          onChange={(e) => setAccFormName(e.target.value)}
-                          style={styles.formInput}
-                          placeholder="e.g. Cutlery Tray / Magic Corner"
-                        />
-                      </div>
-                      <div style={{ minWidth: 0 }}>
-                        <label style={styles.label}>Select Hardware Option:</label>
-                        <div style={{ display: "flex", gap: "8px", overflowX: "auto", paddingBottom: "4px", alignItems: "center" }}>
-                          {stAccHardwareOptions.map((opt) => {
-                            const isActive = showStAccCustomHardware ? opt === "+ Add More" : accFormDesc === opt;
-                            return (
-                              <div
-                                key={opt}
-                                style={{
-                                  padding: "6px 12px",
-                                  borderRadius: "6px",
-                                  fontSize: "12px",
-                                  fontWeight: 600,
-                                  cursor: "pointer",
-                                  backgroundColor: isActive ? "#7A131A" : "#E2E8F0",
-                                  color: isActive ? "#ffffff" : "#475569",
-                                  whiteSpace: "nowrap"
-                                }}
-                                onClick={() => {
-                                  if (opt === "+ Add More") {
-                                    setShowStAccCustomHardware(true);
-                                    setAccFormDesc("+ Add More");
-                                  } else {
-                                    setShowStAccCustomHardware(false);
-                                    setAccFormDesc(opt);
-                                  }
-                                }}
-                              >
-                                {opt}
-                              </div>
-                            );
-                          })}
-                          {showStAccCustomHardware && (
-                            <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                              <input
-                                type="text"
-                                value={stAccCustomHardware}
-                                onChange={(e) => setStAccCustomHardware(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") {
-                                    e.preventDefault();
-                                    handleConfirmCustomStAccHardware();
-                                  }
-                                }}
-                                style={{ ...styles.formInput, width: 200, minWidth: 200 }}
-                                placeholder="Custom hardware..."
-                                autoFocus
-                              />
-                              <button
-                                type="button"
-                                className="btn btn-primary"
-                                onClick={handleConfirmCustomStAccHardware}
-                                style={{ padding: "6px 12px", fontSize: 12, whiteSpace: "nowrap" }}
-                              >
-                                Add Option
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
                       <div>
                         <label style={styles.label}>Unit</label>
                         <input
@@ -3312,20 +3549,9 @@ export default function QuotationModule({
                           value={accFormUnit}
                           onChange={(e) => setAccFormUnit(e.target.value)}
                           style={styles.formInput}
-                          placeholder="Pcs / Sets"
+                          placeholder="Pcs"
                         />
                       </div>
-                    </div>
-
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr 1.5fr auto",
-                        gap: 12,
-                        alignItems: "center",
-                        marginBottom: 10,
-                      }}
-                    >
                       <div>
                         <label style={styles.label}>Quantity *</label>
                         <input
@@ -3358,22 +3584,54 @@ export default function QuotationModule({
                         />
                       </div>
                       <div style={{ paddingTop: 18 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>
-                          Total: {formatINR(Math.round((parseFloat(accFormQty) || 0) * (parseFloat(accFormPrice) || 0)))}
+                        <div
+                          style={{
+                            fontSize: 14,
+                            fontWeight: 800,
+                            color: "#7A131A",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          Total:{" "}
+                          {formatINR(
+                            Math.round(
+                              (parseFloat(accFormQty) || 0) *
+                                (parseFloat(accFormPrice) || 0),
+                            ),
+                          )}
                         </div>
                       </div>
                     </div>
 
                     {accFormImage && (
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          marginBottom: 10,
+                        }}
+                      >
                         <img
                           src={accFormImage}
                           alt="Preview"
-                          style={{ width: 50, height: 50, objectFit: "cover", borderRadius: 4, border: "1px solid #cbd5e1" }}
+                          style={{
+                            width: 50,
+                            height: 50,
+                            objectFit: "cover",
+                            borderRadius: 4,
+                            border: "1px solid #cbd5e1",
+                          }}
                         />
                         <button
                           type="button"
-                          style={{ border: "none", background: "none", color: "#dc2626", cursor: "pointer", fontSize: 12 }}
+                          style={{
+                            border: "none",
+                            background: "none",
+                            color: "#dc2626",
+                            cursor: "pointer",
+                            fontSize: 12,
+                          }}
                           onClick={() => setAccFormImage("")}
                         >
                           Remove Image
@@ -3381,7 +3639,14 @@ export default function QuotationModule({
                       </div>
                     )}
 
-                    <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 8,
+                        justifyContent: "flex-end",
+                        marginTop: 8,
+                      }}
+                    >
                       {editingAccIndex !== null && (
                         <button
                           type="button"
@@ -3406,7 +3671,9 @@ export default function QuotationModule({
                         style={{ fontSize: 12, padding: "5px 12px" }}
                         onClick={handleAddOrUpdateStandaloneAccessory}
                       >
-                        {editingAccIndex !== null ? "Update Accessory" : "+ Add Accessory"}
+                        {editingAccIndex !== null
+                          ? "Update Accessory"
+                          : "+ Add Accessory"}
                       </button>
                     </div>
                   </div>
@@ -3414,55 +3681,234 @@ export default function QuotationModule({
                   {/* List of Added Accessories */}
                   <div style={{ marginBottom: 16 }}>
                     {standaloneAccessories.length === 0 ? (
-                      <div style={{ fontSize: 12, color: "#64748b", textAlign: "center", padding: 16, border: "1px dashed #cbd5e1", borderRadius: 6 }}>
-                        No standalone accessories added yet. Add accessories above to include them in the quotation.
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: "#64748b",
+                          textAlign: "center",
+                          padding: 16,
+                          border: "1px dashed #cbd5e1",
+                          borderRadius: 6,
+                        }}
+                      >
+                        No standalone accessories added yet. Add accessories
+                        above to include them in the quotation.
                       </div>
                     ) : (
-                      <div style={{ border: "1px solid #cbd5e1", borderRadius: 6, overflow: "hidden" }}>
-                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                      <div
+                        style={{
+                          border: "1px solid #cbd5e1",
+                          borderRadius: 6,
+                          overflow: "hidden",
+                        }}
+                      >
+                        <table
+                          style={{
+                            width: "100%",
+                            borderCollapse: "collapse",
+                            fontSize: 12,
+                          }}
+                        >
                           <thead>
-                            <tr style={{ background: "#f8fafc", borderBottom: "1px solid #cbd5e1" }}>
-                              <th style={{ padding: "8px", textAlign: "center", width: "8%" }}>Image</th>
-                              <th style={{ padding: "8px", textAlign: "left" }}>Name &amp; Description</th>
-                              <th style={{ padding: "8px", textAlign: "center", width: "10%" }}>Qty</th>
-                              <th style={{ padding: "8px", textAlign: "center", width: "10%" }}>Unit</th>
-                              <th style={{ padding: "8px", textAlign: "right", width: "14%" }}>Price</th>
-                              <th style={{ padding: "8px", textAlign: "right", width: "16%" }}>Total</th>
-                              <th style={{ padding: "8px", textAlign: "center", width: "12%" }}>Actions</th>
+                            <tr
+                              style={{
+                                background: "#f8fafc",
+                                borderBottom: "1px solid #cbd5e1",
+                              }}
+                            >
+                              <th
+                                style={{
+                                  padding: "8px",
+                                  textAlign: "center",
+                                  width: "8%",
+                                }}
+                              >
+                                Image
+                              </th>
+                              <th style={{ padding: "8px", textAlign: "left" }}>
+                                Name &amp; Description
+                              </th>
+                              <th
+                                style={{
+                                  padding: "8px",
+                                  textAlign: "center",
+                                  width: "10%",
+                                }}
+                              >
+                                Qty
+                              </th>
+                              <th
+                                style={{
+                                  padding: "8px",
+                                  textAlign: "center",
+                                  width: "10%",
+                                }}
+                              >
+                                Unit
+                              </th>
+                              <th
+                                style={{
+                                  padding: "8px",
+                                  textAlign: "right",
+                                  width: "14%",
+                                }}
+                              >
+                                Price
+                              </th>
+                              <th
+                                style={{
+                                  padding: "8px",
+                                  textAlign: "right",
+                                  width: "16%",
+                                }}
+                              >
+                                Total
+                              </th>
+                              <th
+                                style={{
+                                  padding: "8px",
+                                  textAlign: "center",
+                                  width: "12%",
+                                }}
+                              >
+                                Actions
+                              </th>
                             </tr>
                           </thead>
                           <tbody>
                             {standaloneAccessories.map((acc, idx) => (
-                              <tr key={idx} style={{ borderBottom: "1px solid #e2e8f0", background: idx % 2 === 0 ? "#ffffff" : "#f8fafc" }}>
-                                <td style={{ padding: "6px", textAlign: "center", verticalAlign: "middle" }}>
+                              <tr
+                                key={idx}
+                                style={{
+                                  borderBottom: "1px solid #e2e8f0",
+                                  background:
+                                    idx % 2 === 0 ? "#ffffff" : "#f8fafc",
+                                }}
+                              >
+                                <td
+                                  style={{
+                                    padding: "6px",
+                                    textAlign: "center",
+                                    verticalAlign: "middle",
+                                  }}
+                                >
                                   {acc.image ? (
-                                    <img src={acc.image.startsWith("/") ? `${api.defaults.baseURL.replace(/\/api\/?$/, "")}${acc.image}` : acc.image} alt={acc.name} style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 4, border: "1px solid #cbd5e1", display: "inline-block" }} />
+                                    <img
+                                      src={
+                                        acc.image.startsWith("/")
+                                          ? `${api.defaults.baseURL.replace(/\/api\/?$/, "")}${acc.image}`
+                                          : acc.image
+                                      }
+                                      alt={acc.name}
+                                      style={{
+                                        width: 40,
+                                        height: 40,
+                                        objectFit: "cover",
+                                        borderRadius: 4,
+                                        border: "1px solid #cbd5e1",
+                                        display: "inline-block",
+                                      }}
+                                    />
                                   ) : (
-                                    <span style={{ fontSize: 10, color: "#94a3b8", fontStyle: "italic" }}>No Image</span>
+                                    <span
+                                      style={{
+                                        fontSize: 10,
+                                        color: "#94a3b8",
+                                        fontStyle: "italic",
+                                      }}
+                                    >
+                                      No Image
+                                    </span>
                                   )}
                                 </td>
                                 <td style={{ padding: "6px 8px" }}>
-                                  <div style={{ fontWeight: 700, color: "#0f172a" }}>{acc.name}</div>
-                                  {acc.description && <div style={{ fontSize: 11, color: "#64748b" }}>{acc.description}</div>}
+                                  <div
+                                    style={{
+                                      fontWeight: 700,
+                                      color: "#0f172a",
+                                    }}
+                                  >
+                                    {acc.name}
+                                  </div>
+                                  {acc.description && (
+                                    <div
+                                      style={{ fontSize: 11, color: "#64748b" }}
+                                    >
+                                      {acc.description}
+                                    </div>
+                                  )}
                                 </td>
-                                <td style={{ padding: "6px", textAlign: "center", fontWeight: 700 }}>{acc.quantity}</td>
-                                <td style={{ padding: "6px", textAlign: "center" }}>{acc.unit || "Pcs"}</td>
-                                <td style={{ padding: "6px 8px", textAlign: "right" }}>{formatINR(acc.price)}</td>
-                                <td style={{ padding: "6px 8px", textAlign: "right", fontWeight: 800, color: "#0f172a" }}>
-                                  {formatINR(acc.total || acc.quantity * acc.price)}
+                                <td
+                                  style={{
+                                    padding: "6px",
+                                    textAlign: "center",
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  {acc.quantity}
                                 </td>
-                                <td style={{ padding: "6px", textAlign: "center" }}>
+                                <td
+                                  style={{
+                                    padding: "6px",
+                                    textAlign: "center",
+                                  }}
+                                >
+                                  {acc.unit || "Pcs"}
+                                </td>
+                                <td
+                                  style={{
+                                    padding: "6px 8px",
+                                    textAlign: "right",
+                                  }}
+                                >
+                                  {formatINR(acc.price)}
+                                </td>
+                                <td
+                                  style={{
+                                    padding: "6px 8px",
+                                    textAlign: "right",
+                                    fontWeight: 800,
+                                    color: "#0f172a",
+                                  }}
+                                >
+                                  {formatINR(
+                                    acc.total || acc.quantity * acc.price,
+                                  )}
+                                </td>
+                                <td
+                                  style={{
+                                    padding: "6px",
+                                    textAlign: "center",
+                                  }}
+                                >
                                   <button
                                     type="button"
-                                    style={{ border: "none", background: "none", color: "#7A131A", cursor: "pointer", marginRight: 8, fontWeight: 600 }}
-                                    onClick={() => handleEditStandaloneAccessory(idx)}
+                                    style={{
+                                      border: "none",
+                                      background: "none",
+                                      color: "#7A131A",
+                                      cursor: "pointer",
+                                      marginRight: 8,
+                                      fontWeight: 600,
+                                    }}
+                                    onClick={() =>
+                                      handleEditStandaloneAccessory(idx)
+                                    }
                                   >
                                     Edit
                                   </button>
                                   <button
                                     type="button"
-                                    style={{ border: "none", background: "none", color: "#dc2626", cursor: "pointer", fontWeight: 600 }}
-                                    onClick={() => handleDeleteStandaloneAccessory(idx)}
+                                    style={{
+                                      border: "none",
+                                      background: "none",
+                                      color: "#dc2626",
+                                      cursor: "pointer",
+                                      fontWeight: 600,
+                                    }}
+                                    onClick={() =>
+                                      handleDeleteStandaloneAccessory(idx)
+                                    }
                                   >
                                     Delete
                                   </button>
@@ -3488,15 +3934,30 @@ export default function QuotationModule({
                       marginBottom: 16,
                     }}
                   >
-                    <span style={{ fontWeight: 700, fontSize: 13, color: "#166534" }}>
-                      Accessories Subtotal ({standaloneAccessories.length} items):
+                    <span
+                      style={{
+                        fontWeight: 700,
+                        fontSize: 13,
+                        color: "#166534",
+                      }}
+                    >
+                      Accessories Subtotal ({standaloneAccessories.length}{" "}
+                      items):
                     </span>
-                    <span style={{ fontWeight: 800, fontSize: 16, color: "#166534" }}>
+                    <span
+                      style={{
+                        fontWeight: 800,
+                        fontSize: 16,
+                        color: "#166534",
+                      }}
+                    >
                       {formatINR(liveCalc.standaloneAccSubtotal)}
                     </span>
                   </div>
 
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <div
+                    style={{ display: "flex", justifyContent: "space-between" }}
+                  >
                     <button
                       type="button"
                       className="btn btn-secondary"
@@ -3555,14 +4016,24 @@ export default function QuotationModule({
                       />
                     </div>
                     <div>
-                      <label style={{ ...styles.label, color: "#0f172a", fontWeight: 700 }}>
+                      <label
+                        style={{
+                          ...styles.label,
+                          color: "#0f172a",
+                          fontWeight: 700,
+                        }}
+                      >
                         Transportation Charges (Fixed ₹) *
                       </label>
                       <input
                         type="number"
                         value={transportCharges}
                         onChange={(e) => setTransportCharges(e.target.value)}
-                        style={{ ...styles.formInput, borderColor: "#7A131A", fontWeight: 700 }}
+                        style={{
+                          ...styles.formInput,
+                          borderColor: "#7A131A",
+                          fontWeight: 700,
+                        }}
                         placeholder="e.g. 5000"
                         min="0"
                       />
@@ -4134,12 +4605,23 @@ export default function QuotationModule({
                       selectedQuotation.pricing?.subtotal ||
                         selectedQuotation.subtotal,
                     )}{" "}
-                    | Design: {formatINR(selectedQuotation.pricing?.designFeeAmount || 0)}{" "}
-                    | Handling: {formatINR(selectedQuotation.pricing?.handlingFeeAmount || 0)}
+                    | Design:{" "}
+                    {formatINR(selectedQuotation.pricing?.designFeeAmount || 0)}{" "}
+                    | Handling:{" "}
+                    {formatINR(
+                      selectedQuotation.pricing?.handlingFeeAmount || 0,
+                    )}
                   </div>
                   <div style={{ fontSize: 11, color: "#475569", marginTop: 1 }}>
-                    Transport: <strong>{formatINR(selectedQuotation.pricing?.transportCharges || 0)}</strong>
-                    {selectedQuotation.pricing?.discountAmount ? ` | Discount: -${formatINR(selectedQuotation.pricing.discountAmount)}` : ""}
+                    Transport:{" "}
+                    <strong>
+                      {formatINR(
+                        selectedQuotation.pricing?.transportCharges || 0,
+                      )}
+                    </strong>
+                    {selectedQuotation.pricing?.discountAmount
+                      ? ` | Discount: -${formatINR(selectedQuotation.pricing.discountAmount)}`
+                      : ""}
                   </div>
                   <div style={{ fontSize: 11, color: "#475569", marginTop: 2 }}>
                     Status: <strong>{selectedQuotation.status}</strong>
@@ -4214,67 +4696,121 @@ export default function QuotationModule({
               </div>
 
               {/* Standalone Accessories in Detail Modal */}
-              {selectedQuotation.standaloneAccessories && selectedQuotation.standaloneAccessories.length > 0 && (
-                <div>
-                  <h4
-                    style={{
-                      fontSize: 14,
-                      fontWeight: 700,
-                      color: "#0f172a",
-                      marginBottom: 8,
-                    }}
-                  >
-                    Accessories ({selectedQuotation.standaloneAccessories.length})
-                  </h4>
-                  <div
-                    style={{
-                      maxHeight: 180,
-                      overflowY: "auto",
-                      border: "1px solid #cbd5e1",
-                      borderRadius: 6,
-                      padding: 8,
-                      marginBottom: 16,
-                    }}
-                  >
-                    {selectedQuotation.standaloneAccessories.map((acc, idx) => (
-                      <div
-                        key={idx}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          padding: "6px 8px",
-                          borderBottom: "1px solid #f1f5f9",
-                        }}
-                      >
-                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                          {acc.image ? (
-                            <img
-                              src={acc.image.startsWith("/") ? `${api.defaults.baseURL.replace(/\/api\/?$/, "")}${acc.image}` : acc.image}
-                              alt={acc.name}
-                              style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 4, border: "1px solid #cbd5e1" }}
-                            />
-                          ) : (
-                            <div style={{ width: 40, height: 40, background: "#f1f5f9", borderRadius: 4, border: "1px solid #cbd5e1", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "#94a3b8" }}>
-                              No Image
+              {selectedQuotation.standaloneAccessories &&
+                selectedQuotation.standaloneAccessories.length > 0 && (
+                  <div>
+                    <h4
+                      style={{
+                        fontSize: 14,
+                        fontWeight: 700,
+                        color: "#0f172a",
+                        marginBottom: 8,
+                      }}
+                    >
+                      Accessories (
+                      {selectedQuotation.standaloneAccessories.length})
+                    </h4>
+                    <div
+                      style={{
+                        maxHeight: 180,
+                        overflowY: "auto",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: 6,
+                        padding: 8,
+                        marginBottom: 16,
+                      }}
+                    >
+                      {selectedQuotation.standaloneAccessories.map(
+                        (acc, idx) => (
+                          <div
+                            key={idx}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              padding: "6px 8px",
+                              borderBottom: "1px solid #f1f5f9",
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 10,
+                              }}
+                            >
+                              {acc.image ? (
+                                <img
+                                  src={
+                                    acc.image.startsWith("/")
+                                      ? `${api.defaults.baseURL.replace(/\/api\/?$/, "")}${acc.image}`
+                                      : acc.image
+                                  }
+                                  alt={acc.name}
+                                  style={{
+                                    width: 40,
+                                    height: 40,
+                                    objectFit: "cover",
+                                    borderRadius: 4,
+                                    border: "1px solid #cbd5e1",
+                                  }}
+                                />
+                              ) : (
+                                <div
+                                  style={{
+                                    width: 40,
+                                    height: 40,
+                                    background: "#f1f5f9",
+                                    borderRadius: 4,
+                                    border: "1px solid #cbd5e1",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    fontSize: 9,
+                                    color: "#94a3b8",
+                                  }}
+                                >
+                                  No Image
+                                </div>
+                              )}
+                              <div>
+                                <div
+                                  style={{
+                                    fontWeight: 700,
+                                    fontSize: 13,
+                                    color: "#0f172a",
+                                  }}
+                                >
+                                  {acc.name}
+                                </div>
+                                {acc.description && (
+                                  <div
+                                    style={{ fontSize: 11, color: "#64748b" }}
+                                  >
+                                    {acc.description}
+                                  </div>
+                                )}
+                                <div style={{ fontSize: 11, color: "#475569" }}>
+                                  Qty: {acc.quantity} {acc.unit || "Pcs"} @{" "}
+                                  {formatINR(acc.price)}
+                                </div>
+                              </div>
                             </div>
-                          )}
-                          <div>
-                            <div style={{ fontWeight: 700, fontSize: 13, color: "#0f172a" }}>{acc.name}</div>
-                            {acc.description && <div style={{ fontSize: 11, color: "#64748b" }}>{acc.description}</div>}
-                            <div style={{ fontSize: 11, color: "#475569" }}>
-                              Qty: {acc.quantity} {acc.unit || "Pcs"} @ {formatINR(acc.price)}
+                            <div
+                              style={{
+                                fontWeight: 700,
+                                fontSize: 13,
+                                color: "#0f172a",
+                              }}
+                            >
+                              {formatINR(acc.total || acc.quantity * acc.price)}
                             </div>
                           </div>
-                        </div>
-                        <div style={{ fontWeight: 700, fontSize: 13, color: "#0f172a" }}>
-                          {formatINR(acc.total || acc.quantity * acc.price)}
-                        </div>
-                      </div>
-                    ))}
+                        ),
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
               {/* Payment & Transaction Summary Box */}
               <div

@@ -492,7 +492,7 @@ export function buildQuotationHtml(q) {
     .header-table {
       width: 100%;
       border-collapse: collapse;
-      border-bottom: 2px solid #0F172A;
+      border-bottom: 2px solid #7A131A;
       padding-bottom: 12px;
       margin-bottom: 16px;
     }
@@ -510,7 +510,7 @@ export function buildQuotationHtml(q) {
     .company-name {
       font-size: 14pt;
       font-weight: 800;
-      color: #0F172A;
+      color: #7A131A;
       letter-spacing: 0.5px;
     }
     .company-details {
@@ -525,7 +525,7 @@ export function buildQuotationHtml(q) {
     .doc-title {
       font-size: 16pt;
       font-weight: 800;
-      color: #0F172A;
+      color: #7A131A;
       letter-spacing: 1px;
       text-transform: uppercase;
     }
@@ -539,12 +539,13 @@ export function buildQuotationHtml(q) {
       display: inline-block;
       margin-top: 4px;
       padding: 2px 8px;
-      border: 1px solid #CBD5E1;
+      border: 1px solid #7A131A;
       font-size: 8pt;
       font-weight: 700;
       text-transform: uppercase;
-      color: #334155;
-      background: #F8FAFC;
+      color: #7A131A;
+      background: #FFF5F5;
+      border-radius: 4px;
     }
 
     /* ── Client & Project Info ── */
@@ -558,16 +559,17 @@ export function buildQuotationHtml(q) {
       width: 49%;
       vertical-align: top;
       border: 1px solid #CBD5E1;
-      background: #F8FAFC;
+      background: #FDF2F4;
       padding: 10px 12px;
+      border-radius: 4px;
     }
     .info-card-title {
       font-size: 9pt;
       font-weight: 800;
       text-transform: uppercase;
-      color: #0F172A;
+      color: #7A131A;
       letter-spacing: 0.5px;
-      border-bottom: 1px solid #CBD5E1;
+      border-bottom: 1.5px solid #7A131A;
       padding-bottom: 4px;
       margin-bottom: 6px;
     }
@@ -588,9 +590,9 @@ export function buildQuotationHtml(q) {
       font-size: 10pt;
       font-weight: 800;
       text-transform: uppercase;
-      color: #0F172A;
+      color: #7A131A;
       letter-spacing: 0.5px;
-      border-bottom: 1.5px solid #0F172A;
+      border-bottom: 2px solid #7A131A;
       padding-bottom: 3px;
       margin-top: 16px;
       margin-bottom: 8px;
@@ -603,13 +605,13 @@ export function buildQuotationHtml(q) {
       page-break-inside: avoid;
     }
     .room-header {
-      background: #F1F5F9;
-      border: 1px solid #CBD5E1;
+      background: #7A131A;
+      border: 1px solid #7A131A;
       border-bottom: none;
       padding: 6px 10px;
       font-size: 9.5pt;
       font-weight: 800;
-      color: #0F172A;
+      color: #FFFFFF;
       display: flex;
       justify-content: space-between;
     }
@@ -622,8 +624,8 @@ export function buildQuotationHtml(q) {
       font-size: 8.5pt;
     }
     .item-table th {
-      background: #F8FAFC;
-      color: #334155;
+      background: #FFF5F5;
+      color: #7A131A;
       font-size: 8pt;
       font-weight: 700;
       text-transform: uppercase;
@@ -694,9 +696,9 @@ export function buildQuotationHtml(q) {
       border-bottom: 1px solid #E2E8F0;
     }
     .summary-table tr.grand-row td {
-      background: transparent;
-      color: #0F172A;
-      border-top: 2px solid #0F172A;
+      background: #FFF5F5;
+      color: #7A131A;
+      border-top: 2px solid #7A131A;
       font-weight: 800;
       font-size: 11pt;
       border-bottom: none;
@@ -712,8 +714,8 @@ export function buildQuotationHtml(q) {
       page-break-inside: avoid;
     }
     .standard-table th {
-      background: #F8FAFC;
-      color: #334155;
+      background: #FFF5F5;
+      color: #7A131A;
       font-size: 8pt;
       font-weight: 700;
       text-transform: uppercase;
