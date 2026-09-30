@@ -56,7 +56,6 @@ export default function AdminLoginPage() {
       <div style={{
           ...styles.bgImage,
           backgroundImage: "url('/assets/interior-login-bg.jpg')",
-          filter: 'blur(3px)',
           transform: 'scale(1.03)'
       }} />
       

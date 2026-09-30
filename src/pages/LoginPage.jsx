@@ -42,7 +42,6 @@ export default function LoginPage() {
         style={{
           ...s.bgImage,
           backgroundImage: "url('/assets/interior-login-bg.jpg')",
-          filter: 'blur(2px)',
           transform: 'scale(1.02)'
         }}
       />
