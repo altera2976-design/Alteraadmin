@@ -15,8 +15,7 @@ export default function AdminReportsPage() {
   const fetchReport = async () => {
     setLoading(true);
     try {
-      let endpoint = `/reports?type=${reportType}&range=${dateRange}`;
-      if (reportType === 'attendance') endpoint = '/attendance/reports';
+      let endpoint = `/reports/details?type=${reportType}&range=${dateRange}`;
       const res = await api.get(endpoint);
       const data = res.data?.reports || res.data?.records || res.data?.data || [];
       setReportData(Array.isArray(data) ? data : []);

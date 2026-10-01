@@ -45,7 +45,7 @@ export default function AdminDashboardPage() {
     // Parallel execution for zero waterfall delay
     const [statsResult, attResult, notifResult, txnResult] = await Promise.allSettled([
       api.get('/dashboard/stats'),
-      api.get(`/attendance?date=${todayStr}`),
+      api.get(`/attendance/admin/daily-list?date=${todayStr}`),
       api.get('/notifications'),
       api.get('/transactions/summary'),
     ]);

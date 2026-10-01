@@ -38,15 +38,17 @@ export default function AdminAttendancePage({ activeTab = 'daily', employeeId = 
     try {
       let queryUrl = '/attendance';
       if (activeTab === 'daily') {
-        queryUrl += `?date=${selectedDate}`;
+        queryUrl = `/attendance/admin/daily-list?date=${selectedDate}`;
       } else if (activeTab === 'employee' && selectedEmployee !== 'ALL') {
-        queryUrl += `?employeeId=${selectedEmployee}`;
+        queryUrl = `/attendance/monthly?month=${selectedMonth}&userId=${selectedEmployee}`;
+      } else if (activeTab === 'employee') {
+        queryUrl = `/attendance/monthly?month=${selectedMonth}`;
       } else if (activeTab === 'reports') {
-        queryUrl += `?month=${selectedMonth}`;
+        queryUrl = `/attendance/monthly?month=${selectedMonth}`;
       }
 
       const res = await api.get(queryUrl);
-      const list = res.data?.records || res.data?.attendance || res.data?.data || res.data || [];
+      const list = res.data?.list || res.data?.records || res.data?.attendance || res.data?.data || res.data || [];
       setAttendanceRecords(Array.isArray(list) ? list : []);
     } catch (err) {
       console.error('Error fetching attendance:', err);
