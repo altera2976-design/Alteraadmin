@@ -5,16 +5,18 @@ import { useAuth } from "../context/AuthContext";
 const NAV_ITEMS = [
   { to: "/super-admin/dashboard", label: "Super Admin Dashboard", key: "dashboard", icon: "👑" },
   { to: "/super-admin/admins", label: "Admin Management", key: "admins", superAdminOnly: true, icon: "🛡️" },
-  { to: "/super-admin/employees", label: "Employees", key: "employees", superAdminOnly: true, icon: "👥" },
+  { to: "/super-admin/employees", label: "Employees", key: "employees", icon: "👥" },
   { to: "/super-admin/attendance", label: "Attendance", key: "attendance", icon: "📅" },
-  { to: "/super-admin/bike-tracking", label: "Bike Tracking", key: "tracking", superAdminOnly: true, icon: "🏍️" },
-  { to: "/super-admin/payroll", label: "Salary & Payroll", key: "salary", superAdminOnly: true, icon: "💰" },
+  { to: "/super-admin/bike-tracking", label: "Bike Tracking", key: "tracking", icon: "🏍️" },
+  { to: "/super-admin/payroll", label: "Salary & Payroll", key: "salary", icon: "💰" },
   { to: "/super-admin/tasks", label: "Tasks", key: "tasks", icon: "📋" },
   { to: "/super-admin/crm", label: "CRM", key: "crm", icon: "👥" },
+  { to: "/super-admin/transactions", label: "Transactions", key: "transactions", icon: "💳" },
   { to: "/super-admin/quotations", label: "Quotations", key: "quotation", icon: "🧾" },
+  { to: "/super-admin/offer-letters", label: "Offer Letters", key: "offerLetters", icon: "📄" },
   { to: "/super-admin/projects", label: "Projects", key: "projects", icon: "📁" },
-
   { to: "/super-admin/reports", label: "Reports", key: "reports", icon: "📈" },
+  { to: "/super-admin/notifications", label: "Notifications", key: "notifications", icon: "🔔" },
   { to: "/super-admin/settings", label: "System Settings", key: "administration", icon: "⚙️" },
 ];
 
@@ -40,14 +42,13 @@ export default function AdminLayout({ children, title }) {
   const isMobile = windowWidth < 768;
 
   const filteredNavItems = NAV_ITEMS.filter((item) => {
-    if (item.superAdminOnly || ['employees', 'payroll', 'salary', 'tracking'].includes(item.key)) {
-      return isSuperAdmin || user?.role === 'SUPER_ADMIN';
+    const isUserSuper = isSuperAdmin || user?.role === 'SUPER_ADMIN';
+    if (item.superAdminOnly && !isUserSuper) {
+      return false;
     }
-    if (isSuperAdmin || user?.role === 'SUPER_ADMIN') {
-      return true;
-    }
+    if (isUserSuper) return true;
     if (user?.permissions && item.key) {
-      return user.permissions[item.key] !== false;
+      return user.permissions[item.key]?.view === true || user.permissions[item.key] === true;
     }
     return true;
   });

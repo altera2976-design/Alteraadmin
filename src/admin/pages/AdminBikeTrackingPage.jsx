@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import AdminAppLayout from '../layouts/AdminAppLayout';
+import AdminLayout from '../../layouts/AdminLayout';
 import api from '../../services/api';
 
 export default function AdminBikeTrackingPage({ activeTab = 'live' }) {
@@ -52,13 +52,13 @@ export default function AdminBikeTrackingPage({ activeTab = 'live' }) {
   });
 
   return (
-    <AdminAppLayout title="GPS Bike & Field Agent Tracking">
+    <AdminLayout title="GPS Bike & Field Agent Tracking">
       {/* Navigation Tabs */}
       <div style={styles.tabHeader}>
-        <button onClick={() => navigate('/admin/bike-tracking/live')} style={{ ...styles.tabBtn, ...(activeTab === 'live' ? styles.tabBtnActive : {}) }}>
+        <button onClick={() => navigate('/super-admin/bike-tracking/live')} style={{ ...styles.tabBtn, ...(activeTab === 'live' ? styles.tabBtnActive : {}) }}>
           🟢 Live Agent Tracking ({totalActive})
         </button>
-        <button onClick={() => navigate('/admin/bike-tracking/history')} style={{ ...styles.tabBtn, ...(activeTab === 'history' ? styles.tabBtnActive : {}) }}>
+        <button onClick={() => navigate('/super-admin/bike-tracking/history')} style={{ ...styles.tabBtn, ...(activeTab === 'history' ? styles.tabBtnActive : {}) }}>
           📜 Trip & Distance History
         </button>
       </div>
@@ -162,7 +162,7 @@ export default function AdminBikeTrackingPage({ activeTab = 'live' }) {
           </div>
         )}
       </div>
-    </AdminAppLayout>
+    </AdminLayout>
   );
 }
 

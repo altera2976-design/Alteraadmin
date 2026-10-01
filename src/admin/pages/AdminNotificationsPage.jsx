@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import AdminAppLayout from '../layouts/AdminAppLayout';
+import AdminLayout from '../../layouts/AdminLayout';
 import api from '../../services/api';
 
 export default function AdminNotificationsPage() {
@@ -46,7 +46,7 @@ export default function AdminNotificationsPage() {
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   return (
-    <AdminAppLayout title="Notifications Center">
+    <AdminLayout title="Notifications Center">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div>
           <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', margin: 0 }}>System Notifications</h2>
@@ -92,7 +92,7 @@ export default function AdminNotificationsPage() {
           </div>
         )}
       </div>
-    </AdminAppLayout>
+    </AdminLayout>
   );
 }
 

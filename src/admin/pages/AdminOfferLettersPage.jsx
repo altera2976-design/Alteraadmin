@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import AdminAppLayout from '../layouts/AdminAppLayout';
+import AdminLayout from '../../layouts/AdminLayout';
 import api from '../../services/api';
 import { printOfferLetterPdf } from '../../services/offerLetterPdfGenerator';
 import { COMPANY_LOGO_DATA_URL } from '../../constants/companyLogo';
@@ -192,7 +192,7 @@ export default function AdminOfferLettersPage({ subRoute = 'list', offerLetterId
         await api.post('/offer-letters', formDoc);
       }
       fetchOfferLetters();
-      navigate('/admin/offer-letters');
+      navigate('/super-admin/offer-letters');
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to save offer letter.');
     } finally {
@@ -223,7 +223,7 @@ export default function AdminOfferLettersPage({ subRoute = 'list', offerLetterId
   });
 
   return (
-    <AdminAppLayout title={subRoute === 'create' ? 'Create Offer Letter' : subRoute === 'edit' ? 'Edit Offer Letter' : subRoute === 'view' ? 'Offer Letter Preview' : 'Offer Letters Management'}>
+    <AdminLayout title={subRoute === 'create' ? 'Create Offer Letter' : subRoute === 'edit' ? 'Edit Offer Letter' : subRoute === 'view' ? 'Offer Letter Preview' : 'Offer Letters Management'}>
       {/* Sub-route: Create / Edit Form */}
       {(subRoute === 'create' || subRoute === 'edit') && (
         <div style={styles.cardForm}>
@@ -232,7 +232,7 @@ export default function AdminOfferLettersPage({ subRoute = 'list', offerLetterId
               <h2 style={styles.formTitle}>{subRoute === 'edit' ? 'Edit Offer Letter' : 'Create Offer Letter'}</h2>
               <p style={{ color: '#64748B', fontSize: 13, margin: '2px 0 0 0' }}>Generate company branded employment agreement</p>
             </div>
-            <button onClick={() => navigate('/admin/offer-letters')} style={styles.secondaryBtn}>← Cancel</button>
+            <button onClick={() => navigate('/super-admin/offer-letters')} style={styles.secondaryBtn}>← Cancel</button>
           </div>
 
           <form onSubmit={handleSaveOfferLetter} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -316,7 +316,7 @@ export default function AdminOfferLettersPage({ subRoute = 'list', offerLetterId
             </div>
 
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 10 }}>
-              <button type="button" onClick={() => navigate('/admin/offer-letters')} style={styles.secondaryBtn}>Cancel</button>
+              <button type="button" onClick={() => navigate('/super-admin/offer-letters')} style={styles.secondaryBtn}>Cancel</button>
               <button type="submit" disabled={submitting} style={styles.primaryBtn}>
                 {submitting ? 'Generating...' : 'Save & Generate Offer Letter'}
               </button>
@@ -338,7 +338,7 @@ export default function AdminOfferLettersPage({ subRoute = 'list', offerLetterId
                 ✉️ {emailSending ? 'Sending...' : 'Email to Candidate'}
               </button>
               <button onClick={() => printOfferLetterPdf(selectedOffer)} style={styles.primaryBtn}>🖨️ Download PDF</button>
-              <button onClick={() => navigate('/admin/offer-letters')} style={styles.secondaryBtn}>Back to List</button>
+              <button onClick={() => navigate('/super-admin/offer-letters')} style={styles.secondaryBtn}>Back to List</button>
             </div>
           </div>
 
@@ -476,7 +476,7 @@ export default function AdminOfferLettersPage({ subRoute = 'list', offerLetterId
               </select>
             </div>
 
-            <button onClick={() => navigate('/admin/offer-letters/create')} style={styles.primaryBtn}>
+            <button onClick={() => navigate('/super-admin/offer-letters/create')} style={styles.primaryBtn}>
               + Create Offer Letter
             </button>
           </div>
@@ -518,9 +518,9 @@ export default function AdminOfferLettersPage({ subRoute = 'list', offerLetterId
                         </td>
                         <td style={styles.td}>
                           <div style={{ display: 'flex', gap: 6 }}>
-                            <button onClick={() => navigate(`/admin/offer-letters/${o._id}`)} style={styles.actionBtn}>View / PDF</button>
+                            <button onClick={() => navigate(`/super-admin/offer-letters/${o._id}`)} style={styles.actionBtn}>View / PDF</button>
                             <button onClick={() => handleSendEmail(o._id)} style={{ ...styles.actionBtn, color: '#7A131A' }}>Email</button>
-                            <button onClick={() => navigate(`/admin/offer-letters/${o._id}/edit`)} style={styles.actionBtn}>Edit</button>
+                            <button onClick={() => navigate(`/super-admin/offer-letters/${o._id}/edit`)} style={styles.actionBtn}>Edit</button>
                           </div>
                         </td>
                       </tr>
@@ -532,7 +532,7 @@ export default function AdminOfferLettersPage({ subRoute = 'list', offerLetterId
           </div>
         </div>
       )}
-    </AdminAppLayout>
+    </AdminLayout>
   );
 }
 

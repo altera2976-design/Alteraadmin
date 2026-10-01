@@ -17,14 +17,18 @@ export default function ProtectedRoute({ children, superAdminOnly = false, permi
   }
 
   const isUserSuperAdmin = isSuperAdmin || user?.role === 'SUPER_ADMIN';
-  const requiresSuperAdmin = superAdminOnly || ['employees', 'payroll', 'salary', 'tracking'].includes(permissionKey);
 
-  if (requiresSuperAdmin && !isUserSuperAdmin) {
-    return <Navigate to="/admin/dashboard" replace />;
+  if (superAdminOnly && !isUserSuperAdmin) {
+    return <Navigate to="/super-admin/dashboard" replace />;
   }
 
-  if (permissionKey && !isUserSuperAdmin && user?.permissions && user.permissions[permissionKey] === false) {
-    return <Navigate to="/admin-panel" replace />;
+  // Check specific permissions (if permissionKey is provided, and user is not Super Admin)
+  if (permissionKey && !isUserSuperAdmin) {
+    // If the permission is explicitly false, or if it doesn't exist, block access
+    const hasPermission = user?.permissions?.[permissionKey]?.view === true || user?.permissions?.[permissionKey] === true;
+    if (!hasPermission) {
+      return <Navigate to="/super-admin/dashboard" replace />;
+    }
   }
 
   return children;
