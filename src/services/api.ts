@@ -26,7 +26,11 @@ api.interceptors.request.use(
       if (!isAuthRoute) {
         const token = await SecureStore.getItemAsync(STORAGE_KEYS.TOKEN);
         if (token && config.headers) {
-          config.headers.Authorization = `Bearer ${token}`;
+          if (typeof config.headers.set === 'function') {
+            config.headers.set('Authorization', `Bearer ${token}`);
+          } else {
+            (config.headers as any).Authorization = `Bearer ${token}`;
+          }
         }
       }
     } catch (err) {

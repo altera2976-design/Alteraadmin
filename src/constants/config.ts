@@ -26,26 +26,17 @@ if (__DEV__) {
     }
   }
 } else {
-  // Production / Preview APK: Enforce HTTPS for encrypted traffic
-  if (
-    process.env.EXPO_PUBLIC_API_URL && 
-    !process.env.EXPO_PUBLIC_API_URL.includes('localhost') && 
-    !process.env.EXPO_PUBLIC_API_URL.includes('127.0.0.1') && 
-    !process.env.EXPO_PUBLIC_API_URL.includes('192.168.')
-  ) {
+  // Production / Preview APK: Trust environment variable if provided
+  if (process.env.EXPO_PUBLIC_API_URL) {
     apiUrl = process.env.EXPO_PUBLIC_API_URL;
-  } else if (
-    extraApiUrl && 
-    !extraApiUrl.includes('localhost') && 
-    !extraApiUrl.includes('127.0.0.1') && 
-    !extraApiUrl.includes('192.168.')
-  ) {
+  } else if (extraApiUrl) {
     apiUrl = extraApiUrl;
   } else {
     apiUrl = 'https://alterabackend.onrender.com/api';
   }
 
-  // Force HTTPS in production if unencrypted HTTP was configured
+  // Force HTTPS in production if unencrypted HTTP was configured,
+  // EXCEPT for local network development (localhost or 192.168.*)
   if (
     apiUrl.startsWith('http://') &&
     !apiUrl.includes('localhost') &&
