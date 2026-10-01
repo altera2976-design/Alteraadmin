@@ -119,7 +119,7 @@ export default function App() {
           <Route path="/super-admin/festivals" element={<ProtectedRoute><FestivalsPage /></ProtectedRoute>} />
 
           {/* Legacy Super Admin aliases for seamless navigation */}
-          <Route path="/admin-panel" element={<Navigate to="/admin/dashboard" replace />} />
+          <Route path="/admin-panel" element={<Navigate to="/super-admin/dashboard" replace />} />
           <Route path="/admin-portal" element={<ProtectedRoute permissionKey="dashboard"><AdminPortalPage /></ProtectedRoute>} />
           <Route path="/manager-portal" element={<ProtectedRoute permissionKey="dashboard"><ManagerPortalPage /></ProtectedRoute>} />
           <Route path="/staff-portal" element={<ProtectedRoute permissionKey="dashboard"><StaffPortalPage /></ProtectedRoute>} />
@@ -138,70 +138,10 @@ export default function App() {
           <Route path="/administration" element={<ProtectedRoute permissionKey="administration"><AdministrationPage /></ProtectedRoute>} />
 
           {/* ───────────────────────────────────────────────────────────────── */}
-          {/* 2. SEPARATE ADMIN PANEL ROUTES (/admin/*)                         */}
+          {/* 2. LEGACY ADMIN PANEL ROUTES (/admin/*) Redirecting to unified    */}
           {/* ───────────────────────────────────────────────────────────────── */}
-
-          {/* Admin Login */}
-          <Route path="/admin/login" element={<AdminLoginPage />} />
-
-          {/* Admin Dashboard */}
-          <Route path="/admin/dashboard" element={<AdminProtectedRoute permissionKey="dashboard"><AdminDashboardPage /></AdminProtectedRoute>} />
-
-          {/* Admin Employees */}
-          <Route path="/admin/employees" element={<AdminProtectedRoute permissionKey="employees" altPermissionKey="administration"><AdminEmployeesPage subRoute="list" /></AdminProtectedRoute>} />
-          <Route path="/admin/employees/add" element={<AdminProtectedRoute permissionKey="employees" altPermissionKey="administration"><AdminEmployeesPage subRoute="add" /></AdminProtectedRoute>} />
-          <Route path="/admin/employees/:id" element={<AdminProtectedRoute permissionKey="employees" altPermissionKey="administration"><AdminEmployeeViewWrapper subRoute="view" /></AdminProtectedRoute>} />
-          <Route path="/admin/employees/:id/edit" element={<AdminProtectedRoute permissionKey="employees" altPermissionKey="administration"><AdminEmployeeViewWrapper subRoute="edit" /></AdminProtectedRoute>} />
-
-          {/* Admin Attendance */}
-          <Route path="/admin/attendance" element={<AdminProtectedRoute permissionKey="attendance"><AdminAttendancePage activeTab="daily" /></AdminProtectedRoute>} />
-          <Route path="/admin/attendance/daily" element={<AdminProtectedRoute permissionKey="attendance"><AdminAttendancePage activeTab="daily" /></AdminProtectedRoute>} />
-          <Route path="/admin/attendance/employee/:id" element={<AdminProtectedRoute permissionKey="attendance"><AdminAttendanceEmployeeWrapper /></AdminProtectedRoute>} />
-          <Route path="/admin/attendance/reports" element={<AdminProtectedRoute permissionKey="attendance"><AdminAttendancePage activeTab="reports" /></AdminProtectedRoute>} />
-
-          {/* Admin Payroll */}
-          <Route path="/admin/payroll" element={<AdminProtectedRoute permissionKey="payroll" altPermissionKey="salary"><AdminPayrollPage activeTab="overview" /></AdminProtectedRoute>} />
-          <Route path="/admin/payroll/calculate" element={<AdminProtectedRoute permissionKey="payroll" altPermissionKey="salary"><AdminPayrollPage activeTab="calculate" /></AdminProtectedRoute>} />
-          <Route path="/admin/payroll/history" element={<AdminProtectedRoute permissionKey="payroll" altPermissionKey="salary"><AdminPayrollPage activeTab="history" /></AdminProtectedRoute>} />
-          <Route path="/admin/payroll/:id" element={<AdminProtectedRoute permissionKey="payroll" altPermissionKey="salary"><AdminPayrollViewWrapper /></AdminProtectedRoute>} />
-
-          {/* Admin Bike Tracking */}
-          <Route path="/admin/bike-tracking" element={<AdminProtectedRoute permissionKey="tracking"><AdminBikeTrackingPage activeTab="live" /></AdminProtectedRoute>} />
-          <Route path="/admin/bike-tracking/live" element={<AdminProtectedRoute permissionKey="tracking"><AdminBikeTrackingPage activeTab="live" /></AdminProtectedRoute>} />
-          <Route path="/admin/bike-tracking/history" element={<AdminProtectedRoute permissionKey="tracking"><AdminBikeTrackingPage activeTab="history" /></AdminProtectedRoute>} />
-
-          {/* Admin Tasks */}
-          <Route path="/admin/tasks" element={<AdminProtectedRoute permissionKey="tasks"><TaskManagementPage /></AdminProtectedRoute>} />
-
-          {/* Admin Transactions */}
-          <Route path="/admin/transactions" element={<AdminProtectedRoute permissionKey="transactions"><AdminTransactionsPage /></AdminProtectedRoute>} />
-
-          {/* Admin CRM */}
-          <Route path="/admin/crm" element={<AdminProtectedRoute permissionKey="crm"><AdminCRMPage activeTab="leads" /></AdminProtectedRoute>} />
-          <Route path="/admin/crm/leads" element={<AdminProtectedRoute permissionKey="crm"><AdminCRMPage activeTab="leads" /></AdminProtectedRoute>} />
-          <Route path="/admin/crm/followups" element={<AdminProtectedRoute permissionKey="crm"><AdminCRMPage activeTab="followups" /></AdminProtectedRoute>} />
-          <Route path="/admin/crm/:id" element={<AdminProtectedRoute permissionKey="crm"><AdminCRMViewWrapper /></AdminProtectedRoute>} />
-
-          {/* Admin Quotations */}
-          <Route path="/admin/quotations" element={<AdminProtectedRoute permissionKey="quotations" altPermissionKey="quotation"><AdminQuotationsPage subRoute="list" /></AdminProtectedRoute>} />
-          <Route path="/admin/quotations/create" element={<AdminProtectedRoute permissionKey="quotations" altPermissionKey="quotation"><AdminQuotationsPage subRoute="create" /></AdminProtectedRoute>} />
-          <Route path="/admin/quotations/:id" element={<AdminProtectedRoute permissionKey="quotations" altPermissionKey="quotation"><AdminQuotationViewWrapper subRoute="view" /></AdminProtectedRoute>} />
-          <Route path="/admin/quotations/:id/edit" element={<AdminProtectedRoute permissionKey="quotations" altPermissionKey="quotation"><AdminQuotationViewWrapper subRoute="edit" /></AdminProtectedRoute>} />
-
-          {/* Admin Offer Letters */}
-          <Route path="/admin/offer-letters" element={<AdminProtectedRoute permissionKey="offer_letters" altPermissionKey="offerLetters"><AdminOfferLettersPage subRoute="list" /></AdminProtectedRoute>} />
-          <Route path="/admin/offer-letters/create" element={<AdminProtectedRoute permissionKey="offer_letters" altPermissionKey="offerLetters"><AdminOfferLettersPage subRoute="create" /></AdminProtectedRoute>} />
-          <Route path="/admin/offer-letters/:id" element={<AdminProtectedRoute permissionKey="offer_letters" altPermissionKey="offerLetters"><AdminOfferLetterWrapper subRoute="view" /></AdminProtectedRoute>} />
-          <Route path="/admin/offer-letters/:id/edit" element={<AdminProtectedRoute permissionKey="offer_letters" altPermissionKey="offerLetters"><AdminOfferLetterWrapper subRoute="edit" /></AdminProtectedRoute>} />
-
-          {/* Admin Reports */}
-          <Route path="/admin/reports" element={<AdminProtectedRoute permissionKey="reports"><AdminReportsPage /></AdminProtectedRoute>} />
-
-          {/* Admin Notifications */}
-          <Route path="/admin/notifications" element={<AdminProtectedRoute permissionKey="notifications"><AdminNotificationsPage /></AdminProtectedRoute>} />
-
-          {/* Admin Profile */}
-          <Route path="/admin/profile" element={<AdminProtectedRoute permissionKey="profile"><AdminProfilePage /></AdminProtectedRoute>} />
+          <Route path="/admin/login" element={<Navigate to="/super-admin/login" replace />} />
+          <Route path="/admin/*" element={<Navigate to="/super-admin/dashboard" replace />} />
 
           {/* Admin Settings */}
           <Route path="/admin/settings" element={<AdminProtectedRoute permissionKey="settings" altPermissionKey="administration"><AdminSettingsPage /></AdminProtectedRoute>} />
