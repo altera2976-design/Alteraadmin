@@ -15,7 +15,8 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
+  Platform
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { THEME } from "../../constants/theme";
@@ -166,11 +167,26 @@ export default function AttendanceScreen() {
 
   useEffect(() => {
     setIsLoading(true);
-    if (activeTab === "admin" && isAdmin) {
-      loadAdminData(selectedAdminDate).finally(() => setIsLoading(false));
-    } else {
-      loadEmployeeData().finally(() => setIsLoading(false));
+    
+    const task = Platform.OS !== 'web'
+      ? require('react-native').InteractionManager.runAfterInteractions(() => {
+          if (activeTab === "admin" && isAdmin) {
+            loadAdminData(selectedAdminDate).finally(() => setIsLoading(false));
+          } else {
+            loadEmployeeData().finally(() => setIsLoading(false));
+          }
+        })
+      : { cancel: () => {} };
+      
+    if (Platform.OS === 'web') {
+      if (activeTab === "admin" && isAdmin) {
+        loadAdminData(selectedAdminDate).finally(() => setIsLoading(false));
+      } else {
+        loadEmployeeData().finally(() => setIsLoading(false));
+      }
     }
+    
+    return () => task.cancel();
   }, [activeTab, isAdmin, selectedAdminDate, loadAdminData, loadEmployeeData]);
 
   // ── Haversine Distance Helper ──────────────────────────────────────────────

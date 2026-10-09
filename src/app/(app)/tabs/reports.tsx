@@ -156,7 +156,13 @@ export default function ReportsScreen() {
   }, [selectedPeriod]);
 
   useEffect(() => {
-    fetchSummary();
+    const task = Platform.OS !== 'web'
+      ? require('react-native').InteractionManager.runAfterInteractions(() => fetchSummary())
+      : { cancel: () => {} };
+
+    if (Platform.OS === 'web') fetchSummary();
+    
+    return () => task.cancel();
   }, [fetchSummary]);
 
   // Load detailed report data

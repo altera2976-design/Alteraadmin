@@ -39,27 +39,27 @@ export default function CRMScreen() {
     budget: 800000
   });
 
-  const fetchCRMData = useCallback(async (isRefresh = false) => {
+  const fetchCRMData = useCallback(async (isRefresh = false, currentSearch = search) => {
     if (!isRefresh) setLoading(true);
     try {
       if (activeTab === 'Leads') {
         let url = `/crm/leads?status=All&source=All`;
-        if (search) url += `&search=${encodeURIComponent(search)}`;
+        if (currentSearch) url += `&search=${encodeURIComponent(currentSearch)}`;
         const res = await api.get(url);
         setData(res.data?.data || []);
       } else if (activeTab === 'All Clients') {
         const res = await api.get('/clients');
         let clients = res.data?.data || res.data?.clients || [];
-        if (search) {
-          const s = search.toLowerCase();
+        if (currentSearch) {
+          const s = currentSearch.toLowerCase();
           clients = clients.filter((c: any) => c.name?.toLowerCase().includes(s) || c.phone?.includes(s));
         }
         setData(clients);
       } else if (activeTab === 'Projects') {
         const res = await api.get('/projects');
         let projects = res.data?.data || res.data?.projects || [];
-        if (search) {
-          const s = search.toLowerCase();
+        if (currentSearch) {
+          const s = currentSearch.toLowerCase();
           projects = projects.filter((p: any) => p.name?.toLowerCase().includes(s) || p.clientName?.toLowerCase().includes(s));
         }
         setData(projects);
@@ -70,16 +70,23 @@ export default function CRMScreen() {
       setLoading(false);
       if (isRefresh) setRefreshing(false);
     }
-  }, [activeTab, search]);
+  }, [activeTab]);
 
   useEffect(() => {
-    fetchCRMData();
-  }, [fetchCRMData]);
+    // Only fetch after navigation transition completes for smooth UX
+    const task = Platform.OS !== 'web' 
+      ? require('react-native').InteractionManager.runAfterInteractions(() => fetchCRMData(false, search))
+      : { cancel: () => {} };
+      
+    if (Platform.OS === 'web') fetchCRMData(false, search);
+      
+    return () => task.cancel();
+  }, [fetchCRMData, search]);
 
   useEffect(() => {
     const socket = getSocket();
     const handleUpdate = () => {
-      fetchCRMData();
+      fetchCRMData(true, search);
     };
 
     if (socket) {
@@ -96,7 +103,7 @@ export default function CRMScreen() {
         socket.off('project_updated', handleUpdate);
       }
     };
-  }, [fetchCRMData]);
+  }, [fetchCRMData, search]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);

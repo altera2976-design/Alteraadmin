@@ -58,30 +58,43 @@ export default function DashboardScreen() {
   }, []);
 
   useEffect(() => {
-    fetchStats();
+    let idleHandle: any = null;
+
+    if (Platform.OS !== 'web' && typeof requestIdleCallback === 'function') {
+      idleHandle = requestIdleCallback(() => fetchStats());
+    } else {
+      fetchStats();
+    }
 
     // Connect to Socket.io for live updates
     const socket = getSocket();
+    
+    const handleLiveUpdate = () => {
+      fetchStats();
+    };
+
     if (socket) {
-      const handleLiveUpdate = () => {
-        fetchStats();
-      };
       socket.on('project:created', handleLiveUpdate);
       socket.on('project:updated', handleLiveUpdate);
       socket.on('project:deleted', handleLiveUpdate);
       socket.on('task:created', handleLiveUpdate);
       socket.on('task:updated', handleLiveUpdate);
       socket.on('notification:new', handleLiveUpdate);
-
-      return () => {
+    }
+    
+    return () => {
+      if (idleHandle !== null && typeof cancelIdleCallback === 'function') {
+        cancelIdleCallback(idleHandle);
+      }
+      if (socket) {
         socket.off('project:created', handleLiveUpdate);
         socket.off('project:updated', handleLiveUpdate);
         socket.off('project:deleted', handleLiveUpdate);
         socket.off('task:created', handleLiveUpdate);
         socket.off('task:updated', handleLiveUpdate);
         socket.off('notification:new', handleLiveUpdate);
-      };
-    }
+      }
+    };
   }, [fetchStats]);
 
   const onRefresh = () => {

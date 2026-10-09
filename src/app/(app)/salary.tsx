@@ -14,6 +14,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { COMPANY_LOGO_DATA_URL } from "../../constants/companyLogo";
@@ -237,7 +238,18 @@ export default function SalaryScreen() {
 
   useEffect(() => {
     setIsLoading(true);
-    loadPayroll(false).finally(() => setIsLoading(false));
+    
+    const task = Platform.OS !== 'web'
+      ? require('react-native').InteractionManager.runAfterInteractions(() => {
+          loadPayroll(false).finally(() => setIsLoading(false));
+        })
+      : { cancel: () => {} };
+
+    if (Platform.OS === 'web') {
+      loadPayroll(false).finally(() => setIsLoading(false));
+    }
+    
+    return () => task.cancel();
   }, [loadPayroll]);
 
   const onRefresh = useCallback(async () => {
@@ -1170,14 +1182,14 @@ export default function SalaryScreen() {
 
                 {/* Net Pay Highlight Banner */}
                 <View style={styles.netHighlightBanner}>
-                  <div>
+                  <View>
                     <Text style={styles.netHighlightLbl}>
                       Net Payable Salary
                     </Text>
                     <Text style={styles.netHighlightPeriod}>
                       Month: {currentMonthLabel}
                     </Text>
-                  </div>
+                  </View>
                   <Text style={styles.netHighlightVal}>
                     {formatINR(selectedDetail.netSalary)}
                   </Text>

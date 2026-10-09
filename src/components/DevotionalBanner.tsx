@@ -131,7 +131,7 @@ export default function DevotionalBanner() {
               <LinearGradient
                 colors={["transparent", "rgba(0,0,0,0.55)", "rgba(0,0,0,0.92)"]}
                 locations={[0.2, 0.6, 1]}
-                style={StyleSheet.absoluteFillObject}
+                style={StyleSheet.absoluteFill}
               />
             </View>
           ))}
@@ -241,10 +241,7 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: 16,
     paddingBottom: 16,
-    paddingTop: 32,
-    backgroundColor: "rgba(0,0,0,0.0)",
-    // Strong bottom overlay
-    background: "rgba(0,0,0,0)",
+    backgroundColor: "rgba(0,0,0,0)",
   },
   title: {
     color: "#fff",

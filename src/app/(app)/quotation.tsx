@@ -537,7 +537,18 @@ export default function QuotationScreen() {
 
   useEffect(() => {
     setIsLoading(true);
-    loadData().finally(() => setIsLoading(false));
+    
+    const task = Platform.OS !== 'web'
+      ? require('react-native').InteractionManager.runAfterInteractions(() => {
+          loadData().finally(() => setIsLoading(false));
+        })
+      : { cancel: () => {} };
+
+    if (Platform.OS === 'web') {
+      loadData().finally(() => setIsLoading(false));
+    }
+    
+    return () => task.cancel();
   }, [loadData]);
 
   const onRefresh = useCallback(async () => {

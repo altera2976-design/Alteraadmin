@@ -102,7 +102,6 @@ export default function LoginScreen() {
     setError("");
     try {
       await login(email.trim(), password.trim());
-      router.replace("/(app)/tabs/dashboard");
     } catch (err: any) {
       const msg =
         err?.response?.data?.message ||
@@ -153,7 +152,6 @@ export default function LoginScreen() {
       }
 
       await googleLogin(idToken);
-      router.replace("/(app)/tabs/dashboard");
     } catch (err: any) {
       if (err?.code === statusCodes?.SIGN_IN_CANCELLED) {
         return;

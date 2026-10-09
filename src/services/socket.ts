@@ -9,7 +9,7 @@ export const getSocket = () => {
     console.log("🔗 Attempting Socket.IO connection to:", socketUrl);
     socket = io(socketUrl, {
       autoConnect: true,
-      transports: ["websocket", "polling"], // Prioritize WebSocket to prevent XHR polling errors on React Native / Render
+      // Removed transports: ["websocket", "polling"] to allow default polling -> websocket upgrade path and prevent connection errors
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 2000,
