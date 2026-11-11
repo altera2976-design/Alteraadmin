@@ -197,6 +197,8 @@ export interface QuotationConfig {
   termsAndConditions: string[];
   defaultMilestones: QuotationMilestone[];
   roomCategories: string[];
+  standaloneAccessoryOptions?: string[];
+  standaloneHardwareOptions?: string[];
   defaultGstPercent: number;
   defaultHandlingFeePercent: number;
   defaultDesignFeePercent: number;
@@ -314,6 +316,17 @@ export const quotationApi = {
     config: Partial<QuotationConfig>
   ): Promise<{ success: boolean; message: string; data: QuotationConfig }> => {
     const res = await api.put('/quotations/config', config);
+    return res.data;
+  },
+
+  /**
+   * Add new option to global quotation config (standalone accessories, hardware, rooms)
+   */
+  addConfigOption: async (
+    type: 'standaloneAccessory' | 'standaloneHardware' | 'roomCategory',
+    option: string
+  ): Promise<{ success: boolean; message: string; data: QuotationConfig }> => {
+    const res = await api.post('/quotations/config/options', { type, option });
     return res.data;
   },
 

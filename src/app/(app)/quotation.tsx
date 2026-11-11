@@ -21,6 +21,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { API_URL } from "../../constants/config";
+import { getSocket } from "../../services/socket";
 import { useAuth } from "../../context/AuthContext";
 import {
   quotationApi,
@@ -163,6 +164,29 @@ const DEFAULT_HARDWARE_OPTIONS = [
   "Ebco Soft Close",
   "Blum Soft Close",
   "Standard Hardware",
+  "+ Add More",
+];
+
+const DEFAULT_STANDALONE_ACCESSORY_OPTIONS = [
+  "Soft Close Hinges",
+  "Cutlery Basket",
+  "Drawer Channel",
+  "Bottle Pull-Out",
+  "Tandem Box",
+  "Magic Corner",
+  "Wardrobe Accessories",
+  "Kitchen Accessories",
+  "Other Accessories",
+  "+ Add More",
+];
+
+const DEFAULT_STANDALONE_HARDWARE_OPTIONS = [
+  "Hettich Soft Close",
+  "Hafele Soft Close",
+  "Ebco Soft Close",
+  "Blum",
+  "Godrej",
+  "Other Hardware",
   "+ Add More",
 ];
 
@@ -359,14 +383,22 @@ export default function QuotationScreen() {
     QuotationStandaloneAccessory[]
   >([]);
   const [stAccName, setStAccName] = useState("");
-  const [showStAccForm, setShowStAccForm] = useState(false);
   const [stAccDesc, setStAccDesc] = useState("");
   const [stAccImage, setStAccImage] = useState("");
   const [stAccQty, setStAccQty] = useState("1");
   const [stAccUnit, setStAccUnit] = useState("Nos");
   const [stAccPrice, setStAccPrice] = useState("");
 
-  const [stAccHardwareOptions, setStAccHardwareOptions] = useState<string[]>(DEFAULT_HARDWARE_OPTIONS);
+  const [stAccessoryOptions, setStAccessoryOptions] = useState<string[]>(
+    DEFAULT_STANDALONE_ACCESSORY_OPTIONS,
+  );
+  const [showStAccCustomAccessory, setShowStAccCustomAccessory] =
+    useState(false);
+  const [stAccCustomAccessory, setStAccCustomAccessory] = useState("");
+
+  const [stAccHardwareOptions, setStAccHardwareOptions] = useState<string[]>(
+    DEFAULT_STANDALONE_HARDWARE_OPTIONS,
+  );
   const [showStAccCustomHardware, setShowStAccCustomHardware] = useState(false);
   const [stAccCustomHardware, setStAccCustomHardware] = useState("");
 
@@ -388,6 +420,82 @@ export default function QuotationScreen() {
     }
   };
 
+  const handleSelectStAccessory = (cat: string) => {
+    if (cat === "+ Add More") {
+      setShowStAccCustomAccessory(true);
+      return;
+    }
+    setShowStAccCustomAccessory(false);
+    setStAccName(cat);
+  };
+
+  const handleConfirmCustomStAccAccessory = async (overrideName?: string) => {
+    const raw = typeof overrideName === "string" ? overrideName : stAccCustomAccessory;
+    const trimmed = (raw || "").trim();
+    if (!trimmed) return;
+
+    if (!stAccessoryOptions.includes(trimmed)) {
+      setStAccessoryOptions((prev) => {
+        const copy = [...prev];
+        const addMoreIdx = copy.indexOf("+ Add More");
+        if (addMoreIdx !== -1) {
+          copy.splice(addMoreIdx, 0, trimmed);
+        } else {
+          copy.push(trimmed);
+        }
+        return copy;
+      });
+    }
+
+    setStAccName(trimmed);
+    setStAccCustomAccessory("");
+    setShowStAccCustomAccessory(false);
+
+    try {
+      await quotationApi.addConfigOption("standaloneAccessory", trimmed);
+    } catch (err) {
+      console.warn("Failed to save custom accessory to config:", err);
+    }
+  };
+
+  const handleSelectStAccHardware = (opt: string) => {
+    if (opt === "+ Add More") {
+      setShowStAccCustomHardware(true);
+      return;
+    }
+    setShowStAccCustomHardware(false);
+    setStAccDesc(opt);
+  };
+
+  const handleConfirmCustomStAccHardware = async (overrideName?: string) => {
+    const raw = typeof overrideName === "string" ? overrideName : stAccCustomHardware;
+    const trimmed = (raw || "").trim();
+    if (!trimmed) return;
+
+    if (!stAccHardwareOptions.includes(trimmed)) {
+      setStAccHardwareOptions((prev) => {
+        const copy = [...prev];
+        const addMoreIdx = copy.indexOf("+ Add More");
+        if (addMoreIdx !== -1) {
+          copy.splice(addMoreIdx, 0, trimmed);
+        } else {
+          copy.push(trimmed);
+        }
+        return copy;
+      });
+    }
+
+    setStAccDesc(trimmed);
+    setStAccCustomHardware("");
+    setShowStAccCustomHardware(false);
+
+    try {
+      await quotationApi.addConfigOption("standaloneHardware", trimmed);
+    } catch (err) {
+      console.warn("Failed to save custom hardware to config:", err);
+    }
+  };
+
   const handleAddStandaloneAccessory = () => {
     const name = stAccName.trim();
     if (!name) {
@@ -405,6 +513,16 @@ export default function QuotationScreen() {
         copy.splice(copy.length - 1, 0, finalHardware);
         return copy;
       });
+      quotationApi.addConfigOption("standaloneHardware", finalHardware).catch(console.warn);
+    }
+
+    if (showStAccCustomAccessory && name && !stAccessoryOptions.includes(name)) {
+      setStAccessoryOptions(prev => {
+        const copy = [...prev];
+        copy.splice(copy.length - 1, 0, name);
+        return copy;
+      });
+      quotationApi.addConfigOption("standaloneAccessory", name).catch(console.warn);
     }
 
     const newAcc: QuotationStandaloneAccessory = {
@@ -419,7 +537,8 @@ export default function QuotationScreen() {
 
     setStandaloneAccessories((prev) => [...prev, newAcc]);
     setStAccName("");
-    setShowStAccForm(false);
+    setShowStAccCustomAccessory(false);
+    setStAccCustomAccessory("");
     setStAccDesc("");
     setShowStAccCustomHardware(false);
     setStAccCustomHardware("");
@@ -516,12 +635,13 @@ export default function QuotationScreen() {
   // ── Load Data ──────────────────────────────────────────────────────────────
   const loadData = useCallback(async () => {
     try {
-      const [listRes, sumRes] = await Promise.all([
+      const [listRes, sumRes, configRes] = await Promise.all([
         quotationApi.getQuotations({
           status: activeStatus !== "ALL" ? activeStatus : undefined,
           search: searchQuery.trim() ? searchQuery.trim() : undefined,
         }),
         quotationApi.getSummary(),
+        quotationApi.getConfig().catch(() => null),
       ]);
 
       if (listRes?.success) {
@@ -530,10 +650,64 @@ export default function QuotationScreen() {
       if (sumRes?.success) {
         setSummary(sumRes.summary || null);
       }
+      if (configRes?.success && configRes.data) {
+        if (
+          Array.isArray(configRes.data.standaloneAccessoryOptions) &&
+          configRes.data.standaloneAccessoryOptions.length > 0
+        ) {
+          const accs = [...configRes.data.standaloneAccessoryOptions];
+          if (!accs.includes("+ Add More")) accs.push("+ Add More");
+          setStAccessoryOptions(accs);
+        }
+        if (
+          Array.isArray(configRes.data.standaloneHardwareOptions) &&
+          configRes.data.standaloneHardwareOptions.length > 0
+        ) {
+          const hw = [...configRes.data.standaloneHardwareOptions];
+          if (!hw.includes("+ Add More")) hw.push("+ Add More");
+          setStAccHardwareOptions(hw);
+        }
+      }
     } catch (error) {
       console.error("Error loading quotations:", error);
     }
   }, [activeStatus, searchQuery]);
+
+  // Real-time synchronization of quotation config with web admin panel
+  useEffect(() => {
+    let socket: any;
+    try {
+      socket = getSocket();
+      if (socket) {
+        const handleConfigUpdated = (newConfig: any) => {
+          if (!newConfig) return;
+          if (
+            Array.isArray(newConfig.standaloneAccessoryOptions) &&
+            newConfig.standaloneAccessoryOptions.length > 0
+          ) {
+            const accs = [...newConfig.standaloneAccessoryOptions];
+            if (!accs.includes("+ Add More")) accs.push("+ Add More");
+            setStAccessoryOptions(accs);
+          }
+          if (
+            Array.isArray(newConfig.standaloneHardwareOptions) &&
+            newConfig.standaloneHardwareOptions.length > 0
+          ) {
+            const hw = [...newConfig.standaloneHardwareOptions];
+            if (!hw.includes("+ Add More")) hw.push("+ Add More");
+            setStAccHardwareOptions(hw);
+          }
+        };
+
+        socket.on("quotation_config_updated", handleConfigUpdated);
+        return () => {
+          socket.off("quotation_config_updated", handleConfigUpdated);
+        };
+      }
+    } catch (err) {
+      console.warn("Socket sync error in QuotationScreen:", err);
+    }
+  }, []);
 
   useEffect(() => {
     setIsLoading(true);
@@ -3485,60 +3659,62 @@ export default function QuotationScreen() {
                       style={{ marginBottom: 8 }}
                       contentContainerStyle={{ gap: 4, paddingVertical: 4 }}
                     >
-                      {[
-                        "Soft Close Hinges",
-                        "Cutlery Basket",
-                        "Drawer Channel",
-                        "Bottle Pull-Out",
-                        "Tandem Box",
-                        "Magic Corner",
-                        "Wardrobe Accessories",
-                        "Kitchen Accessories",
-                        "Other Accessories",
-                      ].map((cat) => (
-                        <TouchableOpacity
-                          key={cat}
-                          style={[
-                            styles.smallPill,
-                            { paddingVertical: 6, paddingHorizontal: 10 },
-                            (!showStAccForm && stAccName === cat) && styles.smallPillActive,
-                          ]}
-                          onPress={() => {
-                            setShowStAccForm(false);
-                            setStAccName(cat);
-                          }}
-                        >
-                          <Text
+                      {stAccessoryOptions.map((cat) => {
+                        const isAddMore = cat === "+ Add More";
+                        const isActive = isAddMore
+                          ? showStAccCustomAccessory
+                          : (!showStAccCustomAccessory && stAccName === cat);
+                        return (
+                          <TouchableOpacity
+                            key={cat}
                             style={[
-                              styles.smallPillText,
-                              (!showStAccForm && stAccName === cat) && styles.smallPillTextActive,
+                              styles.smallPill,
+                              { paddingVertical: 6, paddingHorizontal: 10 },
+                              isActive && styles.smallPillActive,
                             ]}
+                            onPress={() => handleSelectStAccessory(cat)}
                           >
-                            {cat}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                      <TouchableOpacity
-                        style={[
-                          styles.smallPill,
-                          { paddingVertical: 6, paddingHorizontal: 10 },
-                          showStAccForm && styles.smallPillActive,
-                        ]}
-                        onPress={() => {
-                          setShowStAccForm(true);
-                          setStAccName("");
+                            <Text
+                              style={[
+                                styles.smallPillText,
+                                isActive && styles.smallPillTextActive,
+                              ]}
+                            >
+                              {cat}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+
+                    {showStAccCustomAccessory && (
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          gap: 6,
+                          marginBottom: 10,
+                          alignItems: "center",
                         }}
                       >
-                        <Text
-                          style={[
-                            styles.smallPillText,
-                            showStAccForm && styles.smallPillTextActive,
-                          ]}
+                        <TextInput
+                          style={[styles.textInput, { flex: 1, marginBottom: 0 }]}
+                          placeholder="Custom Accessory Name..."
+                          value={stAccCustomAccessory}
+                          onChangeText={(val) => {
+                            setStAccCustomAccessory(val);
+                            if (val.trim()) setStAccName(val);
+                          }}
+                          autoFocus
+                        />
+                        <TouchableOpacity
+                          style={styles.addCustomBtn}
+                          onPress={() => handleConfirmCustomStAccAccessory()}
                         >
-                          + Add More
-                        </Text>
-                      </TouchableOpacity>
-                    </ScrollView>
+                          <Ionicons name="add" size={16} color="#ffffff" />
+                          <Text style={styles.addCustomBtnText}>Add Option</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
 
                     {/* 3. Hardware Name Input */}
                     <Text style={styles.inputLabel}>Hardware Name</Text>
@@ -3557,57 +3733,62 @@ export default function QuotationScreen() {
                       style={{ marginBottom: 8 }}
                       contentContainerStyle={{ gap: 4, paddingVertical: 4 }}
                     >
-                      {[
-                        "Hettich Soft Close",
-                        "Hafele Soft Close",
-                        "Ebco Soft Close",
-                        "Blum",
-                        "Godrej",
-                        "Other Hardware",
-                      ].map((opt) => (
-                        <TouchableOpacity
-                          key={opt}
-                          style={[
-                            styles.smallPill,
-                            { paddingVertical: 6, paddingHorizontal: 10 },
-                            (!showStAccCustomHardware && stAccDesc === opt) && styles.smallPillActive,
-                          ]}
-                          onPress={() => {
-                            setShowStAccCustomHardware(false);
-                            setStAccDesc(opt);
-                          }}
-                        >
-                          <Text
+                      {stAccHardwareOptions.map((opt) => {
+                        const isAddMore = opt === "+ Add More";
+                        const isActive = isAddMore
+                          ? showStAccCustomHardware
+                          : (!showStAccCustomHardware && stAccDesc === opt);
+                        return (
+                          <TouchableOpacity
+                            key={opt}
                             style={[
-                              styles.smallPillText,
-                              (!showStAccCustomHardware && stAccDesc === opt) && styles.smallPillTextActive,
+                              styles.smallPill,
+                              { paddingVertical: 6, paddingHorizontal: 10 },
+                              isActive && styles.smallPillActive,
                             ]}
+                            onPress={() => handleSelectStAccHardware(opt)}
                           >
-                            {opt}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                      <TouchableOpacity
-                        style={[
-                          styles.smallPill,
-                          { paddingVertical: 6, paddingHorizontal: 10 },
-                          showStAccCustomHardware && styles.smallPillActive,
-                        ]}
-                        onPress={() => {
-                          setShowStAccCustomHardware(true);
-                          setStAccDesc("");
+                            <Text
+                              style={[
+                                styles.smallPillText,
+                                isActive && styles.smallPillTextActive,
+                              ]}
+                            >
+                              {opt}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+
+                    {showStAccCustomHardware && (
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          gap: 6,
+                          marginBottom: 10,
+                          alignItems: "center",
                         }}
                       >
-                        <Text
-                          style={[
-                            styles.smallPillText,
-                            showStAccCustomHardware && styles.smallPillTextActive,
-                          ]}
+                        <TextInput
+                          style={[styles.textInput, { flex: 1, marginBottom: 0 }]}
+                          placeholder="Custom Hardware Name..."
+                          value={stAccCustomHardware}
+                          onChangeText={(val) => {
+                            setStAccCustomHardware(val);
+                            if (val.trim()) setStAccDesc(val);
+                          }}
+                          autoFocus
+                        />
+                        <TouchableOpacity
+                          style={styles.addCustomBtn}
+                          onPress={() => handleConfirmCustomStAccHardware()}
                         >
-                          + Add More
-                        </Text>
-                      </TouchableOpacity>
-                    </ScrollView>
+                          <Ionicons name="add" size={16} color="#ffffff" />
+                          <Text style={styles.addCustomBtnText}>Add Option</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
 
                     {/* 5. Accessory Image */}
                     <Text style={styles.inputLabel}>Accessory Image</Text>
