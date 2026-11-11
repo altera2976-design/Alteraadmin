@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../services/api";
+import { io } from "socket.io-client";
+import api, { SOCKET_URL } from "../services/api";
 import {
   buildQuotationHtml,
   formatDate,
@@ -334,7 +335,8 @@ export default function QuotationModule({
   const [stAccessoryOptions, setStAccessoryOptions] = useState(
     DEFAULT_STANDALONE_ACCESSORY_OPTIONS,
   );
-  const [showStAccCustomAccessory, setShowStAccCustomAccessory] = useState(false);
+  const [showStAccCustomAccessory, setShowStAccCustomAccessory] =
+    useState(false);
   const [stAccCustomAccessory, setStAccCustomAccessory] = useState("");
 
   const [stAccHardwareOptions, setStAccHardwareOptions] = useState(
@@ -377,6 +379,62 @@ export default function QuotationModule({
     transactionRef: "",
     notes: "",
   });
+
+  const fetchQuotationConfig = async () => {
+    try {
+      const res = await api.get("/quotations/config");
+      const cfg = res.data?.data || res.data;
+      if (cfg) {
+        if (
+          Array.isArray(cfg.standaloneAccessoryOptions) &&
+          cfg.standaloneAccessoryOptions.length > 0
+        ) {
+          const list = [...cfg.standaloneAccessoryOptions];
+          if (!list.includes("+ Add More")) list.push("+ Add More");
+          setStAccessoryOptions(list);
+        }
+        if (
+          Array.isArray(cfg.standaloneHardwareOptions) &&
+          cfg.standaloneHardwareOptions.length > 0
+        ) {
+          const list = [...cfg.standaloneHardwareOptions];
+          if (!list.includes("+ Add More")) list.push("+ Add More");
+          setStAccHardwareOptions(list);
+        }
+      }
+    } catch (err) {
+      console.warn("Error loading quotation config:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchQuotationConfig();
+
+    let socket;
+    try {
+      socket = io(SOCKET_URL);
+      socket.on("quotation_config_updated", (updated) => {
+        if (updated) {
+          if (Array.isArray(updated.standaloneAccessoryOptions)) {
+            const list = [...updated.standaloneAccessoryOptions];
+            if (!list.includes("+ Add More")) list.push("+ Add More");
+            setStAccessoryOptions(list);
+          }
+          if (Array.isArray(updated.standaloneHardwareOptions)) {
+            const list = [...updated.standaloneHardwareOptions];
+            if (!list.includes("+ Add More")) list.push("+ Add More");
+            setStAccHardwareOptions(list);
+          }
+        }
+      });
+    } catch (e) {
+      console.warn("Socket connection error in QuotationModule:", e);
+    }
+
+    return () => {
+      if (socket) socket.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
     fetchData();
@@ -565,7 +623,7 @@ export default function QuotationModule({
 
   // ── HANDLERS ───────────────────────────────────────────────────────────────
 
-  const handleConfirmCustomStAccHardware = () => {
+  const handleConfirmCustomStAccHardware = async () => {
     const trimmed = stAccCustomHardware.trim();
     if (!trimmed) return;
 
@@ -585,6 +643,15 @@ export default function QuotationModule({
     setAccFormDesc(trimmed);
     setStAccCustomHardware("");
     setShowStAccCustomHardware(false);
+
+    try {
+      await api.post("/quotations/config/options", {
+        type: "standaloneHardware",
+        option: trimmed,
+      });
+    } catch (err) {
+      console.warn("Failed to persist custom hardware option:", err);
+    }
   };
 
   const handleAddOrUpdateStandaloneAccessory = () => {
@@ -610,6 +677,21 @@ export default function QuotationModule({
         copy.splice(copy.length - 1, 0, finalHardware);
         return copy;
       });
+      api.post("/quotations/config/options", {
+        type: "standaloneHardware",
+        option: finalHardware,
+      }).catch(console.warn);
+    }
+
+    if (
+      showStAccCustomAccessory &&
+      name &&
+      !stAccessoryOptions.includes(name)
+    ) {
+      api.post("/quotations/config/options", {
+        type: "standaloneAccessory",
+        option: name,
+      }).catch(console.warn);
     }
 
     const newAcc = {
@@ -769,7 +851,8 @@ export default function QuotationModule({
   };
 
   const handleConfirmCustomSubItem = (overrideName) => {
-    const trimmed = (overrideName || customSubItemName).trim();
+    const raw = typeof overrideName === "string" ? overrideName : customSubItemName;
+    const trimmed = (raw || "").trim();
     if (!trimmed) return;
 
     autoAddSubItemOption(selectedRoom, trimmed);
@@ -797,7 +880,8 @@ export default function QuotationModule({
   };
 
   const handleConfirmCustomDescription = (overrideVal) => {
-    const trimmed = (overrideVal || customDescriptionText).trim();
+    const raw = typeof overrideVal === "string" ? overrideVal : customDescriptionText;
+    const trimmed = (raw || "").trim();
     if (!trimmed) return;
 
     if (!descriptionOptions.includes(trimmed)) {
@@ -817,7 +901,8 @@ export default function QuotationModule({
   };
 
   const handleConfirmCustomUnit = (overrideName) => {
-    const trimmed = (overrideName || customUnitName).trim();
+    const raw = typeof overrideName === "string" ? overrideName : customUnitName;
+    const trimmed = (raw || "").trim();
     if (!trimmed) return;
 
     if (!unitOptions.includes(trimmed)) {
@@ -846,7 +931,8 @@ export default function QuotationModule({
   };
 
   const handleConfirmCustomMaterial = (overrideName) => {
-    const trimmed = (overrideName || customMaterialName).trim();
+    const raw = typeof overrideName === "string" ? overrideName : customMaterialName;
+    const trimmed = (raw || "").trim();
     if (!trimmed) return;
 
     if (!materialOptions.includes(trimmed)) {
@@ -875,7 +961,8 @@ export default function QuotationModule({
   };
 
   const handleConfirmCustomHardware = (overrideName) => {
-    const trimmed = (overrideName || customHardwareName).trim();
+    const raw = typeof overrideName === "string" ? overrideName : customHardwareName;
+    const trimmed = (raw || "").trim();
     if (!trimmed) return;
 
     if (!hardwareOptions.includes(trimmed)) {
@@ -894,8 +981,9 @@ export default function QuotationModule({
     setShowCustomHardwareInput(false);
   };
 
-  const handleConfirmCustomStAccAccessory = (overrideName) => {
-    const trimmed = (overrideName || stAccCustomAccessory).trim();
+  const handleConfirmCustomStAccAccessory = async (overrideName) => {
+    const raw = typeof overrideName === "string" ? overrideName : stAccCustomAccessory;
+    const trimmed = (raw || "").trim();
     if (!trimmed) return;
 
     if (!stAccessoryOptions.includes(trimmed)) {
@@ -912,6 +1000,15 @@ export default function QuotationModule({
     setAccFormName(trimmed);
     setStAccCustomAccessory("");
     setShowStAccCustomAccessory(false);
+
+    try {
+      await api.post("/quotations/config/options", {
+        type: "standaloneAccessory",
+        option: trimmed,
+      });
+    } catch (err) {
+      console.warn("Failed to persist custom accessory option:", err);
+    }
   };
 
   const handleSelectAccessory = (acc) => {
@@ -927,7 +1024,8 @@ export default function QuotationModule({
   };
 
   const handleConfirmCustomAccessory = (overrideName) => {
-    const trimmed = (overrideName || customAccessoryName).trim();
+    const raw = typeof overrideName === "string" ? overrideName : customAccessoryName;
+    const trimmed = (raw || "").trim();
     if (!trimmed) return;
 
     if (!accessoryOptions.includes(trimmed)) {
@@ -3405,7 +3503,7 @@ export default function QuotationModule({
                             <button
                               type="button"
                               className="btn btn-primary"
-                              onClick={handleConfirmCustomStAccAccessory}
+                              onClick={() => handleConfirmCustomStAccAccessory()}
                               style={{
                                 padding: "6px 12px",
                                 fontSize: 12,
@@ -3518,7 +3616,7 @@ export default function QuotationModule({
                             <button
                               type="button"
                               className="btn btn-primary"
-                              onClick={handleConfirmCustomStAccHardware}
+                              onClick={() => handleConfirmCustomStAccHardware()}
                               style={{
                                 padding: "6px 12px",
                                 fontSize: 12,

@@ -2,8 +2,8 @@ export default function ConfirmModal({
   isOpen,
   title,
   message,
-  confirmText = 'Confirm',
-  cancelText = 'Cancel',
+  confirmText = "Confirm",
+  cancelText = "Cancel",
   onConfirm,
   onCancel,
   danger = false,
@@ -17,15 +17,19 @@ export default function ConfirmModal({
         <h2 className="modal-title">{title}</h2>
         <p className="modal-message">{message}</p>
         <div className="modal-actions">
-          <button className="btn btn-secondary" onClick={onCancel} disabled={loading}>
+          <button
+            className="btn btn-secondary"
+            onClick={onCancel}
+            disabled={loading}
+          >
             {cancelText}
           </button>
           <button
-            className={`btn ${danger ? 'btn-danger' : 'btn-primary'}`}
+            className={`btn ${danger ? "btn-danger" : "btn-primary"}`}
             onClick={onConfirm}
             disabled={loading}
           >
-            {loading ? 'Processing…' : confirmText}
+            {loading ? "Processing…" : confirmText}
           </button>
         </div>
       </div>

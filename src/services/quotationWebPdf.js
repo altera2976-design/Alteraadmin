@@ -29,6 +29,22 @@ export function formatDate(d) {
   }
 }
 
+export function formatDateTime(d) {
+  if (!d) return "—";
+  try {
+    const date = new Date(d);
+    return date.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return String(d);
+  }
+}
+
 export function escapeHtml(str) {
   if (!str) return "";
   return String(str)
@@ -367,24 +383,40 @@ export function buildQuotationHtml(q) {
 
   // ── Payment & Transaction History ─────────────────────────────────────────
   const txList = Array.isArray(q.transactions) ? q.transactions : [];
-  const calculatedPaidAmount = txList.reduce(
-    (acc, tx) =>
-      acc +
-      (tx.status === "Completed" ||
-      tx.status === "PAID" ||
-      tx.status === "COMPLETED"
-        ? Number(tx.amount || 0)
-        : 0),
-    0,
-  );
+
+  // Calculate totals from actual database records
+  let completedPaidAmount = 0;
+  let pendingAmount = 0;
+  let refundedAmount = 0;
+
+  txList.forEach((tx) => {
+    const amt = Number(tx.amount || 0);
+    const st = String(tx.status || "").toUpperCase();
+    const type = String(tx.transactionType || "");
+    if (st === "COMPLETED" || st === "PAID" || st === "SUCCESS") {
+      if (type === "Refund") {
+        refundedAmount += amt;
+      } else {
+        completedPaidAmount += amt;
+      }
+    } else if (st === "PENDING") {
+      pendingAmount += amt;
+    } else if (st === "REFUNDED") {
+      refundedAmount += amt;
+    }
+  });
+
+  const netPaidAmount = Math.max(0, completedPaidAmount - refundedAmount);
+  const remainingAmount = Math.max(0, grandTotal - netPaidAmount);
+
   const paySummary = q.paymentSummary || {
     totalAmount: grandTotal,
-    paidAmount: calculatedPaidAmount,
-    remainingAmount: Math.max(0, grandTotal - calculatedPaidAmount),
+    paidAmount: netPaidAmount,
+    remainingAmount: remainingAmount,
     paymentStatus:
-      calculatedPaidAmount >= grandTotal && grandTotal > 0
+      netPaidAmount >= grandTotal && grandTotal > 0
         ? "PAID"
-        : calculatedPaidAmount > 0
+        : netPaidAmount > 0
           ? "PARTIALLY_PAID"
           : "UNPAID",
   };
@@ -416,28 +448,84 @@ export function buildQuotationHtml(q) {
       <table class="standard-table">
         <thead>
           <tr>
-            <th style="width: 5%;" class="center">#</th>
-            <th style="width: 30%;">Txn Ref ID</th>
-            <th style="width: 20%;">Date</th>
-            <th style="width: 20%;">Payment Mode</th>
+            <th style="width: 4%;" class="center">#</th>
+            <th style="width: 17%;">Transaction ID</th>
+            <th style="width: 13%;">Date &amp; Time</th>
+            <th style="width: 14%;">Type &amp; Method</th>
+            <th style="width: 14%;">Ref / UTR</th>
+            <th style="width: 14%;">Customer / Admin</th>
             <th style="width: 10%;" class="center">Status</th>
-            <th class="right" style="width: 15%;">Amount Paid</th>
+            <th class="right" style="width: 14%;">Amount</th>
           </tr>
         </thead>
         <tbody>
           ${txList
-            .map(
-              (tx, idx) => `
+            .map((tx, idx) => {
+              const qRef =
+                tx.quotationRef ||
+                tx.quotationId?.quotationNumber ||
+                (typeof tx.quotationId === "string" ? tx.quotationId : "") ||
+                q.quotationNumber ||
+                "";
+              const invRef =
+                tx.invoiceRef ||
+                tx.invoiceId?.invoiceNumber ||
+                (typeof tx.invoiceId === "string" ? tx.invoiceId : "");
+              const cust =
+                tx.customerName ||
+                tx.customerId?.name ||
+                q.client?.name ||
+                "";
+              const emp =
+                tx.employeeName ||
+                tx.employeeId?.name ||
+                tx.adminName ||
+                "";
+              const notes = tx.description || tx.notes || "";
+              const recordedBy = tx.createdByName || "";
+              const st = tx.status || "Completed";
+              const stUpper = String(st).toUpperCase();
+              const badgeColor =
+                stUpper === "COMPLETED" ||
+                stUpper === "PAID" ||
+                stUpper === "SUCCESS"
+                  ? "#166534"
+                  : stUpper === "PENDING"
+                    ? "#B45309"
+                    : stUpper === "REFUNDED"
+                      ? "#7A131A"
+                      : "#DC2626";
+
+              return `
             <tr>
               <td class="center">${idx + 1}</td>
-              <td><strong>${escapeHtml(tx.transactionId || tx.referenceId || "TXN")}</strong></td>
-              <td>${formatDate(tx.transactionDate || tx.createdAt)}</td>
-              <td>${escapeHtml(tx.paymentMethod || "UPI")}</td>
-              <td class="center" style="color: #7A131A; font-weight: 700;">${escapeHtml(tx.status || "Completed")}</td>
-              <td class="right font-bold">${formatINR(tx.amount)}</td>
+              <td>
+                <strong>${escapeHtml(tx.transactionId || tx.referenceId || "TXN")}</strong>
+                ${recordedBy ? `<div style="font-size: 7pt; color: #64748B;">By: ${escapeHtml(recordedBy)}</div>` : ""}
+              </td>
+              <td>${formatDateTime(tx.transactionDate || tx.createdAt)}</td>
+              <td>
+                <div style="font-weight: 600;">${escapeHtml(tx.transactionType || "Payment")}</div>
+                <div style="font-size: 7.5pt; color: #64748B;">${escapeHtml(tx.paymentMethod || "UPI")}</div>
+              </td>
+              <td>
+                <div>${escapeHtml(tx.referenceId || "—")}</div>
+                ${qRef || invRef ? `<div style="font-size: 7pt; color: #64748B;">${qRef ? `Q: ${escapeHtml(qRef)}` : ""} ${invRef ? `Inv: ${escapeHtml(invRef)}` : ""}</div>` : ""}
+              </td>
+              <td>
+                <div style="font-weight: 600; color: #0F172A;">${escapeHtml(cust || "—")}</div>
+                ${emp ? `<div style="font-size: 7pt; color: #64748B;">Staff: ${escapeHtml(emp)}</div>` : ""}
+                ${notes ? `<div style="font-size: 7pt; color: #64748B; font-style: italic;">${escapeHtml(notes)}</div>` : ""}
+              </td>
+              <td class="center" style="color: ${badgeColor}; font-weight: 700;">
+                ${escapeHtml(st)}
+              </td>
+              <td class="right font-bold" style="color: ${tx.transactionType === "Refund" ? "#DC2626" : "#0F172A"};">
+                ${tx.transactionType === "Refund" ? "-" : ""}${formatINR(tx.amount)}
+              </td>
             </tr>
-          `,
-            )
+          `;
+            })
             .join("")}
         </tbody>
       </table>`
@@ -711,7 +799,14 @@ export function buildQuotationHtml(q) {
       border: 1px solid #CBD5E1;
       font-size: 8.5pt;
       margin-bottom: 14px;
+      page-break-inside: auto;
+    }
+    .standard-table thead {
+      display: table-header-group;
+    }
+    .standard-table tbody tr {
       page-break-inside: avoid;
+      page-break-after: auto;
     }
     .standard-table th {
       background: #FFF5F5;
@@ -974,8 +1069,35 @@ export function buildQuotationHtml(q) {
 </html>`;
 }
 
-export function printQuotation(q) {
-  const html = buildQuotationHtml(q);
+export async function printQuotation(q) {
+  let fullQuotation = q;
+  if (
+    q &&
+    q._id &&
+    (!Array.isArray(q.transactions) ||
+      q.transactions.length === 0 ||
+      !Array.isArray(q.rooms) ||
+      q.rooms.length === 0)
+  ) {
+    try {
+      const res = await api.get(`/quotations/${q._id}`);
+      if (res.data?.success && res.data.quotation) {
+        fullQuotation = {
+          ...res.data.quotation,
+          transactions:
+            res.data.transactions || res.data.quotation.transactions || [],
+          paymentSummary:
+            res.data.paymentSummary || res.data.quotation.paymentSummary,
+        };
+      }
+    } catch (e) {
+      console.warn(
+        "Could not fetch full quotation details, printing with existing data:",
+        e
+      );
+    }
+  }
+  const html = buildQuotationHtml(fullQuotation);
   const printWindow = window.open("", "_blank");
   if (printWindow) {
     printWindow.document.write(html);
@@ -986,5 +1108,444 @@ export function printQuotation(q) {
     }, 500);
   } else {
     alert("Please allow popups to view and print the PDF.");
+  }
+}
+
+export function buildTransactionRecordsReportHtml({
+  transactions = [],
+  summary = null,
+  filters = {},
+  companyDetails = null,
+}) {
+  const defaultCompany = {
+    name: "ALTERA INTERIOR",
+    tagline: "The Modern Home Maker • Interior | Architect | Construction",
+    address:
+      "Plot 16/2, Dhanwapur Village, Behind ATS Triumph Tower, Dwarka Expressway, Sec-104, Gurugram (HR)",
+    phone: "+91 9718374407",
+    email: "info@alterainterior.com",
+    gstin: "06CFEPS8731P1Z0",
+  };
+
+  const company = companyDetails || defaultCompany;
+
+  // Calculate totals from actual database records
+  let totalCount = transactions.length;
+  let completedAmount = 0;
+  let pendingAmount = 0;
+  let refundedAmount = 0;
+
+  transactions.forEach((tx) => {
+    const amt = Number(tx.amount || 0);
+    const st = String(tx.status || "").toUpperCase();
+    const type = String(tx.transactionType || "");
+    if (st === "COMPLETED" || st === "PAID" || st === "SUCCESS") {
+      if (type === "Refund") {
+        refundedAmount += amt;
+      } else {
+        completedAmount += amt;
+      }
+    } else if (st === "PENDING") {
+      pendingAmount += amt;
+    } else if (st === "REFUNDED") {
+      refundedAmount += amt;
+    }
+  });
+
+  const generatedDate = formatDateTime(new Date());
+
+  const rowsHtml =
+    transactions.length === 0
+      ? `<tr><td colspan="8" class="center" style="padding: 24px; color: #64748B;">No transaction records found matching the criteria.</td></tr>`
+      : transactions
+          .map((tx, idx) => {
+            const qRef =
+              tx.quotationRef ||
+              tx.quotationId?.quotationNumber ||
+              (typeof tx.quotationId === "string" ? tx.quotationId : "");
+            const invRef =
+              tx.invoiceRef ||
+              tx.invoiceId?.invoiceNumber ||
+              (typeof tx.invoiceId === "string" ? tx.invoiceId : "");
+            const cust =
+              tx.customerName || tx.customerId?.name || "";
+            const emp =
+              tx.employeeName ||
+              tx.employeeId?.name ||
+              tx.adminName ||
+              "";
+            const party =
+              cust && emp ? `${cust} • ${emp}` : cust || emp || "—";
+            const notes = tx.description || tx.notes || "";
+            const recordedBy = tx.createdByName || "";
+            const st = tx.status || "Completed";
+            const stUpper = String(st).toUpperCase();
+            const badgeColor =
+              stUpper === "COMPLETED" ||
+              stUpper === "PAID" ||
+              stUpper === "SUCCESS"
+                ? "#166534"
+                : stUpper === "PENDING"
+                  ? "#B45309"
+                  : stUpper === "REFUNDED"
+                    ? "#7A131A"
+                    : "#DC2626";
+
+            return `
+          <tr>
+            <td class="center">${idx + 1}</td>
+            <td>
+              <strong>${escapeHtml(tx.transactionId || tx.referenceId || "TXN")}</strong>
+              ${recordedBy ? `<div style="font-size: 7pt; color: #64748B;">Recorded By: ${escapeHtml(recordedBy)}</div>` : ""}
+            </td>
+            <td>${formatDateTime(tx.transactionDate || tx.createdAt)}</td>
+            <td>
+              <div style="font-weight: 700; color: #0F172A;">${escapeHtml(cust || "—")}</div>
+              ${emp ? `<div style="font-size: 7pt; color: #64748B;">Staff: ${escapeHtml(emp)}</div>` : ""}
+            </td>
+            <td>
+              ${qRef ? `<div><strong style="color: #7A131A;">Q:</strong> ${escapeHtml(qRef)}</div>` : ""}
+              ${invRef ? `<div><strong style="color: #0F172A;">Inv:</strong> ${escapeHtml(invRef)}</div>` : ""}
+              ${!qRef && !invRef ? `<div style="color: #64748B;">—</div>` : ""}
+            </td>
+            <td>
+              <div style="font-weight: 600;">${escapeHtml(tx.transactionType || "Payment")}</div>
+              <div style="font-size: 7.5pt; color: #64748B;">${escapeHtml(tx.paymentMethod || "UPI")}${tx.referenceId ? ` &bull; Ref: ${escapeHtml(tx.referenceId)}` : ""}</div>
+              ${notes ? `<div style="font-size: 7pt; color: #64748B; font-style: italic;">${escapeHtml(notes)}</div>` : ""}
+            </td>
+            <td class="center" style="color: ${badgeColor}; font-weight: 700;">
+              ${escapeHtml(st)}
+            </td>
+            <td class="right font-bold" style="color: ${tx.transactionType === "Refund" ? "#DC2626" : "#0F172A"};">
+              ${tx.transactionType === "Refund" ? "-" : ""}${formatINR(tx.amount)}
+            </td>
+          </tr>
+        `;
+          })
+          .join("");
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Transaction_Records_${new Date().toISOString().slice(0, 10)}</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 12mm 15mm 12mm 15mm;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 9pt;
+      color: #1E293B;
+      background: #FFFFFF;
+      line-height: 1.4;
+      padding: 10px 0;
+    }
+
+    /* ── Header ── */
+    .header-table {
+      width: 100%;
+      border-collapse: collapse;
+      border-bottom: 2px solid #7A131A;
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+    }
+    .header-table td {
+      vertical-align: top;
+    }
+    .company-logo {
+      height: 60px;
+      width: auto;
+      max-width: 260px;
+      object-fit: contain;
+      margin-bottom: 6px;
+      display: block;
+    }
+    .company-name {
+      font-size: 14pt;
+      font-weight: 800;
+      color: #7A131A;
+      letter-spacing: 0.5px;
+    }
+    .company-details {
+      font-size: 8.5pt;
+      color: #475569;
+      line-height: 1.35;
+      margin-top: 2px;
+    }
+    .header-right {
+      text-align: right;
+    }
+    .doc-title {
+      font-size: 15pt;
+      font-weight: 800;
+      color: #7A131A;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+    }
+    .doc-meta {
+      font-size: 8.5pt;
+      color: #334155;
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+
+    /* ── Filters Bar ── */
+    .filter-bar {
+      background: #F8FAFC;
+      border: 1px solid #CBD5E1;
+      border-radius: 4px;
+      padding: 8px 12px;
+      margin-bottom: 14px;
+      font-size: 8.5pt;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      page-break-inside: avoid;
+    }
+
+    /* ── Metric Cards ── */
+    .metric-grid {
+      display: table;
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 8px 0;
+      margin-bottom: 16px;
+      page-break-inside: avoid;
+    }
+    .metric-card {
+      display: table-cell;
+      width: 25%;
+      background: #FFF5F5;
+      border: 1px solid #CBD5E1;
+      border-radius: 4px;
+      padding: 8px 10px;
+      vertical-align: top;
+    }
+    .metric-label {
+      font-size: 7.5pt;
+      font-weight: 700;
+      color: #7A131A;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .metric-value {
+      font-size: 13pt;
+      font-weight: 800;
+      color: #0F172A;
+      margin-top: 3px;
+    }
+
+    /* ── Section Title ── */
+    .section-title {
+      font-size: 10pt;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: #7A131A;
+      letter-spacing: 0.5px;
+      border-bottom: 2px solid #7A131A;
+      padding-bottom: 3px;
+      margin-top: 14px;
+      margin-bottom: 8px;
+      page-break-after: avoid;
+    }
+
+    /* ── Multi-page Standard Table ── */
+    .standard-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid #CBD5E1;
+      font-size: 8pt;
+      margin-bottom: 14px;
+      page-break-inside: auto;
+    }
+    .standard-table thead {
+      display: table-header-group;
+    }
+    .standard-table th {
+      background: #FFF5F5;
+      color: #7A131A;
+      font-size: 7.5pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 6px 8px;
+      border-bottom: 1px solid #CBD5E1;
+      border-right: 1px solid #E2E8F0;
+    }
+    .standard-table th:last-child {
+      border-right: none;
+    }
+    .standard-table tbody tr {
+      page-break-inside: avoid;
+      page-break-after: auto;
+    }
+    .standard-table td {
+      padding: 6px 8px;
+      border-bottom: 1px solid #E2E8F0;
+      border-right: 1px solid #E2E8F0;
+      color: #1E293B;
+      vertical-align: top;
+    }
+    .standard-table td:last-child {
+      border-right: none;
+    }
+    .standard-table tr:nth-child(even) {
+      background: #FAFAFA;
+    }
+
+    /* ── Signature Section ── */
+    .signature-table {
+      width: 100%;
+      margin-top: 24px;
+      page-break-inside: avoid;
+    }
+    .signature-box {
+      width: 45%;
+      vertical-align: bottom;
+    }
+    .signature-line {
+      margin-top: 36px;
+      padding-top: 4px;
+      font-size: 9pt;
+      font-weight: 700;
+      color: #0F172A;
+    }
+    .signature-sub {
+      font-size: 8pt;
+      color: #64748B;
+    }
+
+    /* Helper Utilities */
+    .center { text-align: center; }
+    .right { text-align: right; }
+    .font-bold { font-weight: 700; }
+
+    @media print {
+      body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      thead {
+        display: table-header-group;
+      }
+      tfoot {
+        display: table-footer-group;
+      }
+      tr {
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <table class="header-table">
+    <tr>
+      <td style="width: 55%; vertical-align: top;">
+        <img src="${COMPANY_LOGO_DATA_URL}" alt="Altera Interior Logo" class="company-logo" />
+        <div class="company-name">${escapeHtml(company.name)}</div>
+        <div class="company-details">
+          ${escapeHtml(company.address)}<br />
+          Phone: ${escapeHtml(company.phone)} &bull; Email: ${escapeHtml(company.email)}<br />
+          <strong>GSTIN:</strong> ${escapeHtml(company.gstin)}
+        </div>
+      </td>
+      <td style="width: 45%; vertical-align: top;" class="header-right">
+        <div class="doc-title">TRANSACTION RECORDS</div>
+        <div class="doc-meta">
+          <strong>Generated:</strong> ${generatedDate}<br />
+          <strong>Period / Scope:</strong> ${escapeHtml(filters.dateRange || "All Dates")}<br />
+          <strong>Total Records:</strong> ${totalCount}
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- Filter & Criteria Details -->
+  <div class="filter-bar">
+    <div><strong>Filter Criteria:</strong> Date: ${escapeHtml(filters.dateRange || "All")} ${filters.startDate ? `(${escapeHtml(filters.startDate)} to ${escapeHtml(filters.endDate)})` : ""} &bull; Type: ${escapeHtml(filters.transactionType || "All")} &bull; Method: ${escapeHtml(filters.paymentMethod || "All")} &bull; Status: ${escapeHtml(filters.statusFilter || "All")}</div>
+    <div><strong>Records Matched:</strong> ${totalCount}</div>
+  </div>
+
+  <!-- Metric Cards -->
+  <div class="metric-grid">
+    <div class="metric-card">
+      <div class="metric-label">Total Transactions</div>
+      <div class="metric-value">${totalCount}</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Completed (Paid)</div>
+      <div class="metric-value" style="color: #166534;">${formatINR(summary?.totalAmount !== undefined ? summary.totalAmount : completedAmount)}</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Pending Amount</div>
+      <div class="metric-value" style="color: #B45309;">${formatINR(summary?.pendingAmount !== undefined ? summary.pendingAmount : pendingAmount)}</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Refunded Amount</div>
+      <div class="metric-value" style="color: #7A131A;">${formatINR(summary?.refundedAmount !== undefined ? summary.refundedAmount : refundedAmount)}</div>
+    </div>
+  </div>
+
+  <!-- Section Title -->
+  <div class="section-title">Official Transaction Ledger &amp; Audit Records</div>
+
+  <!-- Multi-page Transaction Table -->
+  <table class="standard-table">
+    <thead>
+      <tr>
+        <th style="width: 3%;" class="center">#</th>
+        <th style="width: 15%;">Transaction ID</th>
+        <th style="width: 12%;">Date &amp; Time</th>
+        <th style="width: 15%;">Customer Name</th>
+        <th style="width: 15%;">Quotation / Invoice Ref</th>
+        <th style="width: 15%;">Payment Details</th>
+        <th style="width: 10%;" class="center">Status</th>
+        <th class="right" style="width: 15%;">Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rowsHtml}
+    </tbody>
+  </table>
+
+  <!-- Signature Section -->
+  <table class="signature-table">
+    <tr>
+      <td style="width: 60%; vertical-align: bottom; font-size: 8pt; color: #64748B;">
+        This document is an authentic financial audit record generated by Altera Interior CRM.<br />
+        All entries are logged with verified reference IDs and timestamp audits.
+      </td>
+      <td class="signature-box" style="width: 40%; text-align: right;">
+        <div class="signature-line" style="margin-left: auto;">For ${escapeHtml(company.name)}</div>
+        <div class="signature-sub">Authorized Signatory</div>
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>`;
+}
+
+export function printTransactionRecordsReport(options) {
+  const html = buildTransactionRecordsReportHtml(options);
+  const printWindow = window.open("", "_blank");
+  if (printWindow) {
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 500);
+  } else {
+    alert("Please allow popups in your browser to view and download the Transaction Records PDF.");
   }
 }

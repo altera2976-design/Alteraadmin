@@ -2,12 +2,15 @@ import { useEffect, useState } from 'react';
 import AdminLayout from '../layouts/AdminLayout';
 import {
   createTransaction,
+  deleteTransaction,
   exportTransactions,
   getTransactionById,
   getTransactions,
   getTransactionSummary,
   refundTransaction,
+  updateTransaction,
 } from '../services/transactionApi';
+import { printTransactionRecordsReport } from '../services/quotationWebPdf';
 
 function formatINR(val) {
   return new Intl.NumberFormat('en-IN', {
@@ -64,6 +67,8 @@ export default function TransactionHistoryPage({ LayoutComponent = AdminLayout }
     referenceId: '',
     customerName: '',
     employeeName: '',
+    quotationRef: '',
+    invoiceRef: '',
     description: '',
     notes: '',
     status: 'Completed',
@@ -73,6 +78,31 @@ export default function TransactionHistoryPage({ LayoutComponent = AdminLayout }
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [refundTx, setRefundTx] = useState(null);
   const [refundReason, setRefundReason] = useState('');
+
+  // Edit Modal
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingTx, setEditingTx] = useState(null);
+  const [editForm, setEditForm] = useState({
+    transactionType: 'Payment Received',
+    paymentMethod: 'UPI',
+    amount: '',
+    referenceId: '',
+    customerName: '',
+    employeeName: '',
+    quotationRef: '',
+    invoiceRef: '',
+    description: '',
+    notes: '',
+    status: 'Completed',
+    reason: '',
+  });
+
+  // Delete Modal
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingTx, setDeletingTx] = useState(null);
+
+  // PDF Export
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   const fetchSummaryData = async () => {
     try {
@@ -184,6 +214,46 @@ export default function TransactionHistoryPage({ LayoutComponent = AdminLayout }
     }
   };
 
+  const handleExportPDF = async () => {
+    setIsExportingPdf(true);
+    try {
+      // 1. Fetch ALL matching transaction records from actual database (beyond 15-item limit)
+      const res = await getTransactions({
+        limit: 0, // fetch all matching records
+        dateRange,
+        startDate,
+        endDate,
+        transactionType,
+        paymentMethod,
+        status: statusFilter,
+        search,
+      });
+
+      const allRecords = res.success ? (res.data || []) : transactions;
+
+      // 2. Open / Download the existing branded multi-page PDF
+      printTransactionRecordsReport({
+        transactions: allRecords,
+        summary,
+        filters: {
+          dateRange: dateRange || 'All Records',
+          startDate,
+          endDate,
+          transactionType,
+          paymentMethod,
+          statusFilter,
+          search,
+          totalCount: res.total || allRecords.length,
+        },
+      });
+    } catch (err) {
+      console.error('PDF export error:', err);
+      alert('Failed to generate Transaction Records PDF.');
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
     if (!createForm.amount || Number(createForm.amount) <= 0) {
@@ -204,6 +274,8 @@ export default function TransactionHistoryPage({ LayoutComponent = AdminLayout }
           referenceId: '',
           customerName: '',
           employeeName: '',
+          quotationRef: '',
+          invoiceRef: '',
           description: '',
           notes: '',
           status: 'Completed',
@@ -233,6 +305,76 @@ export default function TransactionHistoryPage({ LayoutComponent = AdminLayout }
       }
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to execute refund.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleOpenEdit = (tx) => {
+    setEditingTx(tx);
+    setEditForm({
+      transactionType: tx.transactionType || 'Payment Received',
+      paymentMethod: tx.paymentMethod || 'UPI',
+      amount: tx.amount !== undefined && tx.amount !== null ? tx.amount : '',
+      referenceId: tx.referenceId || '',
+      customerName: tx.customerName || (typeof tx.customerId === 'object' ? tx.customerId?.name : '') || '',
+      employeeName: tx.employeeName || (typeof tx.employeeId === 'object' ? tx.employeeId?.name : '') || tx.adminName || '',
+      quotationRef: tx.quotationRef || (typeof tx.quotationId === 'object' ? tx.quotationId?.quotationNumber : tx.quotationId) || '',
+      invoiceRef: tx.invoiceRef || (typeof tx.invoiceId === 'object' ? tx.invoiceId?.invoiceNumber : tx.invoiceId) || '',
+      description: tx.description || '',
+      notes: tx.notes || '',
+      status: tx.status || 'Completed',
+      reason: '',
+    });
+    setShowEditModal(true);
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    if (!editForm.amount || Number(editForm.amount) <= 0) {
+      alert('Please enter a valid amount.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await updateTransaction(editingTx._id, editForm);
+      if (res.success) {
+        setSuccess(`Transaction ${editingTx.transactionId} updated successfully.`);
+        setShowEditModal(false);
+        setEditingTx(null);
+        if (selectedTransaction && selectedTransaction._id === editingTx._id) {
+          setSelectedTransaction(res.data);
+        }
+        fetchTransactions();
+        fetchSummaryData();
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to update transaction.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleOpenDelete = (tx) => {
+    setDeletingTx(tx);
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingTx) return;
+    setIsSubmitting(true);
+    try {
+      const res = await deleteTransaction(deletingTx._id);
+      if (res.success) {
+        setSuccess(`Transaction ${deletingTx.transactionId} deleted successfully.`);
+        setShowDeleteModal(false);
+        setDeletingTx(null);
+        fetchTransactions();
+        fetchSummaryData();
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete transaction.');
     } finally {
       setIsSubmitting(false);
     }
@@ -280,6 +422,25 @@ export default function TransactionHistoryPage({ LayoutComponent = AdminLayout }
               }}
             >
               📥 Export CSV
+            </button>
+            <button
+              onClick={handleExportPDF}
+              disabled={isExportingPdf}
+              style={{
+                padding: '8px 16px',
+                background: '#7A131A',
+                border: 'none',
+                borderRadius: 6,
+                fontSize: 13,
+                fontWeight: 700,
+                color: '#ffffff',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              {isExportingPdf ? '⏳ Generating PDF...' : '📄 Export PDF'}
             </button>
             <button
               onClick={() => setShowCreateModal(true)}
@@ -444,19 +605,41 @@ export default function TransactionHistoryPage({ LayoutComponent = AdminLayout }
                   <th style={{ padding: '10px 14px' }}>Method</th>
                   <th style={{ padding: '10px 14px' }}>Amount</th>
                   <th style={{ padding: '10px 14px' }}>Status</th>
-                  <th style={{ padding: '10px 14px', textAlign: 'right' }}>Actions</th>
+                  <th style={{ padding: '10px 14px', textAlign: 'right', minWidth: 210 }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {transactions.map((tx) => (
-                  <tr key={tx._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '10px 14px', fontWeight: 700, color: '#0f172a' }}>{tx.transactionId}</td>
-                    <td style={{ padding: '10px 14px', color: '#475569' }}>{formatDate(tx.transactionDate || tx.createdAt)}</td>
-                    <td style={{ padding: '10px 14px', color: '#334155' }}>{tx.employeeName || tx.adminName || '—'}</td>
-                    <td style={{ padding: '10px 14px', color: '#334155' }}>{tx.customerName || '—'}</td>
-                    <td style={{ padding: '10px 14px', color: '#334155' }}>{tx.transactionType}</td>
-                    <td style={{ padding: '10px 14px', color: '#334155' }}>{tx.paymentMethod}</td>
-                    <td style={{ padding: '10px 14px', fontWeight: 700, color: '#0f172a' }}>{formatINR(tx.amount)}</td>
+                {transactions.map((tx) => {
+                  const custName = tx.customerName || (typeof tx.customerId === 'object' ? tx.customerId?.name : '') || '';
+                  const empAdmin = tx.employeeName || (typeof tx.employeeId === 'object' ? tx.employeeId?.name : '') || tx.adminName || '';
+                  const qRef = tx.quotationRef || (typeof tx.quotationId === 'object' ? tx.quotationId?.quotationNumber : tx.quotationId) || '';
+                  const invRef = tx.invoiceRef || (typeof tx.invoiceId === 'object' ? tx.invoiceId?.invoiceNumber : tx.invoiceId) || '';
+
+                  return (
+                    <tr key={tx._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '10px 14px', fontWeight: 700, color: '#0f172a' }}>{tx.transactionId}</td>
+                      <td style={{ padding: '10px 14px', color: '#475569' }}>{formatDate(tx.transactionDate || tx.createdAt)}</td>
+                      <td style={{ padding: '10px 14px', color: '#334155' }}>{empAdmin || '—'}</td>
+                      <td style={{ padding: '10px 14px', color: '#334155' }}>
+                        <div style={{ fontWeight: 600, color: '#0f172a' }}>{custName || '—'}</div>
+                        {(qRef || invRef) && (
+                          <div style={{ fontSize: 10, color: '#64748b', marginTop: 3, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                            {qRef && (
+                              <span style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '1px 5px', borderRadius: 4 }}>
+                                Q: {qRef}
+                              </span>
+                            )}
+                            {invRef && (
+                              <span style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '1px 5px', borderRadius: 4 }}>
+                                Inv: {invRef}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ padding: '10px 14px', color: '#334155' }}>{tx.transactionType}</td>
+                      <td style={{ padding: '10px 14px', color: '#334155' }}>{tx.paymentMethod}</td>
+                      <td style={{ padding: '10px 14px', fontWeight: 700, color: '#0f172a' }}>{formatINR(tx.amount)}</td>
                     <td style={{ padding: '10px 14px' }}>
                       <span
                         style={{
@@ -472,27 +655,46 @@ export default function TransactionHistoryPage({ LayoutComponent = AdminLayout }
                         {tx.status}
                       </span>
                     </td>
-                    <td style={{ padding: '10px 14px', textAlign: 'right' }}>
-                      <button
-                        onClick={() => handleViewDetails(tx._id)}
-                        style={{ padding: '4px 8px', background: '#eff6ff', border: '1px solid #bfdbfe', color: '#9F0B22', borderRadius: 4, fontSize: 11, cursor: 'pointer', marginRight: 6 }}
-                      >
-                        View
-                      </button>
-                      {tx.status === 'Completed' && (
+                    <td style={{ padding: '10px 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
                         <button
-                          onClick={() => {
-                            setRefundTx(tx);
-                            setShowRefundModal(true);
-                          }}
-                          style={{ padding: '4px 8px', background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}
+                          onClick={() => handleViewDetails(tx._id)}
+                          title="View Details"
+                          style={{ padding: '4px 8px', background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1d4ed8', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
                         >
-                          Refund
+                          View
                         </button>
-                      )}
+                        <button
+                          onClick={() => handleOpenEdit(tx)}
+                          title="Edit Transaction"
+                          style={{ padding: '4px 8px', background: '#f8fafc', border: '1px solid #cbd5e1', color: '#334155', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
+                        >
+                          Edit
+                        </button>
+                        {tx.status === 'Completed' && (
+                          <button
+                            onClick={() => {
+                              setRefundTx(tx);
+                              setShowRefundModal(true);
+                            }}
+                            title="Refund Transaction"
+                            style={{ padding: '4px 8px', background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
+                          >
+                            Refund
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleOpenDelete(tx)}
+                          title="Delete Transaction"
+                          style={{ padding: '4px 8px', background: '#fff1f2', border: '1px solid #fecdd3', color: '#dc2626', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
-                ))}
+                );
+              })}
               </tbody>
             </table>
           )}
@@ -536,10 +738,10 @@ export default function TransactionHistoryPage({ LayoutComponent = AdminLayout }
                   <hr style={{ border: 'none', borderTop: '1px solid #e2e8f0', margin: '14px 0' }} />
                   <h4 style={{ fontSize: 13, fontWeight: 700, margin: '0 0 8px 0', color: '#0f172a' }}>Associated Users &amp; References</h4>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 12, marginBottom: 16 }}>
-                    <div><span style={{ color: '#64748b' }}>Employee:</span> <strong>{selectedTransaction.employeeName || selectedTransaction.employeeId?.name || '—'}</strong></div>
+                    <div><span style={{ color: '#64748b' }}>Employee:</span> <strong>{selectedTransaction.employeeName || selectedTransaction.employeeId?.name || selectedTransaction.adminName || '—'}</strong></div>
                     <div><span style={{ color: '#64748b' }}>Customer:</span> <strong>{selectedTransaction.customerName || selectedTransaction.customerId?.name || '—'}</strong></div>
-                    <div><span style={{ color: '#64748b' }}>Quotation Ref:</span> <strong>{selectedTransaction.quotationId?.quotationNumber || '—'}</strong></div>
-                    <div><span style={{ color: '#64748b' }}>Invoice Ref:</span> <strong>{selectedTransaction.invoiceId?.invoiceNumber || '—'}</strong></div>
+                    <div><span style={{ color: '#64748b' }}>Quotation Ref:</span> <strong>{selectedTransaction.quotationRef || selectedTransaction.quotationId?.quotationNumber || (typeof selectedTransaction.quotationId === 'string' ? selectedTransaction.quotationId : '') || '—'}</strong></div>
+                    <div><span style={{ color: '#64748b' }}>Invoice Ref:</span> <strong>{selectedTransaction.invoiceRef || selectedTransaction.invoiceId?.invoiceNumber || (typeof selectedTransaction.invoiceId === 'string' ? selectedTransaction.invoiceId : '') || '—'}</strong></div>
                   </div>
 
                   {selectedTransaction.description && (
@@ -551,21 +753,141 @@ export default function TransactionHistoryPage({ LayoutComponent = AdminLayout }
 
                   {/* Audit Timeline */}
                   {selectedTransaction.timeline && selectedTransaction.timeline.length > 0 && (
-                    <div>
-                      <h4 style={{ fontSize: 13, fontWeight: 700, margin: '14px 0 8px 0', color: '#0f172a' }}>Transaction Audit Timeline</h4>
-                      <div style={{ borderLeft: '2px solid #cbd5e1', paddingLeft: 12, marginLeft: 6 }}>
-                        {selectedTransaction.timeline.map((item, idx) => (
-                          <div key={idx} style={{ marginBottom: 10, fontSize: 11 }}>
-                            <div style={{ fontWeight: 700, color: '#0f172a' }}>
-                              Status: {item.newStatus} {item.previousStatus ? `(from ${item.previousStatus})` : ''}
+                    <div style={{ marginTop: 18 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                        <h4 style={{ fontSize: 13, fontWeight: 700, margin: 0, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span>📜</span> Transaction Audit Trail &amp; Activity
+                        </h4>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b', background: '#f1f5f9', padding: '2px 8px', borderRadius: 10 }}>
+                          {selectedTransaction.timeline.length} {selectedTransaction.timeline.length === 1 ? 'event' : 'events'}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {selectedTransaction.timeline.map((item, idx) => {
+                          const isCreated = item.reason?.toLowerCase().includes('created') || !item.previousStatus;
+                          const isRefunded = item.newStatus === 'Refunded';
+                          const isCompleted = item.newStatus === 'Completed' || item.newStatus === 'PAID';
+
+                          const borderAccent = isRefunded
+                            ? '#dc2626'
+                            : isCompleted
+                              ? '#10b981'
+                              : isCreated
+                                ? '#7A131A'
+                                : '#3b82f6';
+
+                          const statusBadgeBg = isRefunded
+                            ? '#fef2f2'
+                            : isCompleted
+                              ? '#ecfdf5'
+                              : '#f1f5f9';
+
+                          const statusBadgeColor = isRefunded
+                            ? '#991b1b'
+                            : isCompleted
+                              ? '#065f46'
+                              : '#1e293b';
+
+                          return (
+                            <div
+                              key={idx}
+                              style={{
+                                background: '#f8fafc',
+                                border: '1px solid #e2e8f0',
+                                borderLeft: `4px solid ${borderAccent}`,
+                                borderRadius: 8,
+                                padding: '10px 14px',
+                                boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                              }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <span style={{ fontSize: 14 }}>
+                                    {isRefunded ? '↩️' : isCompleted ? '✅' : isCreated ? '✨' : '🔄'}
+                                  </span>
+                                  <span
+                                    style={{
+                                      background: statusBadgeBg,
+                                      color: statusBadgeColor,
+                                      fontWeight: 700,
+                                      fontSize: 11,
+                                      padding: '2px 8px',
+                                      borderRadius: 12,
+                                      border: '1px solid rgba(0,0,0,0.05)',
+                                    }}
+                                  >
+                                    Status: {item.newStatus}
+                                    {item.previousStatus ? ` (from ${item.previousStatus})` : ''}
+                                  </span>
+                                </div>
+                                <div style={{ fontSize: 11, color: '#64748b' }}>
+                                  🕒 {formatDate(item.changedAt)}
+                                </div>
+                              </div>
+                              <div style={{ fontSize: 11, color: '#475569', marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
+                                <span>
+                                  👤 <strong>Logged by:</strong> {item.changedByName || 'System'}
+                                </span>
+                              </div>
+                              {item.reason && (
+                                <div
+                                  style={{
+                                    marginTop: 6,
+                                    padding: '6px 10px',
+                                    background: '#ffffff',
+                                    borderRadius: 6,
+                                    border: '1px solid #e2e8f0',
+                                    color: '#0f172a',
+                                    fontSize: 11.5,
+                                    fontWeight: 500,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 6,
+                                  }}
+                                >
+                                  <span style={{ color: '#7A131A' }}>💬</span>
+                                  <span>{item.reason}</span>
+                                </div>
+                              )}
                             </div>
-                            <div style={{ color: '#64748b' }}>{formatDate(item.changedAt)} • By {item.changedByName || 'System'}</div>
-                            {item.reason && <div style={{ color: '#334155', fontStyle: 'italic', marginTop: 2 }}>"{item.reason}"</div>}
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}
+
+                  {/* Action buttons inside View Details */}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18, paddingTop: 14, borderTop: '1px solid #e2e8f0' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const tx = selectedTransaction;
+                        setShowDetailModal(false);
+                        handleOpenEdit(tx);
+                      }}
+                      style={{ padding: '6px 12px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12, fontWeight: 600, color: '#334155', cursor: 'pointer' }}
+                    >
+                      ✏️ Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const tx = selectedTransaction;
+                        setShowDetailModal(false);
+                        handleOpenDelete(tx);
+                      }}
+                      style={{ padding: '6px 12px', background: '#fff1f2', border: '1px solid #fecdd3', borderRadius: 6, fontSize: 12, fontWeight: 600, color: '#dc2626', cursor: 'pointer' }}
+                    >
+                      🗑️ Delete
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowDetailModal(false)}
+                      style={{ padding: '6px 14px', background: '#0f172a', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, color: '#ffffff', cursor: 'pointer' }}
+                    >
+                      Close
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -659,7 +981,7 @@ export default function TransactionHistoryPage({ LayoutComponent = AdminLayout }
                     <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#334155', marginBottom: 4 }}>Customer Name</label>
                     <input
                       type="text"
-                      placeholder="Customer Name"
+                      placeholder="e.g. Ramesh Sharma"
                       value={createForm.customerName}
                       onChange={(e) => setCreateForm({ ...createForm, customerName: e.target.value })}
                       style={{ width: '100%', padding: '7px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12, boxSizing: 'border-box' }}
@@ -669,9 +991,32 @@ export default function TransactionHistoryPage({ LayoutComponent = AdminLayout }
                     <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#334155', marginBottom: 4 }}>Employee / Admin Name</label>
                     <input
                       type="text"
-                      placeholder="Employee Name"
+                      placeholder="e.g. Super Admin"
                       value={createForm.employeeName}
                       onChange={(e) => setCreateForm({ ...createForm, employeeName: e.target.value })}
+                      style={{ width: '100%', padding: '7px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12, boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#334155', marginBottom: 4 }}>Quotation Ref</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. ALT-QUO-2026-001"
+                      value={createForm.quotationRef}
+                      onChange={(e) => setCreateForm({ ...createForm, quotationRef: e.target.value })}
+                      style={{ width: '100%', padding: '7px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12, boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#334155', marginBottom: 4 }}>Invoice Ref</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. INV-2026-001"
+                      value={createForm.invoiceRef}
+                      onChange={(e) => setCreateForm({ ...createForm, invoiceRef: e.target.value })}
                       style={{ width: '100%', padding: '7px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12, boxSizing: 'border-box' }}
                     />
                   </div>
@@ -721,6 +1066,255 @@ export default function TransactionHistoryPage({ LayoutComponent = AdminLayout }
                 <button onClick={() => setShowRefundModal(false)} style={{ padding: '8px 14px', background: '#e2e8f0', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>Cancel</button>
                 <button onClick={handleConfirmRefund} disabled={isSubmitting} style={{ padding: '8px 16px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
                   {isSubmitting ? 'Processing...' : 'Confirm Refund'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Transaction Modal */}
+        {showEditModal && editingTx && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16 }}>
+            <div style={{ background: '#ffffff', borderRadius: 10, maxWidth: 540, width: '100%', padding: 22, maxHeight: '90vh', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: 10, marginBottom: 14 }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#0f172a' }}>Edit Transaction</h3>
+                  <span style={{ fontSize: 11, color: '#64748b' }}>TXN ID: <strong>{editingTx.transactionId}</strong></span>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditingTx(null);
+                  }}
+                  style={{ border: 'none', background: 'none', fontSize: 18, cursor: 'pointer', color: '#64748b' }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleEditSubmit}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#334155', marginBottom: 4 }}>Transaction Type *</label>
+                    <select
+                      value={editForm.transactionType}
+                      onChange={(e) => setEditForm({ ...editForm, transactionType: e.target.value })}
+                      style={{ width: '100%', padding: '7px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12 }}
+                    >
+                      <option value="Payment Received">Payment Received</option>
+                      <option value="Payment Sent">Payment Sent</option>
+                      <option value="Refund">Refund</option>
+                      <option value="Advance Payment">Advance Payment</option>
+                      <option value="Salary Payment">Salary Payment</option>
+                      <option value="Quotation Payment">Quotation Payment</option>
+                      <option value="Invoice Payment">Invoice Payment</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#334155', marginBottom: 4 }}>Payment Method *</label>
+                    <select
+                      value={editForm.paymentMethod}
+                      onChange={(e) => setEditForm({ ...editForm, paymentMethod: e.target.value })}
+                      style={{ width: '100%', padding: '7px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12 }}
+                    >
+                      <option value="UPI">UPI</option>
+                      <option value="Cash">Cash</option>
+                      <option value="Bank Transfer">Bank Transfer</option>
+                      <option value="Card">Card</option>
+                      <option value="Razorpay">Razorpay</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#334155', marginBottom: 4 }}>Amount (₹) *</label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 25000"
+                      value={editForm.amount}
+                      onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })}
+                      style={{ width: '100%', padding: '7px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12, boxSizing: 'border-box' }}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#334155', marginBottom: 4 }}>Status *</label>
+                    <select
+                      value={editForm.status}
+                      onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                      style={{ width: '100%', padding: '7px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12 }}
+                    >
+                      <option value="Completed">Completed</option>
+                      <option value="Pending">Pending</option>
+                      <option value="Failed">Failed</option>
+                      <option value="Cancelled">Cancelled</option>
+                      <option value="Refunded">Refunded</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: 10 }}>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#334155', marginBottom: 4 }}>Reference ID / UTR Number</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. UPI123456789 or BANK-REF-99"
+                    value={editForm.referenceId}
+                    onChange={(e) => setEditForm({ ...editForm, referenceId: e.target.value })}
+                    style={{ width: '100%', padding: '7px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12, boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#334155', marginBottom: 4 }}>Customer Name</label>
+                    <input
+                      type="text"
+                      placeholder="Customer Name"
+                      value={editForm.customerName}
+                      onChange={(e) => setEditForm({ ...editForm, customerName: e.target.value })}
+                      style={{ width: '100%', padding: '7px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12, boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#334155', marginBottom: 4 }}>Employee / Admin Name</label>
+                    <input
+                      type="text"
+                      placeholder="Employee Name"
+                      value={editForm.employeeName}
+                      onChange={(e) => setEditForm({ ...editForm, employeeName: e.target.value })}
+                      style={{ width: '100%', padding: '7px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12, boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#334155', marginBottom: 4 }}>Quotation Ref</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. ALT-QUO-2026-001"
+                      value={editForm.quotationRef}
+                      onChange={(e) => setEditForm({ ...editForm, quotationRef: e.target.value })}
+                      style={{ width: '100%', padding: '7px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12, boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#334155', marginBottom: 4 }}>Invoice Ref</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. INV-2026-001"
+                      value={editForm.invoiceRef}
+                      onChange={(e) => setEditForm({ ...editForm, invoiceRef: e.target.value })}
+                      style={{ width: '100%', padding: '7px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12, boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: 10 }}>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#334155', marginBottom: 4 }}>Description / Notes</label>
+                  <textarea
+                    rows={2}
+                    placeholder="Payment details, invoice reference..."
+                    value={editForm.description}
+                    onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                    style={{ width: '100%', padding: '7px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12, boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#334155', marginBottom: 4 }}>Reason for Update (Audit Log)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Corrected payment method or amount"
+                    value={editForm.reason}
+                    onChange={(e) => setEditForm({ ...editForm, reason: e.target.value })}
+                    style={{ width: '100%', padding: '7px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12, boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowEditModal(false);
+                      setEditingTx(null);
+                    }}
+                    style={{ padding: '8px 14px', background: '#e2e8f0', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    style={{ padding: '8px 16px', background: '#0f172a', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    {isSubmitting ? 'Updating...' : 'Save Changes'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteModal && deletingTx && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16 }}>
+            <div style={{ background: '#ffffff', borderRadius: 10, maxWidth: 450, width: '100%', padding: 22, boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626', fontSize: 20, flexShrink: 0 }}>
+                  🗑️
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#991b1b' }}>Delete Transaction</h3>
+                  <p style={{ margin: '2px 0 0 0', fontSize: 12, color: '#64748b' }}>Permanently remove this transaction record.</p>
+                </div>
+              </div>
+
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: 12, marginBottom: 14, fontSize: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ color: '#64748b' }}>Transaction ID:</span>
+                  <strong style={{ color: '#0f172a' }}>{deletingTx.transactionId}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ color: '#64748b' }}>Amount:</span>
+                  <strong style={{ color: '#7A131A' }}>{formatINR(deletingTx.amount)}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ color: '#64748b' }}>Type &amp; Method:</span>
+                  <span>{deletingTx.transactionType} ({deletingTx.paymentMethod})</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#64748b' }}>Status:</span>
+                  <span>{deletingTx.status}</span>
+                </div>
+              </div>
+
+              <p style={{ fontSize: 12, color: '#b91c1c', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 6, padding: '8px 10px', marginBottom: 16 }}>
+                ⚠️ <strong>Warning:</strong> This action cannot be undone. The transaction will be permanently removed from all reports.
+              </p>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setDeletingTx(null);
+                  }}
+                  disabled={isSubmitting}
+                  style={{ padding: '8px 14px', background: '#e2e8f0', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDelete}
+                  disabled={isSubmitting}
+                  style={{ padding: '8px 16px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                >
+                  {isSubmitting ? 'Deleting...' : 'Delete Transaction'}
                 </button>
               </div>
             </div>

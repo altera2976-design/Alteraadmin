@@ -36,9 +36,10 @@ export const refundTransaction = async (id, reason = '') => {
 };
 
 export const exportTransactions = async (params = {}) => {
+  const isBlob = params.format !== 'json';
   const response = await api.get('/transactions/export', {
-    params: { ...params, format: 'csv' },
-    responseType: 'blob',
+    params: { format: 'csv', ...params },
+    responseType: isBlob ? 'blob' : 'json',
   });
   return response.data;
 };
