@@ -10,6 +10,21 @@ import api from "./api";
 
 const API_HOST = api.defaults.baseURL.replace(/\/api\/?$/, "");
 
+export function resolvePdfImageSrc(img) {
+  if (!img) return "";
+  if (img.startsWith("data:") || img.startsWith("http://") || img.startsWith("https://")) return img;
+  if (img.startsWith("/hardware-accessories/")) {
+    if (typeof window !== "undefined" && window.location && window.location.origin) {
+      return `${window.location.origin}${img}`;
+    }
+    return `${API_HOST}${img}`;
+  }
+  if (img.startsWith("/")) {
+    return `${API_HOST}${img}`;
+  }
+  return img;
+}
+
 export function formatINR(v) {
   if (v === undefined || v === null || isNaN(v)) return "₹0";
   return "₹" + Math.round(Number(v)).toLocaleString("en-IN");
@@ -299,7 +314,7 @@ export function buildQuotationHtml(q) {
             <tr>
               <td class="center font-bold">${idx + 1}</td>
               <td class="center">
-                ${acc.image ? `<img src="${acc.image.startsWith('/') ? API_HOST + acc.image : acc.image}" style="max-width: 80px; max-height: 80px; object-fit: contain; border-radius: 4px; border: 1px solid #CBD5E1;" />` : '<span style="color: #94A3B8; font-size: 7.5pt;">No Image</span>'}
+                ${acc.image ? `<img src="${resolvePdfImageSrc(acc.image)}" style="max-width: 80px; max-height: 80px; object-fit: contain; border-radius: 4px; border: 1px solid #CBD5E1;" />` : '<span style="color: #94A3B8; font-size: 7.5pt;">No Image</span>'}
               </td>
               <td>
                 <div class="item-name">${escapeHtml(acc.name)}</div>
