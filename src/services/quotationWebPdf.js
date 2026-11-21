@@ -310,11 +310,21 @@ export function buildQuotationHtml(q) {
               const accTotal =
                 Number(acc.total) ||
                 (Number(acc.quantity) || 1) * (Number(acc.price) || 0);
+              const allAccImages = Array.isArray(acc.images) && acc.images.length > 0
+                ? acc.images.filter(Boolean)
+                : (acc.image ? [acc.image] : []);
+              const imageCellHtml = allAccImages.length === 0
+                ? '<span style="color: #94A3B8; font-size: 7.5pt;">No Image</span>'
+                : allAccImages.length === 1
+                ? `<img src="${resolvePdfImageSrc(allAccImages[0])}" style="max-width: 80px; max-height: 80px; object-fit: contain; border-radius: 4px; border: 1px solid #CBD5E1;" />`
+                : `<div style="display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; max-width: 130px; margin: 0 auto;">
+                    ${allAccImages.map(img => `<img src="${resolvePdfImageSrc(img)}" style="width: 48px; height: 48px; object-fit: contain; border-radius: 3px; border: 1px solid #CBD5E1; background: #fff;" />`).join("")}
+                   </div>`;
               return `
             <tr>
               <td class="center font-bold">${idx + 1}</td>
               <td class="center">
-                ${acc.image ? `<img src="${resolvePdfImageSrc(acc.image)}" style="max-width: 80px; max-height: 80px; object-fit: contain; border-radius: 4px; border: 1px solid #CBD5E1;" />` : '<span style="color: #94A3B8; font-size: 7.5pt;">No Image</span>'}
+                ${imageCellHtml}
               </td>
               <td>
                 <div class="item-name">${escapeHtml(acc.name)}</div>

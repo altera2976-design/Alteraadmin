@@ -339,17 +339,24 @@ export default function QuotationModule({
   const [accFormName, setAccFormName] = useState("");
   const [accFormDesc, setAccFormDesc] = useState("");
   const [accFormImage, setAccFormImage] = useState("");
+  const [accFormImages, setAccFormImages] = useState([]);
   const [accFormImageId, setAccFormImageId] = useState("");
   const [showAccGalleryModal, setShowAccGalleryModal] = useState(false);
   const [accGallerySearch, setAccGallerySearch] = useState("");
   const [accGalleryCategory, setAccGalleryCategory] = useState("All");
+  const [catalogAccessories, setCatalogAccessories] = useState(PREDEFINED_ACCESSORIES);
+  const [modalSelectedItems, setModalSelectedItems] = useState([]);
+  const [showAddCustomModalItem, setShowAddCustomModalItem] = useState(false);
+  const [customModalItemName, setCustomModalItemName] = useState("");
+  const [customModalItemCategory, setCustomModalItemCategory] = useState("Kitchen Accessories");
+  const [customModalItemImage, setCustomModalItemImage] = useState("");
   const [accFormQty, setAccFormQty] = useState("1");
   const [accFormUnit, setAccFormUnit] = useState("Pcs");
   const [accFormPrice, setAccFormPrice] = useState("");
   const [editingAccIndex, setEditingAccIndex] = useState(null);
 
   const filteredPredefinedAccessories = useMemo(() => {
-    return PREDEFINED_ACCESSORIES.filter((item) => {
+    return catalogAccessories.filter((item) => {
       const q = accGallerySearch.trim().toLowerCase();
       const matchesSearch = !q || item.name.toLowerCase().includes(q);
       const matchesCategory =
@@ -357,7 +364,7 @@ export default function QuotationModule({
         item.category.toLowerCase().includes(accGalleryCategory.toLowerCase());
       return matchesSearch && matchesCategory;
     });
-  }, [accGallerySearch, accGalleryCategory]);
+  }, [catalogAccessories, accGallerySearch, accGalleryCategory]);
 
   const [stAccessoryOptions, setStAccessoryOptions] = useState(
     DEFAULT_STANDALONE_ACCESSORY_OPTIONS,
@@ -721,10 +728,14 @@ export default function QuotationModule({
       }).catch(console.warn);
     }
 
+    const finalImages = accFormImages && accFormImages.length > 0
+      ? accFormImages
+      : (accFormImage ? [accFormImage] : []);
     const newAcc = {
       name,
       description: finalHardware,
-      image: accFormImage,
+      image: finalImages[0] || "",
+      images: finalImages,
       imageId: accFormImageId || "",
       quantity: qty,
       unit: accFormUnit.trim() || "Pcs",
@@ -746,6 +757,7 @@ export default function QuotationModule({
     setShowStAccCustomHardware(false);
     setStAccCustomHardware("");
     setAccFormImage("");
+    setAccFormImages([]);
     setAccFormImageId("");
     setAccFormQty("1");
     setAccFormUnit("Pcs");
@@ -765,7 +777,11 @@ export default function QuotationModule({
       setShowStAccCustomHardware(true);
       setStAccCustomHardware(desc);
     }
-    setAccFormImage(acc.image || "");
+    const accImgs = Array.isArray(acc.images) && acc.images.length > 0
+      ? acc.images
+      : (acc.image ? [acc.image] : []);
+    setAccFormImage(accImgs[0] || "");
+    setAccFormImages(accImgs);
     setAccFormImageId(acc.imageId || "");
     setAccFormQty(String(acc.quantity || 1));
     setAccFormUnit(acc.unit || "Pcs");
@@ -782,7 +798,7 @@ export default function QuotationModule({
       setAccFormName("");
       setAccFormDesc("");
       setAccFormImage("");
-      setAccFormImageId("");
+      setAccFormImages([]);
       setAccFormImageId("");
       setAccFormQty("1");
       setAccFormUnit("Pcs");
@@ -791,18 +807,132 @@ export default function QuotationModule({
   };
 
   const handleAccImageUpload = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    const validFiles = files.filter((f) => {
+      if (f.size > 10 * 1024 * 1024) {
+        alert(`File ${f.name} exceeds 10MB limit.`);
+        return false;
+      }
+      return true;
+    });
+    if (validFiles.length === 0) return;
+
+    let loaded = 0;
+    const newResults = [];
+    validFiles.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        newResults.push(reader.result);
+        loaded++;
+        if (loaded === validFiles.length) {
+          setAccFormImages((prev) => {
+            const combined = [...prev, ...newResults];
+            setAccFormImage(combined[0] || "");
+            return combined;
+          });
+          setAccFormImageId("");
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = "";
+  };
+
+  const handleRemoveSingleAccFormImage = (indexToRemove) => {
+    setAccFormImages((prev) => {
+      const updated = prev.filter((_, i) => i !== indexToRemove);
+      setAccFormImage(updated[0] || "");
+      return updated;
+    });
+  };
+
+  const handleToggleModalItemSelect = (item) => {
+    setModalSelectedItems((prev) => {
+      const exists = prev.some((it) => it.id === item.id || it.image === item.image);
+      if (exists) {
+        return prev.filter((it) => it.id !== item.id && it.image !== item.image);
+      } else {
+        return [...prev, item];
+      }
+    });
+  };
+
+  const handleApplyModalSelection = () => {
+    if (modalSelectedItems.length === 0) {
+      setShowAccGalleryModal(false);
+      return;
+    }
+    const newImgs = modalSelectedItems.map((it) => it.image).filter(Boolean);
+    setAccFormImages((prev) => {
+      // Merge unique
+      const combined = [...prev];
+      newImgs.forEach((img) => {
+        if (!combined.includes(img)) combined.push(img);
+      });
+      setAccFormImage(combined[0] || "");
+      return combined;
+    });
+    setAccFormImageId(modalSelectedItems[0]?.id || "");
+    if (!accFormName.trim() && modalSelectedItems.length === 1) {
+      setAccFormName(modalSelectedItems[0].name);
+    }
+    setShowAccGalleryModal(false);
+  };
+
+  const handleBatchAddModalItems = () => {
+    if (modalSelectedItems.length === 0) return;
+    const newRows = modalSelectedItems.map((item) => ({
+      name: item.name,
+      description: item.category,
+      image: item.image,
+      images: [item.image],
+      imageId: item.id || "",
+      quantity: 1,
+      unit: "Pcs",
+      price: 0,
+      total: 0,
+    }));
+    setStandaloneAccessories((prev) => [...prev, ...newRows]);
+    setModalSelectedItems([]);
+    setShowAccGalleryModal(false);
+  };
+
+  const handleCustomModalItemUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      alert("Image size should not exceed 5MB.");
+    if (file.size > 10 * 1024 * 1024) {
+      alert("Image size should not exceed 10MB.");
       return;
     }
     const reader = new FileReader();
     reader.onload = () => {
-      setAccFormImage(reader.result);
-      setAccFormImageId("");
+      setCustomModalItemImage(reader.result);
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleSaveCustomModalItem = () => {
+    if (!customModalItemName.trim()) {
+      alert("Please enter a name for the accessory.");
+      return;
+    }
+    if (!customModalItemImage) {
+      alert("Please select or upload an image for the accessory.");
+      return;
+    }
+    const newItem = {
+      id: `custom-${Date.now()}`,
+      name: customModalItemName.trim(),
+      category: customModalItemCategory,
+      image: customModalItemImage,
+      isCustom: true,
+    };
+    setCatalogAccessories((prev) => [newItem, ...prev]);
+    setModalSelectedItems((prev) => [...prev, newItem]);
+    setCustomModalItemName("");
+    setCustomModalItemImage("");
+    setShowAddCustomModalItem(false);
   };
 
   const handleSelectRoom = (r) => {
@@ -1313,6 +1443,7 @@ export default function QuotationModule({
       setAccFormName("");
       setAccFormDesc("");
       setAccFormImage("");
+      setAccFormImages([]);
       setAccFormImageId("");
       setAccFormQty("1");
       setAccFormUnit("Pcs");
@@ -1349,6 +1480,7 @@ export default function QuotationModule({
       setAccFormName("");
       setAccFormDesc("");
       setAccFormImage("");
+      setAccFormImages([]);
       setAccFormImageId("");
       setAccFormQty("1");
       setAccFormUnit("Pcs");
@@ -3713,12 +3845,20 @@ export default function QuotationModule({
                           <input
                             type="file"
                             accept="image/*"
+                            multiple
                             onChange={handleAccImageUpload}
                             style={{ ...styles.formInput, padding: "4px" }}
+                            title="Upload one or multiple photos"
                           />
                           <button
                             type="button"
-                            onClick={() => setShowAccGalleryModal(true)}
+                            onClick={() => {
+                              const preselected = catalogAccessories.filter((c) =>
+                                accFormImages.includes(c.image) || (accFormImage && c.image === accFormImage)
+                              );
+                              setModalSelectedItems(preselected);
+                              setShowAccGalleryModal(true);
+                            }}
                             style={{
                               display: "inline-flex",
                               alignItems: "center",
@@ -3735,9 +3875,9 @@ export default function QuotationModule({
                               whiteSpace: "nowrap",
                               transition: "all 0.15s ease",
                             }}
-                            title="Select from 21 predefined catalog hardware accessories"
+                            title="Select from catalog hardware accessories (multi-select supported)"
                           >
-                            <span>🖼️</span> Select Predefined Image (21 items)
+                            <span>🖼️</span> Select Predefined Images ({catalogAccessories.length} items)
                           </button>
                         </div>
                       </div>
@@ -3761,92 +3901,179 @@ export default function QuotationModule({
                       </div>
                     </div>
 
-                    {accFormImage && (
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 12,
-                          marginBottom: 12,
-                          padding: "8px 12px",
-                          backgroundColor: "#f8fafc",
-                          border: "1px solid #cbd5e1",
-                          borderRadius: "6px",
-                        }}
-                      >
-                        <img
-                          src={resolveAccessoryImageSrc(accFormImage)}
-                          alt="Preview"
+                    {(() => {
+                      const currentDisplayImages = accFormImages.length > 0
+                        ? accFormImages
+                        : (accFormImage ? [accFormImage] : []);
+                      if (currentDisplayImages.length === 0) return null;
+                      return (
+                        <div
                           style={{
-                            width: 50,
-                            height: 50,
-                            objectFit: "contain",
-                            borderRadius: 4,
+                            marginBottom: 14,
+                            padding: "10px 12px",
+                            backgroundColor: "#f8fafc",
                             border: "1px solid #cbd5e1",
-                            backgroundColor: "#ffffff",
-                            padding: "2px",
+                            borderRadius: "6px",
                           }}
-                        />
-                        <div style={{ flex: 1, minWidth: 0 }}>
+                        >
                           <div
                             style={{
-                              fontSize: 13,
-                              fontWeight: 700,
-                              color: "#1e293b",
-                              whiteSpace: "nowrap",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              marginBottom: 8,
                             }}
                           >
-                            {PREDEFINED_ACCESSORIES.find(
-                              (a) => a.image === accFormImage || a.id === accFormImageId
-                            )?.name ||
-                              (accFormImage.startsWith("data:")
-                                ? "Custom Uploaded Image"
-                                : "Accessory Image")}
+                            <div style={{ fontSize: 12, fontWeight: 700, color: "#1e293b" }}>
+                              Selected Photos ({currentDisplayImages.length})
+                            </div>
+                            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const preselected = catalogAccessories.filter((c) =>
+                                    accFormImages.includes(c.image) || (accFormImage && c.image === accFormImage)
+                                  );
+                                  setModalSelectedItems(preselected);
+                                  setShowAccGalleryModal(true);
+                                }}
+                                style={{
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  color: "#7A131A",
+                                  backgroundColor: "#ffffff",
+                                  border: "1px solid #7A131A",
+                                  borderRadius: 4,
+                                  padding: "3px 8px",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                + Add More Photos
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setAccFormImage("");
+                                  setAccFormImages([]);
+                                  setAccFormImageId("");
+                                }}
+                                style={{
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  color: "#dc2626",
+                                  background: "none",
+                                  border: "none",
+                                  cursor: "pointer",
+                                  padding: "3px 6px",
+                                }}
+                              >
+                                Clear All
+                              </button>
+                            </div>
                           </div>
-                          <div style={{ fontSize: 11, color: "#64748b" }}>
-                            {accFormImage.startsWith("data:")
-                              ? "Custom Upload via Choose File"
-                              : "Predefined Catalog Item"}
+
+                          <div
+                            style={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              gap: 8,
+                              alignItems: "center",
+                            }}
+                          >
+                            {currentDisplayImages.map((imgSrc, imgIdx) => {
+                              const catalogItem = catalogAccessories.find((a) => a.image === imgSrc);
+                              const nameHint = catalogItem?.name || `Photo #${imgIdx + 1}`;
+                              return (
+                                <div
+                                  key={imgIdx}
+                                  style={{
+                                    position: "relative",
+                                    width: 58,
+                                    height: 58,
+                                    borderRadius: 6,
+                                    border: "1px solid #cbd5e1",
+                                    backgroundColor: "#ffffff",
+                                    padding: 2,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                  }}
+                                  title={nameHint}
+                                >
+                                  <img
+                                    src={resolveAccessoryImageSrc(imgSrc)}
+                                    alt={nameHint}
+                                    style={{
+                                      maxWidth: "100%",
+                                      maxHeight: "100%",
+                                      objectFit: "contain",
+                                      borderRadius: 4,
+                                    }}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveSingleAccFormImage(imgIdx)}
+                                    style={{
+                                      position: "absolute",
+                                      top: -5,
+                                      right: -5,
+                                      width: 16,
+                                      height: 16,
+                                      borderRadius: "50%",
+                                      backgroundColor: "#dc2626",
+                                      color: "#ffffff",
+                                      border: "1px solid #ffffff",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      fontSize: 9,
+                                      fontWeight: 700,
+                                      cursor: "pointer",
+                                      padding: 0,
+                                      lineHeight: 1,
+                                    }}
+                                    title="Remove this photo"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              );
+                            })}
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const preselected = catalogAccessories.filter((c) =>
+                                  accFormImages.includes(c.image) || (accFormImage && c.image === accFormImage)
+                                );
+                                setModalSelectedItems(preselected);
+                                setShowAccGalleryModal(true);
+                              }}
+                              style={{
+                                width: 58,
+                                height: 58,
+                                borderRadius: 6,
+                                border: "1px dashed #7A131A",
+                                backgroundColor: "#fff5f5",
+                                color: "#7A131A",
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: 10,
+                                fontWeight: 700,
+                                cursor: "pointer",
+                                gap: 2,
+                              }}
+                              title="Add more photos from catalog or custom upload"
+                            >
+                              <span style={{ fontSize: 14 }}>➕</span>
+                              <span>Add More</span>
+                            </button>
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          style={{
-                            padding: "5px 10px",
-                            fontSize: 12,
-                            fontWeight: 600,
-                            color: "#7A131A",
-                            backgroundColor: "#ffffff",
-                            border: "1px solid #7A131A",
-                            borderRadius: 4,
-                            cursor: "pointer",
-                          }}
-                          onClick={() => setShowAccGalleryModal(true)}
-                        >
-                          Change Selection
-                        </button>
-                        <button
-                          type="button"
-                          style={{
-                            border: "none",
-                            background: "none",
-                            color: "#dc2626",
-                            cursor: "pointer",
-                            fontSize: 12,
-                            fontWeight: 600,
-                            padding: "4px 8px",
-                          }}
-                          onClick={() => {
-                            setAccFormImage("");
-                            setAccFormImageId("");
-                          }}
-                        >
-                          Remove Image
-                        </button>
-                      </div>
-                    )}
+                      );
+                    })()}
 
                     <div
                       style={{
@@ -3866,6 +4093,7 @@ export default function QuotationModule({
                             setAccFormName("");
                             setAccFormDesc("");
                             setAccFormImage("");
+      setAccFormImages([]);
       setAccFormImageId("");
                             setAccFormQty("1");
                             setAccFormUnit("Pcs");
@@ -4002,31 +4230,60 @@ export default function QuotationModule({
                                     verticalAlign: "middle",
                                   }}
                                 >
-                                  {acc.image ? (
-                                    <img
-                                      src={resolveAccessoryImageSrc(acc.image)}
-                                      alt={acc.name}
-                                      style={{
-                                        width: 40,
-                                        height: 40,
-                                        objectFit: "contain",
-                                        borderRadius: 4,
-                                        border: "1px solid #cbd5e1",
-                                        backgroundColor: "#ffffff",
-                                        display: "inline-block",
-                                      }}
-                                    />
-                                  ) : (
-                                    <span
-                                      style={{
-                                        fontSize: 10,
-                                        color: "#94a3b8",
-                                        fontStyle: "italic",
-                                      }}
-                                    >
-                                      No Image
-                                    </span>
-                                  )}
+                                  {(() => {
+                                    const imgs = Array.isArray(acc.images) && acc.images.length > 0
+                                      ? acc.images
+                                      : (acc.image ? [acc.image] : []);
+                                    if (imgs.length === 0) {
+                                      return (
+                                        <span
+                                          style={{
+                                            fontSize: 10,
+                                            color: "#94a3b8",
+                                            fontStyle: "italic",
+                                          }}
+                                        >
+                                          No Image
+                                        </span>
+                                      );
+                                    }
+                                    return (
+                                      <div style={{ position: "relative", display: "inline-block" }}>
+                                        <img
+                                          src={resolveAccessoryImageSrc(imgs[0])}
+                                          alt={acc.name}
+                                          style={{
+                                            width: 40,
+                                            height: 40,
+                                            objectFit: "contain",
+                                            borderRadius: 4,
+                                            border: "1px solid #cbd5e1",
+                                            backgroundColor: "#ffffff",
+                                            display: "inline-block",
+                                          }}
+                                        />
+                                        {imgs.length > 1 && (
+                                          <span
+                                            style={{
+                                              position: "absolute",
+                                              bottom: -2,
+                                              right: -2,
+                                              backgroundColor: "#7A131A",
+                                              color: "#ffffff",
+                                              fontSize: 9,
+                                              fontWeight: 700,
+                                              borderRadius: 8,
+                                              padding: "1px 4px",
+                                              lineHeight: 1.1,
+                                            }}
+                                            title={`${imgs.length} photos selected`}
+                                          >
+                                            +{imgs.length - 1}
+                                          </span>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
                                 </td>
                                 <td style={{ padding: "6px 8px" }}>
                                   <div
@@ -4946,37 +5203,67 @@ export default function QuotationModule({
                                 gap: 10,
                               }}
                             >
-                              {acc.image ? (
-                                <img
-                                  src={resolveAccessoryImageSrc(acc.image)}
-                                  alt={acc.name}
-                                  style={{
-                                    width: 40,
-                                    height: 40,
-                                    objectFit: "contain",
-                                    borderRadius: 4,
-                                    border: "1px solid #cbd5e1",
-                                    backgroundColor: "#ffffff",
-                                  }}
-                                />
-                              ) : (
-                                <div
-                                  style={{
-                                    width: 40,
-                                    height: 40,
-                                    background: "#f1f5f9",
-                                    borderRadius: 4,
-                                    border: "1px solid #cbd5e1",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    fontSize: 9,
-                                    color: "#94a3b8",
-                                  }}
-                                >
-                                  No Image
-                                </div>
-                              )}
+                              {(() => {
+                                const imgs = Array.isArray(acc.images) && acc.images.length > 0
+                                  ? acc.images
+                                  : (acc.image ? [acc.image] : []);
+                                if (imgs.length === 0) {
+                                  return (
+                                    <div
+                                      style={{
+                                        width: 40,
+                                        height: 40,
+                                        background: "#f1f5f9",
+                                        borderRadius: 4,
+                                        border: "1px solid #cbd5e1",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        fontSize: 9,
+                                        color: "#94a3b8",
+                                      }}
+                                    >
+                                      No Image
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <div style={{ position: "relative", display: "inline-block" }}>
+                                    <img
+                                      src={resolveAccessoryImageSrc(imgs[0])}
+                                      alt={acc.name}
+                                      style={{
+                                        width: 40,
+                                        height: 40,
+                                        objectFit: "contain",
+                                        borderRadius: 4,
+                                        border: "1px solid #cbd5e1",
+                                        backgroundColor: "#ffffff",
+                                        display: "inline-block",
+                                      }}
+                                    />
+                                    {imgs.length > 1 && (
+                                      <span
+                                        style={{
+                                          position: "absolute",
+                                          bottom: -2,
+                                          right: -2,
+                                          backgroundColor: "#7A131A",
+                                          color: "#ffffff",
+                                          fontSize: 9,
+                                          fontWeight: 700,
+                                          borderRadius: 8,
+                                          padding: "1px 4px",
+                                          lineHeight: 1.1,
+                                        }}
+                                        title={`${imgs.length} photos selected`}
+                                      >
+                                        +{imgs.length - 1}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                               <div>
                                 <div
                                   style={{
@@ -5811,7 +6098,7 @@ export default function QuotationModule({
                     color: "#64748b",
                   }}
                 >
-                  Choose from 21 catalog hardware accessories or search below.
+                  Select one or multiple photos from the catalog ({catalogAccessories.length} items), or click "+ Add More" to upload custom hardware.
                 </p>
               </div>
               <button
@@ -5840,7 +6127,7 @@ export default function QuotationModule({
               <div style={{ flex: "1 1 240px", position: "relative" }}>
                 <input
                   type="text"
-                  placeholder="🔍 Search 21 accessories (e.g. Lift Basket, Magic Corner...)"
+                  placeholder="🔍 Search accessories (e.g. Lift Basket, Magic Corner...)"
                   value={accGallerySearch}
                   onChange={(e) => setAccGallerySearch(e.target.value)}
                   style={{
@@ -5871,14 +6158,14 @@ export default function QuotationModule({
                 )}
               </div>
 
-              {/* Category Filters */}
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {/* Category Filters + Add More Button */}
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                 {["All", "Kitchen Accessories", "Wardrobe Accessories"].map((cat) => {
                   const isActive = accGalleryCategory === cat;
                   const count =
                     cat === "All"
-                      ? PREDEFINED_ACCESSORIES.length
-                      : PREDEFINED_ACCESSORIES.filter((a) => a.category === cat).length;
+                      ? catalogAccessories.length
+                      : catalogAccessories.filter((a) => a.category === cat).length;
                   const label =
                     cat === "All"
                       ? `All (${count})`
@@ -5889,7 +6176,10 @@ export default function QuotationModule({
                     <button
                       key={cat}
                       type="button"
-                      onClick={() => setAccGalleryCategory(cat)}
+                      onClick={() => {
+                        setAccGalleryCategory(cat);
+                        setShowAddCustomModalItem(false);
+                      }}
                       style={{
                         padding: "5px 10px",
                         borderRadius: 6,
@@ -5907,8 +6197,133 @@ export default function QuotationModule({
                     </button>
                   );
                 })}
+
+                {/* + Add More category pill */}
+                <button
+                  type="button"
+                  onClick={() => setShowAddCustomModalItem((v) => !v)}
+                  style={{
+                    padding: "5px 12px",
+                    borderRadius: 6,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    border: showAddCustomModalItem ? "1px solid #7A131A" : "1px dashed #7A131A",
+                    backgroundColor: showAddCustomModalItem ? "#7A131A" : "#fff5f5",
+                    color: showAddCustomModalItem ? "#ffffff" : "#7A131A",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    transition: "all 0.15s ease",
+                  }}
+                  title="Upload and add more hardware accessories"
+                >
+                  <span>➕</span>
+                  <span>Add More</span>
+                </button>
+
+                {modalSelectedItems.length > 0 && (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: "#7A131A",
+                      backgroundColor: "#fee2e2",
+                      padding: "4px 8px",
+                      borderRadius: 12,
+                    }}
+                  >
+                    {modalSelectedItems.length} selected
+                  </span>
+                )}
               </div>
             </div>
+
+            {/* Inline Custom Accessory Form (+ Add More) */}
+            {showAddCustomModalItem && (
+              <div
+                style={{
+                  margin: "12px 0",
+                  padding: 14,
+                  backgroundColor: "#fff5f5",
+                  border: "1px solid #fecdd3",
+                  borderRadius: 8,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 10,
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#7A131A" }}>
+                    ➕ Add More Hardware Accessory to Catalog
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddCustomModalItem(false)}
+                    style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: 13 }}
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr auto", gap: 10, alignItems: "center" }}>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: "#334155", display: "block", marginBottom: 2 }}>
+                      Accessory Name *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Cutlery Organizer, Pantry Basket"
+                      value={customModalItemName}
+                      onChange={(e) => setCustomModalItemName(e.target.value)}
+                      style={{ ...styles.formInput, fontSize: 12, padding: "5px 8px" }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: "#334155", display: "block", marginBottom: 2 }}>
+                      Category
+                    </label>
+                    <select
+                      value={customModalItemCategory}
+                      onChange={(e) => setCustomModalItemCategory(e.target.value)}
+                      style={{ ...styles.formInput, fontSize: 12, padding: "5px 8px" }}
+                    >
+                      <option value="Kitchen Accessories">Kitchen Accessories</option>
+                      <option value="Wardrobe Accessories">Wardrobe Accessories</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: "#334155", display: "block", marginBottom: 2 }}>
+                      Accessory Photo *
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleCustomModalItemUpload}
+                      style={{ ...styles.formInput, fontSize: 11, padding: "3px" }}
+                    />
+                  </div>
+                  <div style={{ paddingTop: 16 }}>
+                    <button
+                      type="button"
+                      onClick={handleSaveCustomModalItem}
+                      style={{
+                        padding: "6px 14px",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        backgroundColor: "#7A131A",
+                        color: "#ffffff",
+                        border: "none",
+                        borderRadius: 6,
+                        cursor: "pointer",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      ✓ Save &amp; Select
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Gallery Grid */}
             <div
@@ -5922,6 +6337,60 @@ export default function QuotationModule({
                 maxHeight: "55vh",
               }}
             >
+              {/* "+ Add More" interactive card in grid when form is closed */}
+              {!showAddCustomModalItem && (
+                <div
+                  onClick={() => setShowAddCustomModalItem(true)}
+                  style={{
+                    border: "2px dashed #7A131A",
+                    borderRadius: 8,
+                    backgroundColor: "#fffafa",
+                    cursor: "pointer",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: 16,
+                    minHeight: 180,
+                    textAlign: "center",
+                    transition: "all 0.15s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "#fee2e2";
+                    e.currentTarget.style.transform = "translateY(-1px)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "#fffafa";
+                    e.currentTarget.style.transform = "translateY(0)";
+                  }}
+                  title="Click to add more custom hardware accessories"
+                >
+                  <div
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: "50%",
+                      backgroundColor: "#fee2e2",
+                      color: "#7A131A",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 22,
+                      fontWeight: 700,
+                      marginBottom: 8,
+                    }}
+                  >
+                    ➕
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#7A131A" }}>
+                    + Add More
+                  </div>
+                  <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
+                    Upload custom hardware or photos
+                  </div>
+                </div>
+              )}
+
               {filteredPredefinedAccessories.length === 0 ? (
                 <div
                   style={{
@@ -5936,20 +6405,15 @@ export default function QuotationModule({
                 </div>
               ) : (
                 filteredPredefinedAccessories.map((item) => {
-                  const isSelected =
-                    accFormImage === item.image || accFormImageId === item.id;
+                  const isSelected = modalSelectedItems.some(
+                    (it) => it.id === item.id || it.image === item.image
+                  );
                   return (
                     <div
                       key={item.id}
-                      onClick={() => {
-                        setAccFormImage(item.image);
-                        setAccFormImageId(item.id);
-                        if (!accFormName.trim()) {
-                          setAccFormName(item.name);
-                        }
-                        setShowAccGalleryModal(false);
-                      }}
+                      onClick={() => handleToggleModalItemSelect(item)}
                       style={{
+                        position: "relative",
                         border: isSelected
                           ? "2px solid #7A131A"
                           : "1px solid #e2e8f0",
@@ -5961,7 +6425,7 @@ export default function QuotationModule({
                         overflow: "hidden",
                         transition: "all 0.15s ease",
                         boxShadow: isSelected
-                          ? "0 4px 6px -1px rgba(122, 19, 26, 0.15)"
+                          ? "0 4px 6px -1px rgba(122, 19, 26, 0.2)"
                           : "0 1px 3px rgba(0,0,0,0.05)",
                       }}
                       onMouseEnter={(e) => {
@@ -5977,6 +6441,30 @@ export default function QuotationModule({
                         }
                       }}
                     >
+                      {/* Selection Checkmark Badge on Top-Right */}
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: 8,
+                          right: 8,
+                          width: 22,
+                          height: 22,
+                          borderRadius: "50%",
+                          backgroundColor: isSelected ? "#7A131A" : "rgba(255,255,255,0.9)",
+                          border: isSelected ? "2px solid #7A131A" : "2px solid #cbd5e1",
+                          color: "#ffffff",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 12,
+                          fontWeight: 700,
+                          zIndex: 2,
+                          boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
+                        }}
+                      >
+                        {isSelected ? "✓" : ""}
+                      </div>
+
                       {/* Image Thumbnail Container */}
                       <div
                         style={{
@@ -6038,12 +6526,7 @@ export default function QuotationModule({
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setAccFormImage(item.image);
-                            setAccFormImageId(item.id);
-                            if (!accFormName.trim()) {
-                              setAccFormName(item.name);
-                            }
-                            setShowAccGalleryModal(false);
+                            handleToggleModalItemSelect(item);
                           }}
                           style={{
                             width: "100%",
@@ -6061,7 +6544,7 @@ export default function QuotationModule({
                             transition: "all 0.15s ease",
                           }}
                         >
-                          {isSelected ? "✓ Selected" : "Select Image"}
+                          {isSelected ? "✓ Selected" : "Select Photo"}
                         </button>
                       </div>
                     </div>
@@ -6070,36 +6553,96 @@ export default function QuotationModule({
               )}
             </div>
 
-            {/* Modal Footer */}
+            {/* Modal Footer with Multi-Select Actions */}
             <div
               style={{
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
+                flexWrap: "wrap",
+                gap: 10,
                 paddingTop: 12,
                 marginTop: 8,
                 borderTop: "1px solid #e2e8f0",
               }}
             >
-              <span style={{ fontSize: 11, color: "#64748b" }}>
-                💡 Tip: You can also use <strong>Choose File</strong> to upload your own custom photo.
-              </span>
-              <button
-                type="button"
-                onClick={() => setShowAccGalleryModal(false)}
-                style={{
-                  padding: "6px 14px",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  borderRadius: 6,
-                  border: "1px solid #cbd5e1",
-                  backgroundColor: "#ffffff",
-                  color: "#475569",
-                  cursor: "pointer",
-                }}
-              >
-                Close
-              </button>
+              <div style={{ fontSize: 11, color: "#64748b" }}>
+                💡 Select multiple photos at once. Click <strong>Apply Selection</strong> to attach them to your item.
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                {modalSelectedItems.length > 0 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setModalSelectedItems([])}
+                      style={{
+                        padding: "6px 12px",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        borderRadius: 6,
+                        border: "1px solid #cbd5e1",
+                        backgroundColor: "#ffffff",
+                        color: "#dc2626",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Clear Selection
+                    </button>
+                    {modalSelectedItems.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={handleBatchAddModalItems}
+                        style={{
+                          padding: "6px 12px",
+                          fontSize: 12,
+                          fontWeight: 600,
+                          borderRadius: 6,
+                          border: "1px solid #7A131A",
+                          backgroundColor: "#ffffff",
+                          color: "#7A131A",
+                          cursor: "pointer",
+                        }}
+                        title="Add each selected accessory as a separate row in the quotation"
+                      >
+                        ➕ Add All as Separate Items ({modalSelectedItems.length})
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleApplyModalSelection}
+                      style={{
+                        padding: "6px 16px",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        borderRadius: 6,
+                        border: "none",
+                        backgroundColor: "#7A131A",
+                        color: "#ffffff",
+                        cursor: "pointer",
+                        boxShadow: "0 1px 2px rgba(122, 19, 26, 0.3)",
+                      }}
+                    >
+                      ✓ Apply Selection ({modalSelectedItems.length} photos)
+                    </button>
+                  </>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowAccGalleryModal(false)}
+                  style={{
+                    padding: "6px 14px",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    borderRadius: 6,
+                    border: "1px solid #cbd5e1",
+                    backgroundColor: "#ffffff",
+                    color: "#475569",
+                    cursor: "pointer",
+                  }}
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
