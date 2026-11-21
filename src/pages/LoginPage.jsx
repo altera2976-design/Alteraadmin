@@ -143,6 +143,16 @@ export default function LoginPage() {
               'Sign In'
             )}
           </button>
+
+          {/* Forgot Password link */}
+          <div style={{ textAlign: 'right', marginTop: -6 }}>
+            <a
+              href="/super-admin/forgot-password"
+              style={{ fontSize: 13, color: '#9F0B22', textDecoration: 'none', fontWeight: 600 }}
+            >
+              Forgot Password?
+            </a>
+          </div>
         </form>
 
         <p style={s.footer}>

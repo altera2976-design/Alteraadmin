@@ -105,6 +105,16 @@ export default function AdminLoginPage() {
           <button type="submit" disabled={loading} style={styles.button}>
             {loading ? 'Authenticating...' : 'Sign In to Admin Dashboard'}
           </button>
+
+          {/* Forgot Password link */}
+          <div style={{ textAlign: 'right', marginTop: -4 }}>
+            <a
+              href="/admin/forgot-password"
+              style={{ fontSize: 13, color: '#9F0B22', textDecoration: 'none', fontWeight: 600 }}
+            >
+              Forgot Password?
+            </a>
+          </div>
         </form>
 
         <div style={styles.footer}>
