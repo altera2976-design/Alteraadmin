@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, ImageBackground } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,10 +13,89 @@ export default function ResetPasswordScreen() {
   const [newPassword, setNewPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [resendingOtp, setResendingOtp] = useState(false);
+  const [isOtpVerified, setIsOtpVerified] = useState(false);
+  const [resetToken, setResetToken] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState(60);
   const [error, setError] = useState('');
+  const [successInfo, setSuccessInfo] = useState('');
+
+  // 60-second cooldown timer for Resend OTP
+  useEffect(() => {
+    let timer: any;
+    if (countdown > 0) {
+      timer = setInterval(() => {
+        setCountdown((prev) => (prev > 0 ? prev - 1 : 0));
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [countdown]);
+
+  const handleResendOtp = async () => {
+    if (countdown > 0 || resendingOtp) return;
+    if (!email) {
+      setError('Email address is missing. Please go back and try again.');
+      return;
+    }
+
+    setResendingOtp(true);
+    setError('');
+    setSuccessInfo('');
+
+    try {
+      const res = await authService.forgotPassword(email as string);
+      if (res.success) {
+        setCountdown(60);
+        setIsOtpVerified(false);
+        setResetToken(null);
+        Alert.alert('OTP Sent', 'A new 6-digit verification code has been sent to your email.');
+      } else {
+        setError(res.message || 'Failed to resend verification code.');
+      }
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Failed to resend verification code. Please try again.');
+    } finally {
+      setResendingOtp(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!otp.trim()) {
+      setError('Please enter the 6-digit OTP code.');
+      return;
+    }
+    if (otp.trim().length !== 6) {
+      setError('OTP must be exactly 6 digits.');
+      return;
+    }
+
+    setVerifyingOtp(true);
+    setError('');
+    setSuccessInfo('');
+
+    try {
+      const res = await authService.verifyOtp(email as string, otp.trim());
+      if (res.success) {
+        setIsOtpVerified(true);
+        if (res.resetToken) {
+          setResetToken(res.resetToken);
+        }
+        setSuccessInfo('Verification code confirmed! Now enter your new password.');
+      } else {
+        setError(res.message || 'Invalid or expired OTP.');
+      }
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Invalid or expired verification code.');
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
 
   const handleResetPassword = async () => {
-    if (!otp.trim()) {
+    if (!isOtpVerified && !otp.trim()) {
       setError('Please enter the 6-digit OTP sent to your email.');
       return;
     }
@@ -29,7 +108,12 @@ export default function ResetPasswordScreen() {
     setError('');
 
     try {
-      const res = await authService.resetPassword(email as string, otp.trim(), newPassword);
+      const res = await authService.resetPassword(
+        email as string,
+        isOtpVerified ? undefined : otp.trim(),
+        newPassword,
+        resetToken || undefined
+      );
       if (res.success) {
         Alert.alert('Success', 'Your password has been reset successfully. You can now login.');
         // Navigate back to login screen with the email pre-filled
@@ -72,9 +156,16 @@ export default function ResetPasswordScreen() {
               </View>
             ) : null}
 
-            {/* OTP Input */}
+            {successInfo ? (
+              <View style={styles.successBox}>
+                <Ionicons name="checkmark-circle-outline" size={18} color="#059669" style={{ marginRight: 6 }} />
+                <Text style={styles.successText}>{successInfo}</Text>
+              </View>
+            ) : null}
+
+            {/* OTP Input with inline Verify button or status */}
             <View style={styles.inputWrapper}>
-              <Ionicons name="keypad-outline" size={20} color="#757575" style={styles.inputIcon} />
+              <Ionicons name="keypad-outline" size={20} color={isOtpVerified ? '#10B981' : '#757575'} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="6-digit OTP Code"
@@ -82,8 +173,43 @@ export default function ResetPasswordScreen() {
                 keyboardType="number-pad"
                 maxLength={6}
                 value={otp}
+                editable={!isOtpVerified}
                 onChangeText={(v) => { setOtp(v); setError(''); }}
               />
+              {isOtpVerified ? (
+                <View style={styles.verifiedBadge}>
+                  <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.verifyInlineBtn, otp.length !== 6 && styles.verifyInlineBtnDisabled]}
+                  onPress={handleVerifyOtp}
+                  disabled={verifyingOtp || otp.length !== 6}
+                  activeOpacity={0.7}
+                >
+                  {verifyingOtp ? (
+                    <ActivityIndicator size="small" color="#7A131A" />
+                  ) : (
+                    <Text style={[styles.verifyInlineBtnText, otp.length !== 6 && styles.verifyInlineBtnTextDisabled]}>Verify OTP</Text>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Resend OTP Row */}
+            <View style={styles.resendRow}>
+              <Text style={styles.resendPrompt}>Didn't receive code? </Text>
+              {countdown > 0 ? (
+                <Text style={styles.countdownText}>Resend OTP in {countdown}s</Text>
+              ) : (
+                <TouchableOpacity onPress={handleResendOtp} disabled={resendingOtp} activeOpacity={0.7}>
+                  {resendingOtp ? (
+                    <ActivityIndicator size="small" color="#7A131A" />
+                  ) : (
+                    <Text style={styles.resendActiveText}>Resend OTP</Text>
+                  )}
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* New Password Input */}
@@ -91,7 +217,7 @@ export default function ResetPasswordScreen() {
               <Ionicons name="lock-closed-outline" size={20} color="#757575" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder="New Password"
+                placeholder="New Password (min 6 chars)"
                 placeholderTextColor="#999999"
                 secureTextEntry={!showPass}
                 autoCapitalize="none"
@@ -104,12 +230,19 @@ export default function ResetPasswordScreen() {
               </TouchableOpacity>
             </View>
 
+            {/* Reset Password Button */}
             <TouchableOpacity style={styles.submitBtn} onPress={handleResetPassword} disabled={loading} activeOpacity={0.85}>
               {loading ? (
                 <ActivityIndicator color="#ffffff" size="small" />
               ) : (
                 <Text style={styles.submitBtnText}>Reset Password</Text>
               )}
+            </TouchableOpacity>
+
+            {/* Back to Login Button */}
+            <TouchableOpacity style={styles.backToLoginBtn} onPress={() => router.replace('/(auth)/login')} activeOpacity={0.7}>
+              <Ionicons name="arrow-back-outline" size={16} color="#7A131A" style={{ marginRight: 6 }} />
+              <Text style={styles.backToLoginText}>Back to Login</Text>
             </TouchableOpacity>
           </View>
           
@@ -148,16 +281,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.3)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 30,
   },
   content: {
     flex: 1,
     justifyContent: 'center',
-    paddingBottom: 60,
+    paddingBottom: 40,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 24,
   },
   iconCircle: {
     width: 72,
@@ -201,10 +334,27 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     borderColor: '#FCA5A5',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   errorText: {
     color: '#D60000',
+    fontSize: 13,
+    fontWeight: '500',
+    flex: 1,
+  },
+  successBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(236, 253, 245, 0.95)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#6EE7B7',
+    marginBottom: 16,
+  },
+  successText: {
+    color: '#065F46',
     fontSize: 13,
     fontWeight: '500',
     flex: 1,
@@ -216,7 +366,7 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     height: 52,
     paddingHorizontal: 16,
-    marginBottom: 16,
+    marginBottom: 14,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08,
@@ -231,6 +381,50 @@ const styles = StyleSheet.create({
     fontSize: 14.5,
     color: '#111111',
     height: '100%',
+  },
+  verifiedBadge: {
+    paddingHorizontal: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  verifyInlineBtn: {
+    backgroundColor: 'rgba(122, 19, 26, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+  },
+  verifyInlineBtnDisabled: {
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  verifyInlineBtnText: {
+    color: '#7A131A',
+    fontSize: 12.5,
+    fontWeight: '700',
+  },
+  verifyInlineBtnTextDisabled: {
+    color: '#999999',
+  },
+  resendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginTop: -4,
+    marginBottom: 14,
+    paddingRight: 6,
+  },
+  resendPrompt: {
+    fontSize: 13,
+    color: '#555555',
+  },
+  countdownText: {
+    fontSize: 13,
+    color: '#777777',
+    fontWeight: '600',
+  },
+  resendActiveText: {
+    fontSize: 13,
+    color: '#7A131A',
+    fontWeight: '700',
   },
   eyeBtn: {
     padding: 6,
@@ -254,5 +448,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     letterSpacing: 0.5,
+  },
+  backToLoginBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 18,
+    paddingVertical: 10,
+  },
+  backToLoginText: {
+    color: '#7A131A',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

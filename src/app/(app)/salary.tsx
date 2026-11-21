@@ -239,17 +239,11 @@ export default function SalaryScreen() {
   useEffect(() => {
     setIsLoading(true);
     
-    const task = Platform.OS !== 'web'
-      ? require('react-native').InteractionManager.runAfterInteractions(() => {
-          loadPayroll(false).finally(() => setIsLoading(false));
-        })
-      : { cancel: () => {} };
-
-    if (Platform.OS === 'web') {
+    const frameId = requestAnimationFrame(() => {
       loadPayroll(false).finally(() => setIsLoading(false));
-    }
-    
-    return () => task.cancel();
+    });
+
+    return () => cancelAnimationFrame(frameId);
   }, [loadPayroll]);
 
   const onRefresh = useCallback(async () => {

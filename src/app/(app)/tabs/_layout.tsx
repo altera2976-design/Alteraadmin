@@ -1,14 +1,34 @@
-import { Tabs } from 'expo-router';
+import { Tabs, useNavigation } from 'expo-router';
 import { THEME } from '../../../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
-import { Platform } from 'react-native';
-import { useNavigation } from 'expo-router';
-import { TouchableOpacity, View, Text, Image } from 'react-native';
+import { Platform, TouchableOpacity, View, Image } from 'react-native';
 
 import { useAuth } from '../../../context/AuthContext';
 
+function DrawerMenuButton() {
+  const navigation = useNavigation<any>();
+  return (
+    <TouchableOpacity
+      onPress={() => {
+        try {
+          if (navigation?.openDrawer) {
+            navigation.openDrawer();
+          } else if (navigation?.getParent) {
+            navigation.getParent()?.openDrawer?.();
+          }
+        } catch {
+          // safe fallback
+        }
+      }}
+      style={{ marginLeft: 16 }}
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+    >
+      <Ionicons name="menu-outline" size={28} color="#111" />
+    </TouchableOpacity>
+  );
+}
+
 export default function TabsLayout() {
-  const navigation = useNavigation();
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
 
@@ -28,11 +48,7 @@ export default function TabsLayout() {
           fontWeight: '700',
           color: '#111',
         },
-        headerLeft: () => (
-          <TouchableOpacity onPress={() => (navigation as any).openDrawer()} style={{ marginLeft: 16 }}>
-            <Ionicons name="menu-outline" size={28} color="#111" />
-          </TouchableOpacity>
-        ),
+        headerLeft: () => <DrawerMenuButton />,
         headerRight: () => (
           <TouchableOpacity style={{ marginRight: 16 }}>
             <Ionicons name="notifications-outline" size={24} color={THEME.colors.primary} />
@@ -71,7 +87,11 @@ export default function TabsLayout() {
             </View>
           ),
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home-outline" size={size || 24} color={color} />
+            <Ionicons
+              name="home-outline"
+              size={size || 24}
+              color={typeof color === 'string' ? color : THEME.colors.primary}
+            />
           ),
         }}
       />
@@ -80,9 +100,13 @@ export default function TabsLayout() {
         options={{
           title: 'CRM',
           headerTitle: 'CRM',
-          href: isAdmin ? '/(app)/tabs/crm' : null,
+          href: isAdmin ? undefined : null,
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="people-outline" size={size || 24} color={color} />
+            <Ionicons
+              name="people-outline"
+              size={size || 24}
+              color={typeof color === 'string' ? color : THEME.colors.primary}
+            />
           ),
         }}
       />
@@ -92,7 +116,11 @@ export default function TabsLayout() {
           title: 'Projects',
           headerTitle: 'Projects',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="briefcase-outline" size={size || 24} color={color} />
+            <Ionicons
+              name="briefcase-outline"
+              size={size || 24}
+              color={typeof color === 'string' ? color : THEME.colors.primary}
+            />
           ),
         }}
       />
@@ -102,7 +130,11 @@ export default function TabsLayout() {
           title: 'Bike',
           headerTitle: 'Bike Tracking',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="bicycle-outline" size={size || 24} color={color} />
+            <Ionicons
+              name="bicycle-outline"
+              size={size || 24}
+              color={typeof color === 'string' ? color : THEME.colors.primary}
+            />
           ),
         }}
       />
@@ -111,9 +143,13 @@ export default function TabsLayout() {
         options={{
           title: 'Reports',
           headerTitle: 'Reports',
-          href: isAdmin ? '/(app)/tabs/reports' : null,
+          href: isAdmin ? undefined : null,
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="pie-chart-outline" size={size || 24} color={color} />
+            <Ionicons
+              name="pie-chart-outline"
+              size={size || 24}
+              color={typeof color === 'string' ? color : THEME.colors.primary}
+            />
           ),
         }}
       />
@@ -122,17 +158,25 @@ export default function TabsLayout() {
         listeners={({ navigation }) => ({
           tabPress: (e) => {
             e.preventDefault();
-            (navigation as any).openDrawer();
+            try {
+              (navigation as any)?.getParent?.()?.openDrawer?.() ?? (navigation as any)?.openDrawer?.();
+            } catch {
+              // safe fallback
+            }
           },
         })}
         options={{
           title: 'More',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="ellipsis-horizontal-outline" size={size || 24} color={color} />
+            <Ionicons
+              name="ellipsis-horizontal-outline"
+              size={size || 24}
+              color={typeof color === 'string' ? color : THEME.colors.primary}
+            />
           ),
         }}
       />
-      {/* Hide the original profile screen from the tabs, it's accessible via drawer or we can just keep it but hidden from tab bar */}
+      {/* Hide the original profile screen from the tabs, it's accessible via drawer */}
       <Tabs.Screen
         name="profile"
         options={{

@@ -168,25 +168,15 @@ export default function AttendanceScreen() {
   useEffect(() => {
     setIsLoading(true);
     
-    const task = Platform.OS !== 'web'
-      ? require('react-native').InteractionManager.runAfterInteractions(() => {
-          if (activeTab === "admin" && isAdmin) {
-            loadAdminData(selectedAdminDate).finally(() => setIsLoading(false));
-          } else {
-            loadEmployeeData().finally(() => setIsLoading(false));
-          }
-        })
-      : { cancel: () => {} };
-      
-    if (Platform.OS === 'web') {
+    const frameId = requestAnimationFrame(() => {
       if (activeTab === "admin" && isAdmin) {
         loadAdminData(selectedAdminDate).finally(() => setIsLoading(false));
       } else {
         loadEmployeeData().finally(() => setIsLoading(false));
       }
-    }
-    
-    return () => task.cancel();
+    });
+
+    return () => cancelAnimationFrame(frameId);
   }, [activeTab, isAdmin, selectedAdminDate, loadAdminData, loadEmployeeData]);
 
   // ── Haversine Distance Helper ──────────────────────────────────────────────

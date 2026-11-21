@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { usePathname, useRouter } from "expo-router";
 import { Drawer } from "expo-router/drawer";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import {
   Image,
   Platform,
@@ -296,19 +297,26 @@ export default function AppLayout() {
   const drawerWidth = Math.min(Math.round(width * 0.78), 340);
 
   return (
-    <Drawer
-      drawerContent={(props) => <CustomDrawerContent {...props} />}
-      screenOptions={{
-        headerShown: false,
-        drawerStyle: {
-          width: drawerWidth,
-          backgroundColor: "#fff",
-        },
-      }}
-    >
-      {/* We set the main tabs layout as the primary screen in the drawer */}
-      <Drawer.Screen name="tabs" options={{ title: "Home" }} />
-    </Drawer>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <Drawer
+        drawerContent={(props) => <CustomDrawerContent {...props} />}
+        screenOptions={{
+          headerShown: false,
+          drawerStyle: {
+            width: drawerWidth,
+            backgroundColor: "#fff",
+          },
+        }}
+      >
+        {/* We set the main tabs layout as the primary screen in the drawer */}
+        <Drawer.Screen name="tabs" options={{ title: "Home" }} />
+        <Drawer.Screen name="attendance" options={{ drawerItemStyle: { display: "none" } }} />
+        <Drawer.Screen name="project-detail" options={{ drawerItemStyle: { display: "none" } }} />
+        <Drawer.Screen name="quotation" options={{ drawerItemStyle: { display: "none" } }} />
+        <Drawer.Screen name="salary" options={{ drawerItemStyle: { display: "none" } }} />
+        <Drawer.Screen name="transactions" options={{ drawerItemStyle: { display: "none" } }} />
+      </Drawer>
+    </GestureHandlerRootView>
   );
 }
 

@@ -107,11 +107,9 @@ export default function ProjectsScreen() {
   }, [searchQuery, selectedStatus, hasTaskPermission, isAdmin]);
 
   useEffect(() => {
-    const task = Platform.OS !== 'web'
-      ? require('react-native').InteractionManager.runAfterInteractions(() => loadData())
-      : { cancel: () => {} };
-      
-    if (Platform.OS === 'web') loadData();
+    const frameId = requestAnimationFrame(() => {
+      loadData();
+    });
 
     const socket = getSocket();
     if (socket) {
@@ -124,7 +122,7 @@ export default function ProjectsScreen() {
       socket.on('task:deleted', handleLive);
 
       return () => {
-        task.cancel();
+        cancelAnimationFrame(frameId);
         socket.off('project:created', handleLive);
         socket.off('project:updated', handleLive);
         socket.off('project:deleted', handleLive);
@@ -134,7 +132,7 @@ export default function ProjectsScreen() {
       };
     }
     
-    return () => task.cancel();
+    return () => cancelAnimationFrame(frameId);
   }, [loadData]);
 
   const onRefresh = () => {

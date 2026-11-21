@@ -105,8 +105,24 @@ export const authService = {
     return res.data;
   },
 
-  resetPassword: async (email: string, otp: string, newPassword: string): Promise<{ success: boolean; message: string }> => {
-    const res = await api.post('/auth/reset-password', { email, otp, newPassword });
+  verifyOtp: async (email: string, otp: string): Promise<{ success: boolean; message: string; resetToken?: string }> => {
+    const res = await api.post('/auth/verify-otp', { email, otp });
+    return res.data;
+  },
+
+  resetPassword: async (
+    email: string,
+    otp?: string,
+    newPassword?: string,
+    resetToken?: string
+  ): Promise<{ success: boolean; message: string }> => {
+    const payload: { email: string; newPassword?: string; otp?: string; resetToken?: string } = {
+      email,
+      newPassword,
+    };
+    if (otp) payload.otp = otp;
+    if (resetToken) payload.resetToken = resetToken;
+    const res = await api.post('/auth/reset-password', payload);
     return res.data;
   },
 };

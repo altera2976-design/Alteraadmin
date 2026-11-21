@@ -74,13 +74,11 @@ export default function CRMScreen() {
 
   useEffect(() => {
     // Only fetch after navigation transition completes for smooth UX
-    const task = Platform.OS !== 'web' 
-      ? require('react-native').InteractionManager.runAfterInteractions(() => fetchCRMData(false, search))
-      : { cancel: () => {} };
-      
-    if (Platform.OS === 'web') fetchCRMData(false, search);
-      
-    return () => task.cancel();
+    const frameId = requestAnimationFrame(() => {
+      fetchCRMData(false, search);
+    });
+
+    return () => cancelAnimationFrame(frameId);
   }, [fetchCRMData, search]);
 
   useEffect(() => {

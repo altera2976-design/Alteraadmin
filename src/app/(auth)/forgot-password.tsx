@@ -83,6 +83,11 @@ export default function ForgotPasswordScreen() {
                 <Text style={styles.submitBtnText}>Send OTP</Text>
               )}
             </TouchableOpacity>
+
+            <TouchableOpacity style={styles.backToLoginBtn} onPress={() => router.replace('/(auth)/login')} activeOpacity={0.7}>
+              <Ionicons name="arrow-back-outline" size={16} color="#7A131A" style={{ marginRight: 6 }} />
+              <Text style={styles.backToLoginText}>Back to Login</Text>
+            </TouchableOpacity>
           </View>
           
         </ScrollView>
@@ -222,5 +227,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     letterSpacing: 0.5,
+  },
+  backToLoginBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+    paddingVertical: 10,
+  },
+  backToLoginText: {
+    color: '#7A131A',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
