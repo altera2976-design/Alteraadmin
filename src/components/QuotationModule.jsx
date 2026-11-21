@@ -841,10 +841,45 @@ export default function QuotationModule({
 
   const handleRemoveSingleAccFormImage = (indexToRemove) => {
     setAccFormImages((prev) => {
-      const updated = prev.filter((_, i) => i !== indexToRemove);
+      const current = prev.length > 0 ? prev : (accFormImage ? [accFormImage] : []);
+      const updated = current.filter((_, i) => i !== indexToRemove);
       setAccFormImage(updated[0] || "");
+      if (updated.length === 0) {
+        setAccFormImageId("");
+      }
       return updated;
     });
+  };
+
+  const handleOpenGalleryModal = () => {
+    const currentImgs = accFormImages.length > 0
+      ? accFormImages
+      : (accFormImage ? [accFormImage] : []);
+    const preselected = [];
+    currentImgs.forEach((imgSrc) => {
+      const foundInCatalog = catalogAccessories.find((c) => c.image === imgSrc);
+      if (foundInCatalog) {
+        if (!preselected.some((p) => p.id === foundInCatalog.id)) {
+          preselected.push(foundInCatalog);
+        }
+      } else {
+        const foundInPredefined = PREDEFINED_ACCESSORIES.find((p) => p.image === imgSrc);
+        if (foundInPredefined) {
+          if (!preselected.some((p) => p.id === foundInPredefined.id)) {
+            preselected.push(foundInPredefined);
+          }
+        } else {
+          preselected.push({
+            id: `uploaded-img-${imgSrc.slice(-12)}`,
+            name: "Uploaded Photo",
+            category: "Custom Upload",
+            image: imgSrc,
+          });
+        }
+      }
+    });
+    setModalSelectedItems(preselected);
+    setShowAccGalleryModal(true);
   };
 
   const handleToggleModalItemSelect = (item) => {
@@ -858,21 +893,18 @@ export default function QuotationModule({
     });
   };
 
-  const handleApplyModalSelection = () => {
-    if (modalSelectedItems.length === 0) {
-      setShowAccGalleryModal(false);
-      return;
+  const handleDeleteCustomCatalogItem = (itemId, e) => {
+    if (e) e.stopPropagation();
+    if (window.confirm("Do you want to delete this custom hardware accessory from catalog?")) {
+      setCatalogAccessories((prev) => prev.filter((it) => it.id !== itemId));
+      setModalSelectedItems((prev) => prev.filter((it) => it.id !== itemId));
     }
-    const newImgs = modalSelectedItems.map((it) => it.image).filter(Boolean);
-    setAccFormImages((prev) => {
-      // Merge unique
-      const combined = [...prev];
-      newImgs.forEach((img) => {
-        if (!combined.includes(img)) combined.push(img);
-      });
-      setAccFormImage(combined[0] || "");
-      return combined;
-    });
+  };
+
+  const handleApplyModalSelection = () => {
+    const selectedPhotos = modalSelectedItems.map((it) => it.image).filter(Boolean);
+    setAccFormImages(selectedPhotos);
+    setAccFormImage(selectedPhotos[0] || "");
     setAccFormImageId(modalSelectedItems[0]?.id || "");
     if (!accFormName.trim() && modalSelectedItems.length === 1) {
       setAccFormName(modalSelectedItems[0].name);
@@ -3852,13 +3884,7 @@ export default function QuotationModule({
                           />
                           <button
                             type="button"
-                            onClick={() => {
-                              const preselected = catalogAccessories.filter((c) =>
-                                accFormImages.includes(c.image) || (accFormImage && c.image === accFormImage)
-                              );
-                              setModalSelectedItems(preselected);
-                              setShowAccGalleryModal(true);
-                            }}
+                            onClick={handleOpenGalleryModal}
                             style={{
                               display: "inline-flex",
                               alignItems: "center",
@@ -3930,13 +3956,7 @@ export default function QuotationModule({
                             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                               <button
                                 type="button"
-                                onClick={() => {
-                                  const preselected = catalogAccessories.filter((c) =>
-                                    accFormImages.includes(c.image) || (accFormImage && c.image === accFormImage)
-                                  );
-                                  setModalSelectedItems(preselected);
-                                  setShowAccGalleryModal(true);
-                                }}
+                                onClick={handleOpenGalleryModal}
                                 style={{
                                   fontSize: 11,
                                   fontWeight: 600,
@@ -3966,8 +3986,9 @@ export default function QuotationModule({
                                   cursor: "pointer",
                                   padding: "3px 6px",
                                 }}
+                                title="Delete all photos from this item"
                               >
-                                Clear All
+                                🗑️ Clear All
                               </button>
                             </div>
                           </div>
@@ -3988,12 +4009,12 @@ export default function QuotationModule({
                                   key={imgIdx}
                                   style={{
                                     position: "relative",
-                                    width: 58,
-                                    height: 58,
+                                    width: 62,
+                                    height: 62,
                                     borderRadius: 6,
                                     border: "1px solid #cbd5e1",
                                     backgroundColor: "#ffffff",
-                                    padding: 2,
+                                    padding: 3,
                                     display: "flex",
                                     alignItems: "center",
                                     justifyContent: "center",
@@ -4012,27 +4033,32 @@ export default function QuotationModule({
                                   />
                                   <button
                                     type="button"
-                                    onClick={() => handleRemoveSingleAccFormImage(imgIdx)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRemoveSingleAccFormImage(imgIdx);
+                                    }}
                                     style={{
                                       position: "absolute",
-                                      top: -5,
-                                      right: -5,
-                                      width: 16,
-                                      height: 16,
+                                      top: -7,
+                                      right: -7,
+                                      width: 22,
+                                      height: 22,
                                       borderRadius: "50%",
                                       backgroundColor: "#dc2626",
                                       color: "#ffffff",
-                                      border: "1px solid #ffffff",
+                                      border: "2px solid #ffffff",
                                       display: "flex",
                                       alignItems: "center",
                                       justifyContent: "center",
-                                      fontSize: 9,
-                                      fontWeight: 700,
+                                      fontSize: 11,
+                                      fontWeight: 800,
                                       cursor: "pointer",
                                       padding: 0,
                                       lineHeight: 1,
+                                      boxShadow: "0 1px 4px rgba(0,0,0,0.25)",
+                                      zIndex: 10,
                                     }}
-                                    title="Remove this photo"
+                                    title="Delete this photo"
                                   >
                                     ✕
                                   </button>
@@ -4042,16 +4068,10 @@ export default function QuotationModule({
 
                             <button
                               type="button"
-                              onClick={() => {
-                                const preselected = catalogAccessories.filter((c) =>
-                                  accFormImages.includes(c.image) || (accFormImage && c.image === accFormImage)
-                                );
-                                setModalSelectedItems(preselected);
-                                setShowAccGalleryModal(true);
-                              }}
+                              onClick={handleOpenGalleryModal}
                               style={{
-                                width: 58,
-                                height: 58,
+                                width: 62,
+                                height: 62,
                                 borderRadius: 6,
                                 border: "1px dashed #7A131A",
                                 backgroundColor: "#fff5f5",
@@ -6325,6 +6345,107 @@ export default function QuotationModule({
               </div>
             )}
 
+            {/* Selected Photos Tray with Quick Delete / Remove */}
+            {modalSelectedItems.length > 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "8px 12px",
+                  backgroundColor: "#fff5f5",
+                  border: "1px solid #fecdd3",
+                  borderRadius: 8,
+                  margin: "8px 0 10px 0",
+                  overflowX: "auto",
+                }}
+              >
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#7A131A", whiteSpace: "nowrap" }}>
+                  Selected Photos ({modalSelectedItems.length}):
+                </div>
+                <div style={{ display: "flex", gap: 6, flex: 1, overflowX: "auto", padding: "2px 0" }}>
+                  {modalSelectedItems.map((item, idx) => (
+                    <div
+                      key={item.id || idx}
+                      style={{
+                        position: "relative",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        backgroundColor: "#ffffff",
+                        border: "1px solid #7A131A",
+                        borderRadius: 6,
+                        padding: "2px 6px 2px 2px",
+                        gap: 6,
+                        flexShrink: 0,
+                      }}
+                    >
+                      <img
+                        src={resolveAccessoryImageSrc(item.image)}
+                        alt={item.name}
+                        style={{ width: 28, height: 28, objectFit: "contain", borderRadius: 4 }}
+                      />
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          color: "#1e293b",
+                          maxWidth: 100,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {item.name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleModalItemSelect(item);
+                        }}
+                        style={{
+                          background: "#fee2e2",
+                          border: "none",
+                          borderRadius: "50%",
+                          color: "#dc2626",
+                          width: 18,
+                          height: 18,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 10,
+                          cursor: "pointer",
+                          fontWeight: 800,
+                          padding: 0,
+                          lineHeight: 1,
+                        }}
+                        title="Delete / remove from selection"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setModalSelectedItems([])}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#dc2626",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    padding: "2px 6px",
+                  }}
+                  title="Remove all photos from selection"
+                >
+                  Clear All
+                </button>
+              </div>
+            )}
+
             {/* Gallery Grid */}
             <div
               style={{
@@ -6441,6 +6562,31 @@ export default function QuotationModule({
                         }
                       }}
                     >
+                      {/* Delete button for custom items */}
+                      {item.isCustom && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteCustomCatalogItem(item.id, e)}
+                          style={{
+                            position: "absolute",
+                            top: 8,
+                            left: 8,
+                            backgroundColor: "#fee2e2",
+                            border: "1px solid #fecdd3",
+                            borderRadius: 4,
+                            color: "#dc2626",
+                            padding: "2px 6px",
+                            fontSize: 10,
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            zIndex: 3,
+                          }}
+                          title="Delete this custom accessory from catalog"
+                        >
+                          🗑️ Delete
+                        </button>
+                      )}
+
                       {/* Selection Checkmark Badge on Top-Right */}
                       <div
                         style={{
@@ -6536,15 +6682,15 @@ export default function QuotationModule({
                             borderRadius: 4,
                             cursor: "pointer",
                             border: isSelected
-                              ? "1px solid #7A131A"
+                              ? "1px solid #dc2626"
                               : "1px solid #cbd5e1",
-                            backgroundColor: isSelected ? "#7A131A" : "#ffffff",
-                            color: isSelected ? "#ffffff" : "#334155",
+                            backgroundColor: isSelected ? "#fee2e2" : "#ffffff",
+                            color: isSelected ? "#dc2626" : "#334155",
                             marginTop: 4,
                             transition: "all 0.15s ease",
                           }}
                         >
-                          {isSelected ? "✓ Selected" : "Select Photo"}
+                          {isSelected ? "✕ Remove Photo" : "Select Photo"}
                         </button>
                       </div>
                     </div>
@@ -6570,6 +6716,30 @@ export default function QuotationModule({
                 💡 Select multiple photos at once. Click <strong>Apply Selection</strong> to attach them to your item.
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                {modalSelectedItems.length === 0 && (accFormImages.length > 0 || accFormImage) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAccFormImages([]);
+                      setAccFormImage("");
+                      setAccFormImageId("");
+                      setShowAccGalleryModal(false);
+                    }}
+                    style={{
+                      padding: "6px 14px",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      borderRadius: 6,
+                      border: "1px solid #fecdd3",
+                      backgroundColor: "#fee2e2",
+                      color: "#dc2626",
+                      cursor: "pointer",
+                    }}
+                    title="Remove all photos from this accessory item"
+                  >
+                    🗑️ Remove All Photos from Item
+                  </button>
+                )}
                 {modalSelectedItems.length > 0 && (
                   <>
                     <button
@@ -6585,8 +6755,9 @@ export default function QuotationModule({
                         color: "#dc2626",
                         cursor: "pointer",
                       }}
+                      title="Clear / deselect all photos"
                     >
-                      Clear Selection
+                      Clear All ({modalSelectedItems.length})
                     </button>
                     {modalSelectedItems.length > 1 && (
                       <button
