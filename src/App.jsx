@@ -14,6 +14,7 @@ import EmployeesPage from './pages/EmployeesPage';
 import FinancePage from './pages/FinancePage';
 import LocationsPage from './pages/LocationsPage';
 import LoginPage from './pages/LoginPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ManagerPortalPage from './pages/ManagerPortalPage';
 import PayrollPage from './pages/PayrollPage';
 import ProjectsManagementPage from './pages/ProjectsManagementPage';
@@ -87,6 +88,8 @@ export default function App() {
           {/* Super Admin Login */}
           <Route path="/super-admin/login" element={<LoginPage />} />
           <Route path="/login" element={<Navigate to="/super-admin/login" replace />} />
+          <Route path="/super-admin/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/admin/forgot-password" element={<ForgotPasswordPage />} />
 
           {/* Super Admin Master Controls */}
           <Route path="/super-admin" element={<Navigate to="/super-admin/dashboard" replace />} />
