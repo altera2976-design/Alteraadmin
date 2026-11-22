@@ -4,14 +4,14 @@ import { Drawer } from "expo-router/drawer";
 import { StatusBar } from "expo-status-bar";
 import React, { useMemo } from "react";
 import {
-  Image,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  useWindowDimensions,
-  View,
+    Image,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    useWindowDimensions,
+    View,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -98,19 +98,19 @@ function CustomDrawerContent(props: any) {
   const menuList = useMemo(() => {
     if (modules && modules.length > 0) {
       const activeMobileModules = modules.filter(
-        (m) => m.enabled !== false && m.mobileVisible !== false
+        (m: any) => m.enabled !== false && m.mobileVisible !== false
       );
 
       const userRoleUpper = ((userRole as string) || "EMPLOYEE").toUpperCase();
       const isSuper = isAdmin || userRoleUpper === "SUPER_ADMIN";
 
-      const filtered = activeMobileModules.filter((m) => {
+      const filtered = activeMobileModules.filter((m: any) => {
         if (isSuper) return true;
         if (!m.allowedRoles || m.allowedRoles.length === 0) return true;
         return m.allowedRoles.includes(userRoleUpper);
       });
 
-      const dynamicList: { label: string; icon: string; route: string; isLogout: boolean }[] = filtered.map((m) => ({
+      const dynamicList: { label: string; icon: string; route: string; isLogout: boolean }[] = filtered.map((m: any) => ({
         label: m.label,
         icon: m.icon || "grid-outline",
         route: m.mobileRoute || "/(app)/tabs/dashboard",
@@ -209,17 +209,16 @@ function CustomDrawerContent(props: any) {
 function DrawerMenuItem({ icon, label, isActive, isLogout, onPress }: any) {
   return (
     <TouchableOpacity
-      style={[
-        styles.drawerItem,
-        isActive && styles.drawerItemActive,
-      ]}
+      style={[styles.drawerItem, isActive && styles.drawerItemActive]}
       onPress={onPress}
       activeOpacity={0.7}
     >
       <Ionicons
         name={icon as any}
         size={20}
-        color={isLogout ? "#E53E3E" : isActive ? THEME.colors.primary : "#333333"}
+        color={
+          isLogout ? "#E53E3E" : isActive ? THEME.colors.primary : "#333333"
+        }
         style={styles.drawerIcon}
       />
       <Text
@@ -272,11 +271,26 @@ export default function AppLayout() {
         }}
       >
         <Drawer.Screen name="tabs" options={{ title: "Home" }} />
-        <Drawer.Screen name="attendance" options={{ drawerItemStyle: { display: "none" } }} />
-        <Drawer.Screen name="project-detail" options={{ drawerItemStyle: { display: "none" } }} />
-        <Drawer.Screen name="quotation" options={{ drawerItemStyle: { display: "none" } }} />
-        <Drawer.Screen name="salary" options={{ drawerItemStyle: { display: "none" } }} />
-        <Drawer.Screen name="transactions" options={{ drawerItemStyle: { display: "none" } }} />
+        <Drawer.Screen
+          name="attendance"
+          options={{ drawerItemStyle: { display: "none" } }}
+        />
+        <Drawer.Screen
+          name="project-detail"
+          options={{ drawerItemStyle: { display: "none" } }}
+        />
+        <Drawer.Screen
+          name="quotation"
+          options={{ drawerItemStyle: { display: "none" } }}
+        />
+        <Drawer.Screen
+          name="salary"
+          options={{ drawerItemStyle: { display: "none" } }}
+        />
+        <Drawer.Screen
+          name="transactions"
+          options={{ drawerItemStyle: { display: "none" } }}
+        />
       </Drawer>
     </GestureHandlerRootView>
   );

@@ -230,7 +230,8 @@ export default function DashboardScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[THEME.colors.primary]} />}
       >
-        <DevotionalBanner />
+        {/* Devotional Banner visible in Admin Dashboard */}
+        {isAdmin && <DevotionalBanner />}
 
         {/* ========================================================================= */}
         {/* 1. ADMIN DASHBOARD VIEW */}

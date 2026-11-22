@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useMemo } from 'react';
+import React from 'react';
 import {
   Platform,
   ScrollView,
@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import { THEME } from '../../../constants/theme';
 import { useAuth } from '../../../context/AuthContext';
-import { useConfig } from '../../../context/ConfigContext';
 
 export default function ModulesScreen() {
   const router = useRouter();
@@ -105,36 +104,11 @@ export default function ModulesScreen() {
     },
   ];
 
-  const { modules } = useConfig();
-
-  const fallbackModules = allModules.filter((m) => {
+  const visibleModules = allModules.filter((m) => {
     if (isAdmin) return true;
     if (m.adminOnly) return false;
     return true;
   });
-
-  const displayModules = useMemo(() => {
-    if (modules && modules.length > 0) {
-      const userRoleUpper = ((userRole as string) || 'EMPLOYEE').toUpperCase();
-      const isSuper = isAdmin || userRoleUpper === 'SUPER_ADMIN';
-
-      return modules
-        .filter((m) => {
-          if (m.enabled === false || m.mobileVisible === false) return false;
-          if (isSuper) return true;
-          if (!m.allowedRoles || m.allowedRoles.length === 0) return true;
-          return m.allowedRoles.includes(userRoleUpper);
-        })
-        .map((m) => ({
-          id: m.id,
-          title: m.label,
-          subtitle: 'Active Module',
-          icon: m.icon || 'grid-outline',
-          route: m.mobileRoute || '/(app)/tabs/dashboard',
-        }));
-    }
-    return fallbackModules;
-  }, [modules, isAdmin, userRole, fallbackModules]);
 
   return (
     <ScrollView
@@ -150,7 +124,7 @@ export default function ModulesScreen() {
       </View>
 
       <View style={styles.grid}>
-        {displayModules.map((item) => (
+        {visibleModules.map((item) => (
           <TouchableOpacity
             key={item.id}
             style={[styles.card, { width: cardWidth }]}
