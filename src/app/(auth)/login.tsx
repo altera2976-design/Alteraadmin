@@ -103,9 +103,16 @@ export default function LoginScreen() {
     try {
       await login(email.trim(), password.trim());
     } catch (err: any) {
-      const msg =
-        err?.response?.data?.message ||
-        "Login failed. Please check your credentials.";
+      let msg = err?.response?.data?.message;
+      if (!msg) {
+        if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+          msg = 'Server connection timeout. The backend server on Render may be waking up, please try again in a few seconds.';
+        } else if (err.message === 'Network Error' || !err.response) {
+          msg = 'Cannot reach server. Please check your internet connection.';
+        } else {
+          msg = err.message || 'Login failed. Please check your credentials.';
+        }
+      }
       setError(msg);
     } finally {
       setLoading(false);
@@ -186,11 +193,12 @@ export default function LoginScreen() {
   };
 
   return (
-    <ImageBackground
-      source={require("../../../assets/images/login-bg.jpg")}
-      style={styles.bgImage}
-      resizeMode="cover"
-    >
+    <View style={styles.root}>
+      <Image
+        source={require("../../../assets/images/login-bg.jpg")}
+        style={styles.bgImage}
+        resizeMode="cover"
+      />
       <View style={styles.overlay} />
       <StatusBar style="dark" />
       <KeyboardAvoidingView
@@ -358,13 +366,17 @@ export default function LoginScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </ImageBackground>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   bgImage: {
-    flex: 1,
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     width: "100%",
     height: "100%",
   },

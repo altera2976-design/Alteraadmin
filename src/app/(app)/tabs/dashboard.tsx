@@ -311,7 +311,8 @@ export default function DashboardScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[THEME.colors.primary]} />}
       >
-        <DevotionalBanner />
+        {/* Devotional Banner visible in Admin Dashboard */}
+        {isAdmin && <DevotionalBanner />}
 
         {/* ========================================================================= */}
         {/* 1. ADMIN DASHBOARD VIEW */}
@@ -1057,7 +1058,7 @@ const styles = StyleSheet.create({
   centerRoot: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' },
   loadingText: { marginTop: 12, fontSize: 14, color: '#666', fontWeight: '500' },
   scroll: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 40 },
+  scrollContent: { padding: 16, paddingBottom: 95 },
 
   // Salary Card Styles
   salaryCardContainer: {

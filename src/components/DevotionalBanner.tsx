@@ -8,53 +8,44 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const BANNER_WIDTH = SCREEN_WIDTH - 32;
-const BANNER_HEIGHT = 240;
-const INTERVAL = 3500;
+const BANNER_HEIGHT = 220;
+const INTERVAL = 4000;
 
 const DEITIES = [
   {
     id: "shyam",
     source: require("../../assets/images/devotional/shyam_ji.jpg"),
     title: "जय श्री श्याम",
-    subtitle: "🙏 Khatu Shyam Ji",
-    accent: "#60a5fa",
-    message: "जिसके सिर पर हाथ हो श्याम का, उसका जीवन खुशियों से भर जाता है।",
+    subtitle: "🙏 खाटू श्याम जी",
+    accent: "#fbbf24",
+    scale: 1,
   },
   {
     id: "hanuman",
     source: require("../../assets/images/devotional/hanuman_ji.jpg"),
-    title: "जय श्री राम 🚩",
-    subtitle: "🙏 Sankat Mochan Hanuman Ji",
-    accent: "#fb923c",
-    message: "संकट मोचन हनुमान आपके सभी कष्टों को दूर करें। जय बजरंगबली!",
+    title: "श्री बालाजी सरकार",
+    subtitle: "🙏 श्री बालाजी सरकार",
+    accent: "#f97316",
+    scale: 1,
   },
   {
     id: "shiva",
     source: require("../../assets/images/devotional/shiva_ji.jpg"),
-    title: "हर हर महादेव 🔱",
-    subtitle: "🙏 Bholenath Shiva Ji",
-    accent: "#a78bfa",
-    message: "ॐ नमः शिवाय! भोलेनाथ की कृपा से आपके जीवन में सुख-शांति आए।",
+    title: "ॐ नमः शिवाय",
+    subtitle: "🙏 हर हर महादेव",
+    accent: "#38bdf8",
+    scale: 0.92,
   },
   {
     id: "krishna",
-    source: require("../../assets/images/devotional/radha_krishna.png"),
-    title: "राधे राधे ❤️",
-    subtitle: "🙏 Shri Radha Krishna Ji",
+    source: require("../../assets/images/devotional/radha_krishna.jpg"),
+    title: "॥ श्री ॥ राधे कृष्ण",
+    subtitle: "🙏 श्री राधा कृष्ण जी",
     accent: "#4ade80",
-    message: "राधे राधे! श्री कृष्णा की कृपा से आपका जीवन प्रेम और खुशियों से भरा रहे।",
-  },
-  {
-    id: "durga",
-    source: require("../../assets/images/devotional/maa_durga.jpg"),
-    title: "जय माता दी 🙏",
-    subtitle: "🙏 Maa Durga Ji",
-    accent: "#f472b6",
-    message: "माँ दुर्गा की कृपा से आपके जीवन से सभी कष्ट दूर हों। जय माता दी!",
+    scale: 0.92,
   },
 ];
 
@@ -71,18 +62,15 @@ export default function DevotionalBanner() {
     const next = ((idx % total) + total) % total;
     setCurrent(next);
     scrollRef.current?.scrollTo({ x: next * BANNER_WIDTH, animated: true });
-    // Reset progress bar
     progressAnim.stopAnimation();
     progressAnim.setValue(0);
   };
 
-  // Auto-slide timer
   useEffect(() => {
     if (paused) {
       progressAnim.stopAnimation();
       return;
     }
-    // Animate progress bar
     progressAnim.setValue(0);
     Animated.timing(progressAnim, {
       toValue: 1,
@@ -105,7 +93,6 @@ export default function DevotionalBanner() {
 
   return (
     <View style={styles.wrapper}>
-      {/* Carousel frame */}
       <View style={styles.container}>
         <Animated.ScrollView
           ref={scrollRef}
@@ -121,31 +108,25 @@ export default function DevotionalBanner() {
           )}
         >
           {DEITIES.map((deity) => (
-            <View key={deity.id} style={{ width: BANNER_WIDTH, height: BANNER_HEIGHT }}>
+            <View key={deity.id} style={{ width: BANNER_WIDTH, height: BANNER_HEIGHT, overflow: "hidden", alignItems: "center", justifyContent: "center" }}>
               <Image
                 source={deity.source}
-                style={styles.image}
+                style={[
+                  styles.image,
+                  deity.scale < 1 ? { transform: [{ scale: deity.scale }] } : null,
+                ]}
                 resizeMode="cover"
-              />
-              {/* Dark gradient at bottom for text visibility */}
-              <LinearGradient
-                colors={["transparent", "rgba(0,0,0,0.55)", "rgba(0,0,0,0.92)"]}
-                locations={[0.2, 0.6, 1]}
-                style={StyleSheet.absoluteFill}
               />
             </View>
           ))}
         </Animated.ScrollView>
 
-        {/* Content overlay */}
-        <View style={styles.content} pointerEvents="none">
-          <Text style={styles.title}>{d.title}</Text>
-          <Text style={styles.subtitle}>{d.subtitle}</Text>
-          <Text style={styles.message} numberOfLines={2}>{d.message}</Text>
-          <View style={[styles.accentLine, { backgroundColor: d.accent }]} />
+        {/* Minimal pill badge - borderless */}
+        <View style={styles.badge} pointerEvents="none">
+          <Text style={styles.badgeText}>{d.subtitle}</Text>
         </View>
 
-        {/* Dot indicators */}
+        {/* Dot indicators - borderless */}
         <View style={styles.dotsRow} pointerEvents="box-none">
           {DEITIES.map((deity, i) => (
             <TouchableOpacity
@@ -159,7 +140,7 @@ export default function DevotionalBanner() {
           ))}
         </View>
 
-        {/* Prev arrow */}
+        {/* Prev arrow - borderless */}
         <TouchableOpacity
           style={[styles.arrow, styles.arrowLeft]}
           onPress={() => goTo(current - 1)}
@@ -168,7 +149,7 @@ export default function DevotionalBanner() {
           <Text style={styles.arrowText}>‹</Text>
         </TouchableOpacity>
 
-        {/* Next arrow */}
+        {/* Next arrow - borderless */}
         <TouchableOpacity
           style={[styles.arrow, styles.arrowRight]}
           onPress={() => goTo(current + 1)}
@@ -209,7 +190,7 @@ const styles = StyleSheet.create({
     height: BANNER_HEIGHT,
     borderRadius: 16,
     overflow: "hidden",
-    backgroundColor: "#111",
+    backgroundColor: "#000",
     elevation: 8,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 6 },
@@ -219,67 +200,24 @@ const styles = StyleSheet.create({
   image: {
     width: BANNER_WIDTH,
     height: BANNER_HEIGHT,
-    position: "absolute",
-    top: 0,
-    left: 0,
   },
-  gradientOverlay: {
+  badge: {
     position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: "65%",
-    backgroundColor: "transparent",
-    // Simulate gradient with layered transparency
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
+    top: 12,
+    right: 14,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 16,
   },
-  content: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    backgroundColor: "rgba(0,0,0,0)",
-  },
-  title: {
+  badgeText: {
     color: "#fff",
-    fontSize: 22,
-    fontWeight: "900",
-    marginBottom: 2,
-    textShadowColor: "rgba(0,0,0,0.85)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
-  },
-  subtitle: {
-    color: "rgba(255,255,255,0.75)",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "600",
-    marginBottom: 6,
-    textShadowColor: "rgba(0,0,0,0.6)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
-  },
-  message: {
-    color: "#fff",
-    fontSize: 13,
-    fontWeight: "500",
-    lineHeight: 19,
-    textShadowColor: "rgba(0,0,0,0.75)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 6,
-  },
-  accentLine: {
-    height: 2,
-    width: 44,
-    borderRadius: 2,
-    marginTop: 8,
-    opacity: 0.9,
   },
   dotsRow: {
     position: "absolute",
-    top: 12,
+    bottom: 12,
     left: 0,
     right: 0,
     flexDirection: "row",
@@ -291,9 +229,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "rgba(255,255,255,0.4)",
-    borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.6)",
+    backgroundColor: "rgba(255,255,255,0.45)",
   },
   arrow: {
     position: "absolute",
@@ -302,9 +238,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
+    backgroundColor: "rgba(0,0,0,0.38)",
     alignItems: "center",
     justifyContent: "center",
   },
