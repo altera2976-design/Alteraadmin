@@ -9,10 +9,12 @@ export const getSocket = () => {
     console.log("🔗 Attempting Socket.IO connection to:", socketUrl);
     socket = io(socketUrl, {
       autoConnect: true,
-      // Removed transports: ["websocket", "polling"] to allow default polling -> websocket upgrade path and prevent connection errors
+      transports: ["websocket"],
+      upgrade: false,
       reconnection: true,
-      reconnectionAttempts: 10,
+      reconnectionAttempts: 20,
       reconnectionDelay: 2000,
+      timeout: 15000,
     });
 
     socket.on("connect", () => {
@@ -24,7 +26,7 @@ export const getSocket = () => {
     });
 
     socket.on("connect_error", (err) => {
-      console.error("❌ Socket.IO connection error:", err.message);
+      console.warn("⚠️ Socket.IO reconnecting:", err.message);
     });
   }
   return socket;

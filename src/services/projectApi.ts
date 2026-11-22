@@ -83,6 +83,24 @@ export interface Project {
   myRole?: string; // Appended for employee views
 }
 
+export interface TaskStatusHistory {
+  _id?: string;
+  status: string;
+  comment?: string;
+  updatedBy?: string;
+  updatedByName?: string;
+  updatedAt?: string;
+  images?: Array<{
+    fileName?: string;
+    originalName?: string;
+    fileUrl?: string;
+    url?: string;
+    fileType?: string;
+    fileSize?: number;
+    uploadedAt?: string;
+  }>;
+}
+
 export interface Task {
   _id: string;
   taskId: string;
@@ -95,7 +113,7 @@ export interface Task {
   priority: 'Low' | 'Medium' | 'High' | 'Urgent';
   startDate?: string;
   dueDate?: string;
-  status: 'To Do' | 'In Progress' | 'Blocked' | 'Completed';
+  status: 'Pending' | 'To Do' | 'In Progress' | 'On Hold' | 'Blocked' | 'Completed';
   progress: number;
   pdfUrl?: string;
   comments?: Array<{
@@ -116,6 +134,7 @@ export interface Task {
     uploadedByName?: string;
     uploadedAt?: string;
   }>;
+  statusHistory?: TaskStatusHistory[];
   createdAt: string;
 }
 
@@ -324,9 +343,41 @@ export const projectApi = {
 
   updateTaskProgress: async (
     taskId: string,
-    payload: { progress?: number; status?: string; comment?: string; attachment?: any }
+    payload:
+      | {
+          progress?: number;
+          status?: string;
+          comment?: string;
+          attachment?: any;
+          attachments?: any[];
+          progressImages?: any[];
+        }
+      | FormData
   ): Promise<{ success: boolean; data: Task; project?: any }> => {
-    const res = await api.patch(`/tasks/${taskId}/progress`, payload);
+    const isFormData = typeof FormData !== 'undefined' && payload instanceof FormData;
+
+    // Normalize UI statuses to match backend Mongoose enum ('On Hold' -> 'Blocked', 'Pending' -> 'To Do')
+    // This ensures complete compatibility with deployed production backend models:
+    let requestPayload: any = payload;
+    if (!isFormData && payload && typeof payload === 'object') {
+      let mappedStatus = (payload as any).status;
+      if (mappedStatus === 'On Hold') mappedStatus = 'Blocked';
+      else if (mappedStatus === 'Pending') mappedStatus = 'To Do';
+      requestPayload = { ...(payload as any), status: mappedStatus };
+    }
+
+    const res = await api.patch(
+      `/tasks/${taskId}/progress`,
+      requestPayload,
+      isFormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : undefined
+    );
+
+    // Normalize returned status back to UI format
+    if (res.data?.data) {
+      if (res.data.data.status === 'Blocked') res.data.data.status = 'On Hold';
+      else if (res.data.data.status === 'To Do') res.data.data.status = 'Pending';
+    }
+
     return res.data;
   },
 

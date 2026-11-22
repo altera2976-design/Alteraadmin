@@ -36,6 +36,11 @@ import {
   generatePdf,
   sharePdf,
 } from "../../services/quotationPdf";
+import {
+  PREDEFINED_ACCESSORIES,
+  PredefinedAccessory,
+  resolveAccessoryImageUri,
+} from "../../constants/predefinedAccessories";
 
 const { width } = Dimensions.get("window");
 
@@ -385,9 +390,41 @@ export default function QuotationScreen() {
   const [stAccName, setStAccName] = useState("");
   const [stAccDesc, setStAccDesc] = useState("");
   const [stAccImage, setStAccImage] = useState("");
+  const [stAccImages, setStAccImages] = useState<string[]>([]);
+  const [stAccImageId, setStAccImageId] = useState("");
   const [stAccQty, setStAccQty] = useState("1");
-  const [stAccUnit, setStAccUnit] = useState("Nos");
+  const [stAccUnit, setStAccUnit] = useState("Pcs");
   const [stAccPrice, setStAccPrice] = useState("");
+  const [editingAccIndex, setEditingAccIndex] = useState<number | null>(null);
+
+  // Catalog & Predefined Gallery
+  const [showAccGalleryModal, setShowAccGalleryModal] = useState(false);
+  const [accGallerySearch, setAccGallerySearch] = useState("");
+  const [accGalleryCategory, setAccGalleryCategory] = useState("All");
+  const [catalogAccessories, setCatalogAccessories] = useState<
+    PredefinedAccessory[]
+  >(PREDEFINED_ACCESSORIES);
+  const [modalSelectedItems, setModalSelectedItems] = useState<
+    PredefinedAccessory[]
+  >([]);
+  const [showAddCustomModalItem, setShowAddCustomModalItem] = useState(false);
+  const [customModalItemName, setCustomModalItemName] = useState("");
+  const [customModalItemCategory, setCustomModalItemCategory] = useState(
+    "Kitchen Accessories",
+  );
+  const [customModalItemImage, setCustomModalItemImage] = useState("");
+  const [previewImageUri, setPreviewImageUri] = useState<string | null>(null);
+
+  const filteredPredefinedAccessories = useMemo(() => {
+    return catalogAccessories.filter((item) => {
+      const q = accGallerySearch.trim().toLowerCase();
+      const matchesSearch = !q || item.name.toLowerCase().includes(q);
+      const matchesCategory =
+        accGalleryCategory === "All" ||
+        item.category.toLowerCase().includes(accGalleryCategory.toLowerCase());
+      return matchesSearch && matchesCategory;
+    });
+  }, [catalogAccessories, accGallerySearch, accGalleryCategory]);
 
   const [stAccessoryOptions, setStAccessoryOptions] = useState<string[]>(
     DEFAULT_STANDALONE_ACCESSORY_OPTIONS,
@@ -406,18 +443,183 @@ export default function QuotationScreen() {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images"],
-        allowsEditing: true,
-        quality: 0.6,
+        allowsMultipleSelection: true,
+        quality: 0.7,
         base64: false,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        const asset = result.assets[0];
-        setStAccImage(asset.uri);
+        const newUris = result.assets.map((a) => a.uri);
+        setStAccImages((prev) => {
+          const combined = [...prev, ...newUris];
+          setStAccImage(combined[0] || "");
+          return combined;
+        });
+        setStAccImageId("");
       }
     } catch (error) {
       Alert.alert("Image Error", "Could not pick image.");
     }
+  };
+
+  const handleRemoveSingleAccFormImage = (indexToRemove: number) => {
+    setStAccImages((prev) => {
+      const current = prev.length > 0 ? prev : stAccImage ? [stAccImage] : [];
+      const updated = current.filter((_, i) => i !== indexToRemove);
+      setStAccImage(updated[0] || "");
+      if (updated.length === 0) setStAccImageId("");
+      return updated;
+    });
+  };
+
+  const handleClearAllAccFormImages = () => {
+    setStAccImage("");
+    setStAccImages([]);
+    setStAccImageId("");
+  };
+
+  const handleOpenGalleryModal = () => {
+    const currentImgs =
+      stAccImages.length > 0
+        ? stAccImages
+        : stAccImage
+          ? [stAccImage]
+          : [];
+    const preselected: PredefinedAccessory[] = [];
+    currentImgs.forEach((imgSrc) => {
+      const foundInCatalog = catalogAccessories.find((c) => c.image === imgSrc);
+      if (foundInCatalog) {
+        if (!preselected.some((p) => p.id === foundInCatalog.id)) {
+          preselected.push(foundInCatalog);
+        }
+      } else {
+        const foundInPredefined = PREDEFINED_ACCESSORIES.find(
+          (p) => p.image === imgSrc,
+        );
+        if (foundInPredefined) {
+          if (!preselected.some((p) => p.id === foundInPredefined.id)) {
+            preselected.push(foundInPredefined);
+          }
+        } else {
+          preselected.push({
+            id: `uploaded-img-${imgSrc.slice(-12)}`,
+            name: "Uploaded Photo",
+            category: "Custom Upload",
+            image: imgSrc,
+          });
+        }
+      }
+    });
+    setModalSelectedItems(preselected);
+    setShowAccGalleryModal(true);
+  };
+
+  const handleToggleModalItemSelect = (item: PredefinedAccessory) => {
+    setModalSelectedItems((prev) => {
+      const exists = prev.some(
+        (it) => it.id === item.id || it.image === item.image,
+      );
+      if (exists) {
+        return prev.filter(
+          (it) => it.id !== item.id && it.image !== item.image,
+        );
+      } else {
+        return [...prev, item];
+      }
+    });
+  };
+
+  const handleDeleteCustomCatalogItem = (itemId: string) => {
+    Alert.alert(
+      "Delete Custom Item",
+      "Do you want to delete this custom hardware accessory from catalog?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            setCatalogAccessories((prev) =>
+              prev.filter((it) => it.id !== itemId),
+            );
+            setModalSelectedItems((prev) =>
+              prev.filter((it) => it.id !== itemId),
+            );
+          },
+        },
+      ],
+    );
+  };
+
+  const handleApplyModalSelection = () => {
+    const selectedPhotos = modalSelectedItems
+      .map((it) => it.image)
+      .filter(Boolean);
+    setStAccImages(selectedPhotos);
+    setStAccImage(selectedPhotos[0] || "");
+    setStAccImageId(modalSelectedItems[0]?.id || "");
+    if (!stAccName.trim() && modalSelectedItems.length === 1) {
+      setStAccName(modalSelectedItems[0].name);
+    }
+    setShowAccGalleryModal(false);
+  };
+
+  const handleBatchAddModalItems = () => {
+    if (modalSelectedItems.length === 0) return;
+    const newRows: QuotationStandaloneAccessory[] = modalSelectedItems.map(
+      (item) => ({
+        name: item.name,
+        description: item.category,
+        image: item.image,
+        images: [item.image],
+        imageId: item.id || "",
+        quantity: 1,
+        unit: "Pcs",
+        price: 0,
+        total: 0,
+      }),
+    );
+    setStandaloneAccessories((prev) => [...prev, ...newRows]);
+    setModalSelectedItems([]);
+    setShowAccGalleryModal(false);
+  };
+
+  const handlePickCustomModalItemImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        quality: 0.6,
+      });
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setCustomModalItemImage(result.assets[0].uri);
+      }
+    } catch {
+      Alert.alert("Image Error", "Could not pick image.");
+    }
+  };
+
+  const handleSaveCustomModalItem = () => {
+    if (!customModalItemName.trim()) {
+      Alert.alert("Validation", "Please enter a name for the accessory.");
+      return;
+    }
+    if (!customModalItemImage) {
+      Alert.alert("Validation", "Please select an image for the accessory.");
+      return;
+    }
+    const newItem: PredefinedAccessory = {
+      id: `custom-${Date.now()}`,
+      name: customModalItemName.trim(),
+      category: customModalItemCategory,
+      image: customModalItemImage,
+      isCustom: true,
+    };
+    setCatalogAccessories((prev) => [newItem, ...prev]);
+    setModalSelectedItems((prev) => [...prev, newItem]);
+    setCustomModalItemName("");
+    setCustomModalItemImage("");
+    setShowAddCustomModalItem(false);
   };
 
   const handleSelectStAccessory = (cat: string) => {
@@ -430,7 +632,8 @@ export default function QuotationScreen() {
   };
 
   const handleConfirmCustomStAccAccessory = async (overrideName?: string) => {
-    const raw = typeof overrideName === "string" ? overrideName : stAccCustomAccessory;
+    const raw =
+      typeof overrideName === "string" ? overrideName : stAccCustomAccessory;
     const trimmed = (raw || "").trim();
     if (!trimmed) return;
 
@@ -468,7 +671,8 @@ export default function QuotationScreen() {
   };
 
   const handleConfirmCustomStAccHardware = async (overrideName?: string) => {
-    const raw = typeof overrideName === "string" ? overrideName : stAccCustomHardware;
+    const raw =
+      typeof overrideName === "string" ? overrideName : stAccCustomHardware;
     const trimmed = (raw || "").trim();
     if (!trimmed) return;
 
@@ -496,7 +700,7 @@ export default function QuotationScreen() {
     }
   };
 
-  const handleAddStandaloneAccessory = () => {
+  const handleAddOrUpdateStandaloneAccessory = () => {
     const name = stAccName.trim();
     if (!name) {
       Alert.alert("Validation Error", "Please enter accessory name.");
@@ -506,36 +710,63 @@ export default function QuotationScreen() {
     const price = Math.max(0, parseFloat(stAccPrice) || 0);
     const total = Math.round(qty * price);
 
-    const finalHardware = showStAccCustomHardware ? stAccCustomHardware.trim() : stAccDesc.trim();
-    if (showStAccCustomHardware && finalHardware && !stAccHardwareOptions.includes(finalHardware)) {
-      setStAccHardwareOptions(prev => {
+    const finalHardware = showStAccCustomHardware
+      ? stAccCustomHardware.trim()
+      : stAccDesc.trim();
+    if (
+      showStAccCustomHardware &&
+      finalHardware &&
+      !stAccHardwareOptions.includes(finalHardware)
+    ) {
+      setStAccHardwareOptions((prev) => {
         const copy = [...prev];
         copy.splice(copy.length - 1, 0, finalHardware);
         return copy;
       });
-      quotationApi.addConfigOption("standaloneHardware", finalHardware).catch(console.warn);
+      quotationApi
+        .addConfigOption("standaloneHardware", finalHardware)
+        .catch(console.warn);
     }
 
     if (showStAccCustomAccessory && name && !stAccessoryOptions.includes(name)) {
-      setStAccessoryOptions(prev => {
+      setStAccessoryOptions((prev) => {
         const copy = [...prev];
         copy.splice(copy.length - 1, 0, name);
         return copy;
       });
-      quotationApi.addConfigOption("standaloneAccessory", name).catch(console.warn);
+      quotationApi
+        .addConfigOption("standaloneAccessory", name)
+        .catch(console.warn);
     }
+
+    const finalImages =
+      stAccImages && stAccImages.length > 0
+        ? stAccImages
+        : stAccImage
+          ? [stAccImage]
+          : [];
 
     const newAcc: QuotationStandaloneAccessory = {
       name,
       description: finalHardware,
-      image: stAccImage || undefined,
+      image: finalImages[0] || undefined,
+      images: finalImages,
+      imageId: stAccImageId || undefined,
       quantity: qty,
-      unit: stAccUnit || "Nos",
+      unit: stAccUnit.trim() || "Pcs",
       price,
       total,
     };
 
-    setStandaloneAccessories((prev) => [...prev, newAcc]);
+    if (editingAccIndex !== null && editingAccIndex >= 0) {
+      const updated = [...standaloneAccessories];
+      updated[editingAccIndex] = newAcc;
+      setStandaloneAccessories(updated);
+      setEditingAccIndex(null);
+    } else {
+      setStandaloneAccessories((prev) => [...prev, newAcc]);
+    }
+
     setStAccName("");
     setShowStAccCustomAccessory(false);
     setStAccCustomAccessory("");
@@ -543,13 +774,77 @@ export default function QuotationScreen() {
     setShowStAccCustomHardware(false);
     setStAccCustomHardware("");
     setStAccImage("");
+    setStAccImages([]);
+    setStAccImageId("");
     setStAccQty("1");
-    setStAccUnit("Nos");
+    setStAccUnit("Pcs");
+    setStAccPrice("");
+  };
+
+  const handleEditStandaloneAccessory = (index: number) => {
+    const acc = standaloneAccessories[index];
+    if (!acc) return;
+    setStAccName(acc.name || "");
+    const desc = acc.description || "";
+    if (stAccHardwareOptions.includes(desc)) {
+      setStAccDesc(desc);
+      setShowStAccCustomHardware(false);
+    } else {
+      setStAccDesc("+ Add More");
+      setShowStAccCustomHardware(true);
+      setStAccCustomHardware(desc);
+    }
+    const accImgs =
+      Array.isArray(acc.images) && acc.images.length > 0
+        ? acc.images
+        : acc.image
+          ? [acc.image]
+          : [];
+    setStAccImage(accImgs[0] || "");
+    setStAccImages(accImgs);
+    setStAccImageId(acc.imageId || "");
+    setStAccQty(String(acc.quantity || 1));
+    setStAccUnit(acc.unit || "Pcs");
+    setStAccPrice(String(acc.price || 0));
+    setEditingAccIndex(index);
+  };
+
+  const handleCancelEditStandaloneAccessory = () => {
+    setEditingAccIndex(null);
+    setStAccName("");
+    setShowStAccCustomAccessory(false);
+    setStAccCustomAccessory("");
+    setStAccDesc("");
+    setShowStAccCustomHardware(false);
+    setStAccCustomHardware("");
+    setStAccImage("");
+    setStAccImages([]);
+    setStAccImageId("");
+    setStAccQty("1");
+    setStAccUnit("Pcs");
     setStAccPrice("");
   };
 
   const handleRemoveStandaloneAccessory = (index: number) => {
-    setStandaloneAccessories((prev) => prev.filter((_, i) => i !== index));
+    Alert.alert(
+      "Delete Accessory",
+      "Are you sure you want to remove this accessory from the quotation?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            setStandaloneAccessories((prev) =>
+              prev.filter((_, i) => i !== index),
+            );
+            if (editingAccIndex === index) {
+              handleCancelEditStandaloneAccessory();
+            }
+          },
+        },
+      ],
+    );
   };
 
   // Item Sub-form
@@ -1408,12 +1703,17 @@ export default function QuotationScreen() {
       const formData = new FormData();
       const updatedStandaloneAccessories = [...standaloneAccessories];
 
-      // File size validation and processing
+      // File size validation and processing for local uploaded files
       for (let i = 0; i < updatedStandaloneAccessories.length; i++) {
         const acc = updatedStandaloneAccessories[i];
-        if (acc.image && !acc.image.startsWith("http")) {
+        const isLocalFile =
+          acc.image &&
+          !acc.image.startsWith("http") &&
+          !acc.image.startsWith("/") &&
+          !acc.image.startsWith("data:");
+        if (isLocalFile) {
           try {
-            const fileInfo = await FileSystem.getInfoAsync(acc.image);
+            const fileInfo = await FileSystem.getInfoAsync(acc.image!);
             if (fileInfo.exists && fileInfo.size > MAX_SIZE) {
               Alert.alert(
                 "File Too Large",
@@ -1422,17 +1722,19 @@ export default function QuotationScreen() {
               setIsActionLoading(false);
               return;
             }
-            hasFiles = true;
-            const filename = acc.image.split("/").pop() || `image_${i}.jpg`;
-            // Append file with unique ID string to map it on the backend
-            formData.append("images", {
-              uri: acc.image,
-              name: `idx_${i}_${filename}`,
-              type: "image/jpeg",
-            } as any);
+            if (fileInfo.exists) {
+              hasFiles = true;
+              const filename =
+                acc.image!.split("/").pop() || `image_${i}.jpg`;
+              formData.append("images", {
+                uri: acc.image,
+                name: `idx_${i}_${filename}`,
+                type: "image/jpeg",
+              } as any);
 
-            // Clear out local URI from the payload JSON string, it will be populated by the backend
-            updatedStandaloneAccessories[i].image = "";
+              // Clear out local URI from JSON payload, backend will fill in uploaded path
+              updatedStandaloneAccessories[i].image = "";
+            }
           } catch (e) {
             console.log("Error checking file size", e);
           }
@@ -2383,39 +2685,89 @@ export default function QuotationScreen() {
                                 },
                               ]}
                             >
-                              {acc.image ? (
-                                <Image
-                                  source={{
-                                    uri: acc.image.startsWith("/")
-                                      ? `${API_URL.replace(/\/api\/?$/, "")}${acc.image}`
-                                      : acc.image,
-                                  }}
-                                  style={{
-                                    width: 50,
-                                    height: 50,
-                                    borderRadius: 6,
-                                    borderWidth: 1,
-                                    borderColor: "#CBD5E1",
-                                  }}
-                                />
-                              ) : (
-                                <View
-                                  style={{
-                                    width: 50,
-                                    height: 50,
-                                    borderRadius: 6,
-                                    backgroundColor: "#F1F5F9",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                  }}
-                                >
-                                  <Ionicons
-                                    name="cube-outline"
-                                    size={20}
-                                    color="#94A3B8"
-                                  />
-                                </View>
-                              )}
+                              {(() => {
+                                const accImgs =
+                                  Array.isArray(acc.images) &&
+                                  acc.images.length > 0
+                                    ? acc.images
+                                    : acc.image
+                                      ? [acc.image]
+                                      : [];
+                                const primaryImg = accImgs[0] || "";
+                                if (!primaryImg) {
+                                  return (
+                                    <View
+                                      style={{
+                                        width: 50,
+                                        height: 50,
+                                        borderRadius: 6,
+                                        backgroundColor: "#F1F5F9",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                      }}
+                                    >
+                                      <Ionicons
+                                        name="cube-outline"
+                                        size={20}
+                                        color="#94A3B8"
+                                      />
+                                    </View>
+                                  );
+                                }
+                                return (
+                                  <TouchableOpacity
+                                    style={{ position: "relative" }}
+                                    onPress={() =>
+                                      setPreviewImageUri(
+                                        resolveAccessoryImageUri(
+                                          primaryImg,
+                                          API_URL,
+                                        ),
+                                      )
+                                    }
+                                  >
+                                    <Image
+                                      source={{
+                                        uri: resolveAccessoryImageUri(
+                                          primaryImg,
+                                          API_URL,
+                                        ),
+                                      }}
+                                      style={{
+                                        width: 50,
+                                        height: 50,
+                                        borderRadius: 6,
+                                        borderWidth: 1,
+                                        borderColor: "#CBD5E1",
+                                      }}
+                                      resizeMode="contain"
+                                    />
+                                    {accImgs.length > 1 && (
+                                      <View
+                                        style={{
+                                          position: "absolute",
+                                          bottom: -2,
+                                          right: -2,
+                                          backgroundColor: "#7A131A",
+                                          borderRadius: 8,
+                                          paddingHorizontal: 4,
+                                          paddingVertical: 1,
+                                        }}
+                                      >
+                                        <Text
+                                          style={{
+                                            fontSize: 9,
+                                            fontWeight: "800",
+                                            color: "#FFFFFF",
+                                          }}
+                                        >
+                                          +{accImgs.length - 1}
+                                        </Text>
+                                      </View>
+                                    )}
+                                  </TouchableOpacity>
+                                );
+                              })()}
                               <View style={{ flex: 1 }}>
                                 <Text style={styles.itemCardName}>
                                   {acc.name}
@@ -3626,44 +3978,65 @@ export default function QuotationScreen() {
               {formStep === 3 && (
                 <View>
                   <Text style={styles.formSectionTitle}>
-                    Add Standalone Accessories
+                    Standalone Accessories ({standaloneAccessories.length})
                   </Text>
                   <Text
                     style={{ fontSize: 12, color: "#64748B", marginBottom: 16 }}
                   >
                     Add hardware accessories, appliances, or fittings with
-                    images to include in quotation.
+                    catalog images to include in quotation.
                   </Text>
 
+                  {/* Form to Add / Edit Accessory */}
                   <View style={styles.itemComposerCard}>
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        fontWeight: "700",
+                        color: "#0F172A",
+                        marginBottom: 12,
+                      }}
+                    >
+                      {editingAccIndex !== null
+                        ? "Edit Accessory"
+                        : "+ Add New Accessory"}
+                    </Text>
+
                     {/* 1. Accessory Name Input */}
                     <Text style={styles.inputLabel}>Accessory Name *</Text>
                     <TextInput
                       style={styles.textInput}
-                      placeholder="e.g. Soft Close Hinges"
+                      placeholder="e.g. Cutlery Tray / Magic Corner"
                       value={stAccName}
                       onChangeText={setStAccName}
                     />
 
-                    {/* 2. Select Accessories Pills */}
-                    <Text style={[styles.inputLabel, { fontSize: 11, color: "#64748B", marginBottom: 4 }]}>Select Accessories</Text>
+                    {/* 2. Select Accessories Chips */}
+                    <Text
+                      style={[
+                        styles.inputLabel,
+                        { fontSize: 11, color: "#64748B", marginBottom: 4 },
+                      ]}
+                    >
+                      Select Accessories
+                    </Text>
                     <ScrollView
                       horizontal
                       showsHorizontalScrollIndicator={false}
                       style={{ marginBottom: 8 }}
-                      contentContainerStyle={{ gap: 4, paddingVertical: 4 }}
+                      contentContainerStyle={{ gap: 6, paddingVertical: 4 }}
                     >
                       {stAccessoryOptions.map((cat) => {
                         const isAddMore = cat === "+ Add More";
                         const isActive = isAddMore
                           ? showStAccCustomAccessory
-                          : (!showStAccCustomAccessory && stAccName === cat);
+                          : !showStAccCustomAccessory && stAccName === cat;
                         return (
                           <TouchableOpacity
                             key={cat}
                             style={[
                               styles.smallPill,
-                              { paddingVertical: 6, paddingHorizontal: 10 },
+                              { paddingVertical: 6, paddingHorizontal: 12 },
                               isActive && styles.smallPillActive,
                             ]}
                             onPress={() => handleSelectStAccessory(cat)}
@@ -3686,12 +4059,15 @@ export default function QuotationScreen() {
                         style={{
                           flexDirection: "row",
                           gap: 6,
-                          marginBottom: 10,
+                          marginBottom: 12,
                           alignItems: "center",
                         }}
                       >
                         <TextInput
-                          style={[styles.textInput, { flex: 1, marginBottom: 0 }]}
+                          style={[
+                            styles.textInput,
+                            { flex: 1, marginBottom: 0 },
+                          ]}
                           placeholder="Custom Accessory Name..."
                           value={stAccCustomAccessory}
                           onChangeText={(val) => {
@@ -3719,25 +4095,32 @@ export default function QuotationScreen() {
                       onChangeText={setStAccDesc}
                     />
 
-                    {/* 4. Select Hardware Pills */}
-                    <Text style={[styles.inputLabel, { fontSize: 11, color: "#64748B", marginBottom: 4 }]}>Select Hardware</Text>
+                    {/* 4. Select Hardware Chips */}
+                    <Text
+                      style={[
+                        styles.inputLabel,
+                        { fontSize: 11, color: "#64748B", marginBottom: 4 },
+                      ]}
+                    >
+                      Select Hardware
+                    </Text>
                     <ScrollView
                       horizontal
                       showsHorizontalScrollIndicator={false}
                       style={{ marginBottom: 8 }}
-                      contentContainerStyle={{ gap: 4, paddingVertical: 4 }}
+                      contentContainerStyle={{ gap: 6, paddingVertical: 4 }}
                     >
                       {stAccHardwareOptions.map((opt) => {
                         const isAddMore = opt === "+ Add More";
                         const isActive = isAddMore
                           ? showStAccCustomHardware
-                          : (!showStAccCustomHardware && stAccDesc === opt);
+                          : !showStAccCustomHardware && stAccDesc === opt;
                         return (
                           <TouchableOpacity
                             key={opt}
                             style={[
                               styles.smallPill,
-                              { paddingVertical: 6, paddingHorizontal: 10 },
+                              { paddingVertical: 6, paddingHorizontal: 12 },
                               isActive && styles.smallPillActive,
                             ]}
                             onPress={() => handleSelectStAccHardware(opt)}
@@ -3760,12 +4143,15 @@ export default function QuotationScreen() {
                         style={{
                           flexDirection: "row",
                           gap: 6,
-                          marginBottom: 10,
+                          marginBottom: 12,
                           alignItems: "center",
                         }}
                       >
                         <TextInput
-                          style={[styles.textInput, { flex: 1, marginBottom: 0 }]}
+                          style={[
+                            styles.textInput,
+                            { flex: 1, marginBottom: 0 },
+                          ]}
                           placeholder="Custom Hardware Name..."
                           value={stAccCustomHardware}
                           onChangeText={(val) => {
@@ -3784,89 +4170,248 @@ export default function QuotationScreen() {
                       </View>
                     )}
 
-                    {/* 5. Accessory Image */}
+                    {/* 5. Accessory Image Actions: Upload & Predefined Catalog */}
                     <Text style={styles.inputLabel}>Accessory Image</Text>
                     <View
                       style={{
                         flexDirection: "row",
-                        alignItems: "center",
-                        gap: 4,
-                        marginBottom: 8,
+                        flexWrap: "wrap",
+                        gap: 8,
+                        marginBottom: 12,
                       }}
                     >
-                      {stAccImage ? (
-                        <View style={{ position: "relative" }}>
-                          <Image
-                            source={{ uri: stAccImage }}
-                            style={{
-                              width: 80,
-                              height: 80,
-                              borderRadius: 8,
-                              borderWidth: 1,
-                              borderColor: "#CBD5E1",
-                            }}
-                          />
-                          <TouchableOpacity
-                            style={{
-                              position: "absolute",
-                              top: -8,
-                              right: -8,
-                              backgroundColor: "#EF4444",
-                              borderRadius: 12,
-                              width: 24,
-                              height: 24,
-                              alignItems: "center",
-                              justifyContent: "center",
-                              elevation: 2,
-                            }}
-                            onPress={() => setStAccImage("")}
-                          >
-                            <Ionicons name="close" size={16} color="#FFFFFF" />
-                          </TouchableOpacity>
-                        </View>
-                      ) : (
-                        <TouchableOpacity
+                      <TouchableOpacity
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 6,
+                          paddingVertical: 9,
+                          paddingHorizontal: 14,
+                          borderRadius: 8,
+                          borderWidth: 1.5,
+                          borderColor: "#CBD5E1",
+                          borderStyle: "dashed",
+                          backgroundColor: "#F8FAFC",
+                        }}
+                        onPress={handlePickAccImage}
+                      >
+                        <Ionicons
+                          name="camera-outline"
+                          size={18}
+                          color="#475569"
+                        />
+                        <Text
                           style={{
-                            width: 100,
-                            height: 80,
-                            borderRadius: 8,
-                            borderWidth: 1.5,
-                            borderColor: "#CBD5E1",
-                            borderStyle: "dashed",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            backgroundColor: "#F8FAFC",
+                            color: "#475569",
+                            fontSize: 12,
+                            fontWeight: "600",
                           }}
-                          onPress={handlePickAccImage}
                         >
-                          <Ionicons
-                            name="camera-outline"
-                            size={24}
-                            color="#64748B"
-                            style={{ marginBottom: 4 }}
-                          />
-                          <Text
-                            style={{
-                              color: "#64748B",
-                              fontSize: 12,
-                              fontWeight: "600",
-                            }}
-                          >
-                            Upload
-                          </Text>
-                        </TouchableOpacity>
-                      )}
+                          Upload Photo
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 6,
+                          paddingVertical: 9,
+                          paddingHorizontal: 14,
+                          borderRadius: 8,
+                          borderWidth: 1,
+                          borderColor: "#7A131A",
+                          backgroundColor: "#FFFFFF",
+                        }}
+                        onPress={handleOpenGalleryModal}
+                      >
+                        <Ionicons
+                          name="images-outline"
+                          size={18}
+                          color="#7A131A"
+                        />
+                        <Text
+                          style={{
+                            color: "#7A131A",
+                            fontSize: 12,
+                            fontWeight: "700",
+                          }}
+                        >
+                          Select Predefined ({catalogAccessories.length} items)
+                        </Text>
+                      </TouchableOpacity>
                     </View>
 
+                    {/* Selected Photos Thumbnails Preview */}
+                    {(() => {
+                      const displayImgs =
+                        stAccImages.length > 0
+                          ? stAccImages
+                          : stAccImage
+                            ? [stAccImage]
+                            : [];
+                      if (displayImgs.length === 0) return null;
+                      return (
+                        <View
+                          style={{
+                            marginBottom: 14,
+                            padding: 10,
+                            backgroundColor: "#F8FAFC",
+                            borderWidth: 1,
+                            borderColor: "#CBD5E1",
+                            borderRadius: 8,
+                          }}
+                        >
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              marginBottom: 8,
+                            }}
+                          >
+                            <Text
+                              style={{
+                                fontSize: 12,
+                                fontWeight: "700",
+                                color: "#1E293B",
+                              }}
+                            >
+                              Selected Photos ({displayImgs.length})
+                            </Text>
+                            <View
+                              style={{
+                                flexDirection: "row",
+                                gap: 10,
+                                alignItems: "center",
+                              }}
+                            >
+                              <TouchableOpacity
+                                onPress={handleOpenGalleryModal}
+                              >
+                                <Text
+                                  style={{
+                                    fontSize: 11,
+                                    fontWeight: "600",
+                                    color: "#7A131A",
+                                  }}
+                                >
+                                  + Add More
+                                </Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                onPress={handleClearAllAccFormImages}
+                              >
+                                <Text
+                                  style={{
+                                    fontSize: 11,
+                                    fontWeight: "600",
+                                    color: "#EF4444",
+                                  }}
+                                >
+                                  Clear All
+                                </Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+
+                          <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={{
+                              gap: 8,
+                              paddingVertical: 4,
+                            }}
+                          >
+                            {displayImgs.map((imgUri, imgIdx) => (
+                              <View
+                                key={imgIdx}
+                                style={{
+                                  position: "relative",
+                                  width: 64,
+                                  height: 64,
+                                  borderRadius: 8,
+                                  borderWidth: 1,
+                                  borderColor: "#CBD5E1",
+                                  backgroundColor: "#FFFFFF",
+                                  overflow: "visible",
+                                }}
+                              >
+                                <TouchableOpacity
+                                  style={{ width: "100%", height: "100%" }}
+                                  onPress={() =>
+                                    setPreviewImageUri(
+                                      resolveAccessoryImageUri(imgUri, API_URL),
+                                    )
+                                  }
+                                >
+                                  <Image
+                                    source={{
+                                      uri: resolveAccessoryImageUri(
+                                        imgUri,
+                                        API_URL,
+                                      ),
+                                    }}
+                                    style={{
+                                      width: "100%",
+                                      height: "100%",
+                                      borderRadius: 7,
+                                    }}
+                                    resizeMode="contain"
+                                  />
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  style={{
+                                    position: "absolute",
+                                    top: -6,
+                                    right: -6,
+                                    backgroundColor: "#EF4444",
+                                    borderRadius: 10,
+                                    width: 20,
+                                    height: 20,
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    borderWidth: 1.5,
+                                    borderColor: "#FFFFFF",
+                                    elevation: 2,
+                                  }}
+                                  onPress={() =>
+                                    handleRemoveSingleAccFormImage(imgIdx)
+                                  }
+                                >
+                                  <Ionicons
+                                    name="close"
+                                    size={12}
+                                    color="#FFFFFF"
+                                  />
+                                </TouchableOpacity>
+                              </View>
+                            ))}
+                          </ScrollView>
+                        </View>
+                      );
+                    })()}
+
+                    {/* 6. Unit, Qty, Unit Price */}
                     <View
                       style={{
                         flexDirection: "row",
-                        gap: 4,
-                        marginBottom: 8,
+                        gap: 8,
+                        marginBottom: 10,
                       }}
                     >
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.inputLabel}>Qty *</Text>
+                        <Text style={styles.inputLabel}>Unit</Text>
+                        <TextInput
+                          style={styles.textInput}
+                          placeholder="Pcs / Nos"
+                          value={stAccUnit}
+                          onChangeText={setStAccUnit}
+                        />
+                      </View>
+
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.inputLabel}>Quantity *</Text>
                         <TextInput
                           style={styles.textInput}
                           keyboardType="numeric"
@@ -3875,34 +4420,28 @@ export default function QuotationScreen() {
                         />
                       </View>
 
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.inputLabel}>Unit</Text>
-                        <TextInput
-                          style={styles.textInput}
-                          placeholder="Nos / Sets"
-                          value={stAccUnit}
-                          onChangeText={setStAccUnit}
-                        />
-                      </View>
-
-                      <View style={{ flex: 1.2 }}>
-                        <Text style={styles.inputLabel}>Unit Price (₹) *</Text>
+                      <View style={{ flex: 1.4 }}>
+                        <Text style={styles.inputLabel}>Price (₹/unit) *</Text>
                         <TextInput
                           style={styles.textInput}
                           keyboardType="numeric"
-                          placeholder="0"
+                          placeholder="e.g. 2500"
                           value={stAccPrice}
                           onChangeText={setStAccPrice}
                         />
                       </View>
                     </View>
 
+                    {/* Total Amount Display */}
                     <View
                       style={{
                         flexDirection: "row",
                         justifyContent: "space-between",
                         alignItems: "center",
-                        marginBottom: 8,
+                        paddingVertical: 8,
+                        borderTopWidth: 1,
+                        borderTopColor: "#F1F5F9",
+                        marginBottom: 12,
                       }}
                     >
                       <Text
@@ -3912,37 +4451,79 @@ export default function QuotationScreen() {
                           fontWeight: "600",
                         }}
                       >
-                        Total Amount:
+                        Item Total:
                       </Text>
                       <Text
                         style={{
-                          fontSize: 15,
+                          fontSize: 16,
                           fontWeight: "800",
                           color: "#7A131A",
                         }}
                       >
                         {formatINR(
                           Math.round(
-                            (parseInt(stAccQty, 10) || 1) *
-                            (parseFloat(stAccPrice) || 0),
+                            (parseFloat(stAccQty) || 0) *
+                              (parseFloat(stAccPrice) || 0),
                           ),
                         )}
                       </Text>
                     </View>
 
-                    <TouchableOpacity
-                      style={styles.addItemSubmitBtn}
-                      onPress={handleAddStandaloneAccessory}
+                    {/* Form Action Buttons */}
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        gap: 8,
+                        justifyContent: "flex-end",
+                      }}
                     >
-                      <Ionicons
-                        name="add-circle-outline"
-                        size={18}
-                        color="#FFFFFF"
-                      />
-                      <Text style={styles.addItemSubmitText}>
-                        Add Accessory
-                      </Text>
-                    </TouchableOpacity>
+                      {editingAccIndex !== null && (
+                        <TouchableOpacity
+                          style={{
+                            paddingVertical: 10,
+                            paddingHorizontal: 16,
+                            borderRadius: 8,
+                            backgroundColor: "#E2E8F0",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                          onPress={handleCancelEditStandaloneAccessory}
+                        >
+                          <Text
+                            style={{
+                              color: "#475569",
+                              fontSize: 13,
+                              fontWeight: "600",
+                            }}
+                          >
+                            Cancel
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+
+                      <TouchableOpacity
+                        style={[
+                          styles.addItemSubmitBtn,
+                          { flex: editingAccIndex !== null ? 1 : undefined },
+                        ]}
+                        onPress={handleAddOrUpdateStandaloneAccessory}
+                      >
+                        <Ionicons
+                          name={
+                            editingAccIndex !== null
+                              ? "checkmark-circle-outline"
+                              : "add-circle-outline"
+                          }
+                          size={18}
+                          color="#FFFFFF"
+                        />
+                        <Text style={styles.addItemSubmitText}>
+                          {editingAccIndex !== null
+                            ? "Update Accessory"
+                            : "Add Accessory"}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
 
                   {/* Standalone Accessories Added List */}
@@ -3958,100 +4539,184 @@ export default function QuotationScreen() {
                         marginBottom: 20,
                       }}
                     >
-                      No standalone accessories added yet. Add one using the
-                      form above.
+                      No standalone accessories added yet. Add accessories
+                      above to include them in the quotation.
                     </Text>
                   ) : (
-                    standaloneAccessories.map((acc, index) => (
-                      <View
-                        key={index}
-                        style={[
-                          styles.addedItemRow,
-                          {
-                            flexDirection: "row",
-                            alignItems: "center",
-                            gap: 4,
-                            paddingVertical: 10,
-                          },
-                        ]}
-                      >
-                        {acc.image ? (
-                          <Image
-                            source={{
-                              uri: acc.image.startsWith("/")
-                                ? `${API_URL.replace(/\/api\/?$/, "")}${acc.image}`
-                                : acc.image,
-                            }}
-                            style={{
-                              width: 48,
-                              height: 48,
-                              borderRadius: 6,
-                              borderWidth: 1,
-                              borderColor: "#CBD5E1",
-                            }}
-                          />
-                        ) : (
-                          <View
-                            style={{
-                              width: 48,
-                              height: 48,
-                              borderRadius: 6,
-                              backgroundColor: "#F1F5F9",
+                    standaloneAccessories.map((acc, index) => {
+                      const accImgs =
+                        Array.isArray(acc.images) && acc.images.length > 0
+                          ? acc.images
+                          : acc.image
+                            ? [acc.image]
+                            : [];
+                      const primaryImg = accImgs[0] || "";
+                      return (
+                        <View
+                          key={index}
+                          style={[
+                            styles.addedItemRow,
+                            {
+                              flexDirection: "row",
                               alignItems: "center",
-                              justifyContent: "center",
-                            }}
-                          >
-                            <Ionicons
-                              name="cube-outline"
-                              size={20}
-                              color="#94A3B8"
-                            />
-                          </View>
-                        )}
+                              gap: 10,
+                              paddingVertical: 10,
+                            },
+                          ]}
+                        >
+                          {primaryImg ? (
+                            <TouchableOpacity
+                              style={{ position: "relative" }}
+                              onPress={() =>
+                                setPreviewImageUri(
+                                  resolveAccessoryImageUri(primaryImg, API_URL),
+                                )
+                              }
+                            >
+                              <Image
+                                source={{
+                                  uri: resolveAccessoryImageUri(
+                                    primaryImg,
+                                    API_URL,
+                                  ),
+                                }}
+                                style={{
+                                  width: 52,
+                                  height: 52,
+                                  borderRadius: 6,
+                                  borderWidth: 1,
+                                  borderColor: "#CBD5E1",
+                                  backgroundColor: "#FFFFFF",
+                                }}
+                                resizeMode="contain"
+                              />
+                              {accImgs.length > 1 && (
+                                <View
+                                  style={{
+                                    position: "absolute",
+                                    bottom: -3,
+                                    right: -3,
+                                    backgroundColor: "#7A131A",
+                                    borderRadius: 8,
+                                    paddingHorizontal: 4,
+                                    paddingVertical: 1,
+                                  }}
+                                >
+                                  <Text
+                                    style={{
+                                      fontSize: 9,
+                                      fontWeight: "800",
+                                      color: "#FFFFFF",
+                                    }}
+                                  >
+                                    +{accImgs.length - 1}
+                                  </Text>
+                                </View>
+                              )}
+                            </TouchableOpacity>
+                          ) : (
+                            <View
+                              style={{
+                                width: 52,
+                                height: 52,
+                                borderRadius: 6,
+                                backgroundColor: "#F1F5F9",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                borderWidth: 1,
+                                borderColor: "#E2E8F0",
+                              }}
+                            >
+                              <Ionicons
+                                name="cube-outline"
+                                size={22}
+                                color="#94A3B8"
+                              />
+                            </View>
+                          )}
 
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.addedItemName}>{acc.name}</Text>
-                          {acc.description ? (
-                            <Text style={{ fontSize: 11, color: "#64748B" }}>
-                              {acc.description}
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.addedItemName}>{acc.name}</Text>
+                            {acc.description ? (
+                              <Text
+                                style={{
+                                  fontSize: 11,
+                                  color: "#64748B",
+                                  marginTop: 1,
+                                }}
+                              >
+                                {acc.description}
+                              </Text>
+                            ) : null}
+                            <Text
+                              style={{
+                                fontSize: 11,
+                                color: "#475569",
+                                marginTop: 3,
+                              }}
+                            >
+                              {acc.quantity} {acc.unit || "Pcs"} ×{" "}
+                              {formatINR(acc.price)}
                             </Text>
-                          ) : null}
-                          <Text
-                            style={{
-                              fontSize: 11,
-                              color: "#475569",
-                              marginTop: 2,
-                            }}
-                          >
-                            {acc.quantity} {acc.unit || "Nos"} ×{" "}
-                            {formatINR(acc.price)}
-                          </Text>
-                        </View>
+                          </View>
 
-                        <View style={{ alignItems: "flex-end", gap: 4 }}>
-                          <Text
-                            style={[
-                              styles.boldText,
-                              { fontSize: 13, color: "#0F172A" },
-                            ]}
-                          >
-                            {formatINR(acc.total || acc.quantity * acc.price)}
-                          </Text>
-                          <TouchableOpacity
-                            onPress={() =>
-                              handleRemoveStandaloneAccessory(index)
-                            }
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          >
-                            <Ionicons
-                              name="trash-outline"
-                              size={16}
-                              color="#EF4444"
-                            />
-                          </TouchableOpacity>
+                          <View style={{ alignItems: "flex-end", gap: 6 }}>
+                            <Text
+                              style={[
+                                styles.boldText,
+                                { fontSize: 13, color: "#0F172A" },
+                              ]}
+                            >
+                              {formatINR(
+                                acc.total || acc.quantity * acc.price,
+                              )}
+                            </Text>
+                            <View
+                              style={{
+                                flexDirection: "row",
+                                gap: 12,
+                                alignItems: "center",
+                              }}
+                            >
+                              <TouchableOpacity
+                                onPress={() =>
+                                  handleEditStandaloneAccessory(index)
+                                }
+                                hitSlop={{
+                                  top: 8,
+                                  bottom: 8,
+                                  left: 8,
+                                  right: 8,
+                                }}
+                              >
+                                <Ionicons
+                                  name="pencil-outline"
+                                  size={17}
+                                  color="#7A131A"
+                                />
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                onPress={() =>
+                                  handleRemoveStandaloneAccessory(index)
+                                }
+                                hitSlop={{
+                                  top: 8,
+                                  bottom: 8,
+                                  left: 8,
+                                  right: 8,
+                                }}
+                              >
+                                <Ionicons
+                                  name="trash-outline"
+                                  size={17}
+                                  color="#EF4444"
+                                />
+                              </TouchableOpacity>
+                            </View>
+                          </View>
                         </View>
-                      </View>
-                    ))
+                      );
+                    })
                   )}
 
                   {/* Accessories Subtotal Card */}
@@ -4060,13 +4725,13 @@ export default function QuotationScreen() {
                       flexDirection: "row",
                       justifyContent: "space-between",
                       alignItems: "center",
-                      backgroundColor: "#FFF5F5",
+                      backgroundColor: "#F0FDF4",
                       paddingVertical: 12,
-                      paddingHorizontal: 10,
+                      paddingHorizontal: 12,
                       borderRadius: 8,
                       borderWidth: 1,
-                      borderColor: "#FECDD3",
-                      marginTop: 12,
+                      borderColor: "#BBF7D0",
+                      marginTop: 14,
                       marginBottom: 16,
                     }}
                   >
@@ -4074,7 +4739,7 @@ export default function QuotationScreen() {
                       style={{
                         fontWeight: "700",
                         fontSize: 13,
-                        color: "#7A131A",
+                        color: "#166534",
                       }}
                     >
                       Accessories Subtotal ({standaloneAccessories.length}{" "}
@@ -4084,21 +4749,47 @@ export default function QuotationScreen() {
                       style={{
                         fontWeight: "800",
                         fontSize: 16,
-                        color: "#7A131A",
+                        color: "#166534",
                       }}
                     >
                       {formatINR(liveCalculation.standaloneAccTotal)}
                     </Text>
                   </View>
 
-                  <TouchableOpacity
-                    style={styles.nextStepBtn}
-                    onPress={() => setFormStep(4)}
+                  {/* Navigation Buttons: Back to Scope and Next to Pricing */}
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      gap: 10,
+                      marginTop: 8,
+                      marginBottom: 20,
+                    }}
                   >
-                    <Text style={styles.nextStepBtnText}>
-                      Next: Pricing &amp; Taxes →
-                    </Text>
-                  </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.backStepBtn,
+                        { flex: 1, marginVertical: 0 },
+                      ]}
+                      onPress={() => setFormStep(2)}
+                    >
+                      <Text style={styles.backStepBtnText}>
+                        ← Back to Scope
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.nextStepBtn,
+                        { flex: 1, marginVertical: 0 },
+                      ]}
+                      onPress={() => setFormStep(4)}
+                    >
+                      <Text style={styles.nextStepBtnText}>
+                        Next: Pricing &amp; Taxes →
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               )}
 
@@ -4898,6 +5589,543 @@ export default function QuotationScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* ── PREDEFINED HARDWARE ACCESSORIES GALLERY MODAL ─────────────────────── */}
+      <Modal
+        visible={showAccGalleryModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowAccGalleryModal(false)}
+      >
+        <SafeAreaView style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)" }}>
+          <View style={styles.galleryModalContainer}>
+            {/* Modal Header */}
+            <View style={styles.modalHead}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>Select Hardware Accessory</Text>
+                <Text style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}>
+                  Select photos from catalog ({catalogAccessories.length} items) or add custom.
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowAccGalleryModal(false)}
+                style={styles.closeBtn}
+              >
+                <Ionicons name="close" size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Search Bar */}
+            <View style={{ paddingHorizontal: 14, paddingTop: 8 }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  backgroundColor: "#F1F5F9",
+                  borderRadius: 8,
+                  paddingHorizontal: 10,
+                  height: 38,
+                }}
+              >
+                <Ionicons name="search-outline" size={16} color="#64748B" />
+                <TextInput
+                  placeholder="Search (e.g. Lift Basket, Magic Corner...)"
+                  value={accGallerySearch}
+                  onChangeText={setAccGallerySearch}
+                  style={{
+                    flex: 1,
+                    fontSize: 12,
+                    color: "#0F172A",
+                    marginLeft: 6,
+                    paddingVertical: 0,
+                  }}
+                />
+                {accGallerySearch ? (
+                  <TouchableOpacity onPress={() => setAccGallerySearch("")}>
+                    <Ionicons name="close-circle" size={16} color="#94A3B8" />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            </View>
+
+            {/* Category Filter Pills + Add More Button */}
+            <View style={{ paddingHorizontal: 14, paddingVertical: 8 }}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 6, alignItems: "center" }}
+              >
+                {["All", "Kitchen Accessories", "Wardrobe Accessories"].map(
+                  (cat) => {
+                    const isActive = accGalleryCategory === cat;
+                    const count =
+                      cat === "All"
+                        ? catalogAccessories.length
+                        : catalogAccessories.filter((a) => a.category === cat)
+                            .length;
+                    const label =
+                      cat === "All"
+                        ? `All (${count})`
+                        : cat === "Kitchen Accessories"
+                          ? `Kitchen (${count})`
+                          : `Wardrobe (${count})`;
+                    return (
+                      <TouchableOpacity
+                        key={cat}
+                        style={[
+                          styles.smallPill,
+                          isActive && styles.smallPillActive,
+                          { paddingVertical: 5, paddingHorizontal: 10 },
+                        ]}
+                        onPress={() => {
+                          setAccGalleryCategory(cat);
+                          setShowAddCustomModalItem(false);
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.smallPillText,
+                            isActive && styles.smallPillTextActive,
+                            { fontSize: 11 },
+                          ]}
+                        >
+                          {label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  },
+                )}
+
+                <TouchableOpacity
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 4,
+                    paddingVertical: 5,
+                    paddingHorizontal: 10,
+                    borderRadius: 16,
+                    backgroundColor: showAddCustomModalItem
+                      ? "#7A131A"
+                      : "#FFF5F5",
+                    borderWidth: 1,
+                    borderColor: "#7A131A",
+                  }}
+                  onPress={() => setShowAddCustomModalItem((v) => !v)}
+                >
+                  <Ionicons
+                    name="add"
+                    size={14}
+                    color={showAddCustomModalItem ? "#FFFFFF" : "#7A131A"}
+                  />
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      fontWeight: "700",
+                      color: showAddCustomModalItem ? "#FFFFFF" : "#7A131A",
+                    }}
+                  >
+                    Add More
+                  </Text>
+                </TouchableOpacity>
+
+                {modalSelectedItems.length > 0 && (
+                  <View
+                    style={{
+                      backgroundColor: "#FEE2E2",
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                      borderRadius: 12,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        fontWeight: "700",
+                        color: "#7A131A",
+                      }}
+                    >
+                      {modalSelectedItems.length} selected
+                    </Text>
+                  </View>
+                )}
+              </ScrollView>
+            </View>
+
+            {/* Inline Custom Accessory Form */}
+            {showAddCustomModalItem && (
+              <View
+                style={{
+                  marginHorizontal: 14,
+                  marginBottom: 8,
+                  padding: 10,
+                  backgroundColor: "#FFF5F5",
+                  borderWidth: 1,
+                  borderColor: "#FECDD3",
+                  borderRadius: 8,
+                  gap: 8,
+                }}
+              >
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "700",
+                      color: "#7A131A",
+                    }}
+                  >
+                    ➕ Add Custom Hardware to Catalog
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => setShowAddCustomModalItem(false)}
+                  >
+                    <Ionicons name="close" size={16} color="#64748B" />
+                  </TouchableOpacity>
+                </View>
+
+                <TextInput
+                  style={[
+                    styles.textInput,
+                    { height: 36, fontSize: 12, marginBottom: 0 },
+                  ]}
+                  placeholder="Accessory Name *"
+                  value={customModalItemName}
+                  onChangeText={setCustomModalItemName}
+                />
+
+                <View
+                  style={{
+                    flexDirection: "row",
+                    gap: 6,
+                    alignItems: "center",
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      color: "#475569",
+                      fontWeight: "600",
+                    }}
+                  >
+                    Category:
+                  </Text>
+                  {["Kitchen Accessories", "Wardrobe Accessories"].map((c) => {
+                    const isSel = customModalItemCategory === c;
+                    return (
+                      <TouchableOpacity
+                        key={c}
+                        style={[
+                          styles.smallPill,
+                          isSel && styles.smallPillActive,
+                          { paddingVertical: 4, paddingHorizontal: 8 },
+                        ]}
+                        onPress={() => setCustomModalItemCategory(c)}
+                      >
+                        <Text
+                          style={[
+                            styles.smallPillText,
+                            isSel && styles.smallPillTextActive,
+                            { fontSize: 10 },
+                          ]}
+                        >
+                          {c.replace(" Accessories", "")}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                <View
+                  style={{
+                    flexDirection: "row",
+                    gap: 8,
+                    alignItems: "center",
+                  }}
+                >
+                  <TouchableOpacity
+                    style={{
+                      flex: 1,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6,
+                      height: 36,
+                      borderRadius: 6,
+                      borderWidth: 1,
+                      borderColor: "#CBD5E1",
+                      backgroundColor: "#FFFFFF",
+                    }}
+                    onPress={handlePickCustomModalItemImage}
+                  >
+                    <Ionicons
+                      name="camera-outline"
+                      size={16}
+                      color="#475569"
+                    />
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        color: "#475569",
+                        fontWeight: "600",
+                      }}
+                    >
+                      {customModalItemImage ? "Change Image" : "Pick Image *"}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={{
+                      paddingHorizontal: 16,
+                      height: 36,
+                      borderRadius: 6,
+                      backgroundColor: "#7A131A",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                    onPress={handleSaveCustomModalItem}
+                  >
+                    <Text
+                      style={{
+                        color: "#FFFFFF",
+                        fontSize: 11,
+                        fontWeight: "700",
+                      }}
+                    >
+                      Save to Catalog
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* Catalog Grid */}
+            <ScrollView
+              style={{ flex: 1, paddingHorizontal: 14 }}
+              contentContainerStyle={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                gap: 10,
+                paddingVertical: 8,
+              }}
+            >
+              {filteredPredefinedAccessories.map((item) => {
+                const isSelected = modalSelectedItems.some(
+                  (it) => it.id === item.id || it.image === item.image,
+                );
+                return (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={{
+                      width: "48%",
+                      backgroundColor: "#FFFFFF",
+                      borderRadius: 8,
+                      borderWidth: isSelected ? 2 : 1,
+                      borderColor: isSelected ? "#7A131A" : "#E2E8F0",
+                      padding: 8,
+                      alignItems: "center",
+                      position: "relative",
+                    }}
+                    onPress={() => handleToggleModalItemSelect(item)}
+                    activeOpacity={0.8}
+                  >
+                    <View
+                      style={{
+                        width: "100%",
+                        height: 90,
+                        backgroundColor: "#F8FAFC",
+                        borderRadius: 6,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <Image
+                        source={{
+                          uri: resolveAccessoryImageUri(item.image, API_URL),
+                        }}
+                        style={{ width: "90%", height: "90%" }}
+                        resizeMode="contain"
+                      />
+                    </View>
+
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        fontWeight: "700",
+                        color: isSelected ? "#7A131A" : "#0F172A",
+                        marginTop: 6,
+                        textAlign: "center",
+                      }}
+                      numberOfLines={1}
+                    >
+                      {item.name}
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 10,
+                        color: "#64748B",
+                        marginTop: 1,
+                        textAlign: "center",
+                      }}
+                      numberOfLines={1}
+                    >
+                      {item.category}
+                    </Text>
+
+                    {isSelected && (
+                      <View
+                        style={{
+                          position: "absolute",
+                          top: 6,
+                          right: 6,
+                          backgroundColor: "#7A131A",
+                          borderRadius: 10,
+                          width: 20,
+                          height: 20,
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <Ionicons
+                          name="checkmark"
+                          size={14}
+                          color="#FFFFFF"
+                        />
+                      </View>
+                    )}
+
+                    {item.isCustom && (
+                      <TouchableOpacity
+                        style={{
+                          position: "absolute",
+                          top: 6,
+                          left: 6,
+                          backgroundColor: "rgba(239,68,68,0.9)",
+                          borderRadius: 10,
+                          width: 20,
+                          height: 20,
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                        onPress={() => handleDeleteCustomCatalogItem(item.id)}
+                      >
+                        <Ionicons name="trash" size={12} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            {/* Modal Footer Actions */}
+            <View
+              style={{
+                flexDirection: "row",
+                gap: 8,
+                padding: 12,
+                borderTopWidth: 1,
+                borderTopColor: "#E2E8F0",
+                backgroundColor: "#FFFFFF",
+              }}
+            >
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  paddingVertical: 11,
+                  borderRadius: 8,
+                  backgroundColor: "#F1F5F9",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+                onPress={handleBatchAddModalItems}
+                disabled={modalSelectedItems.length === 0}
+              >
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: "700",
+                    color:
+                      modalSelectedItems.length === 0 ? "#94A3B8" : "#475569",
+                  }}
+                >
+                  Batch Add ({modalSelectedItems.length})
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{
+                  flex: 1.5,
+                  paddingVertical: 11,
+                  borderRadius: 8,
+                  backgroundColor: "#7A131A",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+                onPress={handleApplyModalSelection}
+              >
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: "700",
+                    color: "#FFFFFF",
+                  }}
+                >
+                  Apply Selection ({modalSelectedItems.length} photos)
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </SafeAreaView>
+      </Modal>
+
+      {/* ── FULL SCREEN IMAGE PREVIEW MODAL ────────────────────────────────────── */}
+      <Modal
+        visible={!!previewImageUri}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPreviewImageUri(null)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.9)",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+        >
+          <TouchableOpacity
+            style={{
+              position: "absolute",
+              top: 40,
+              right: 20,
+              backgroundColor: "rgba(255,255,255,0.3)",
+              borderRadius: 20,
+              width: 38,
+              height: 38,
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 10,
+            }}
+            onPress={() => setPreviewImageUri(null)}
+          >
+            <Ionicons name="close" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+
+          {previewImageUri ? (
+            <Image
+              source={{ uri: previewImageUri }}
+              style={{ width: "100%", height: "80%" }}
+              resizeMode="contain"
+            />
+          ) : null}
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -5508,6 +6736,34 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontWeight: "700",
     fontSize: 12,
+  },
+  backStepBtn: {
+    backgroundColor: "#F1F5F9",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: "center",
+    marginTop: 24,
+    marginBottom: 40,
+  },
+  backStepBtnText: {
+    color: "#475569",
+    fontWeight: "700",
+    fontSize: 12,
+  },
+  galleryModalContainer: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+    marginHorizontal: 12,
+    marginVertical: 16,
+    borderRadius: 16,
+    overflow: "hidden",
+    elevation: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
   },
 
   roomPill: {

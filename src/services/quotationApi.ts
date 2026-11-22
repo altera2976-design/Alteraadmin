@@ -30,6 +30,8 @@ export interface QuotationStandaloneAccessory {
   name: string;
   description?: string;
   image?: string;
+  images?: string[];
+  imageId?: string;
   quantity: number;
   unit?: string;
   price: number;

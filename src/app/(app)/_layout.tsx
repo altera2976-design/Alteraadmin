@@ -281,14 +281,15 @@ function DrawerMenuItem({ icon, label, isActive, onPress }: any) {
 }
 
 export default function AppLayout() {
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
 
   // Position sidebar strictly below the top mobile header
   const headerHeight = insets.top + (Platform.OS === "android" ? 56 : 50);
+  const bottomGap = Math.max(insets.bottom + 6, 14);
 
   // Approximately 78-83% of mobile screen width, leaving 17-22% visible on the right
-  const drawerWidth = Math.min(Math.round(width * 0.79), 320);
+  const drawerWidth = Math.min(Math.round(width * 0.80), 324);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -300,10 +301,11 @@ export default function AppLayout() {
           overlayColor: "rgba(0, 0, 0, 0.45)",
           drawerStyle: {
             width: drawerWidth,
+            top: headerHeight + 4,
+            bottom: bottomGap,
+            marginTop: 0,
+            marginBottom: 0,
             backgroundColor: "#FFFFFF",
-            marginTop: headerHeight + 6,
-            marginBottom: Math.max(insets.bottom + 6, 12),
-            maxHeight: Math.min(Math.round(height * 0.92), 820),
             borderRadius: 28,
             borderTopLeftRadius: 28,
             borderTopRightRadius: 28,
@@ -348,6 +350,7 @@ const styles = StyleSheet.create({
   // Main floating drawer card
   drawerCard: {
     flex: 1,
+    height: "100%",
     backgroundColor: "#FFFFFF",
     borderRadius: 28,
     overflow: "hidden",
@@ -409,6 +412,7 @@ const styles = StyleSheet.create({
   menuScrollContent: {
     paddingVertical: 15,
     paddingHorizontal: 10,
+    flexGrow: 1,
   },
   menuList: {
     gap: 4,

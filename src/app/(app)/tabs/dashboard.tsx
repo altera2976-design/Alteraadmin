@@ -11,6 +11,7 @@ import {
   TextInput,
   Alert,
   Platform,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -19,6 +20,7 @@ import * as Sharing from 'expo-sharing';
 import * as WebBrowser from 'expo-web-browser';
 import * as SecureStore from 'expo-secure-store';
 import * as IntentLauncher from 'expo-intent-launcher';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../../context/AuthContext';
 import { THEME } from '../../../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -41,6 +43,8 @@ export default function DashboardScreen() {
   const [taskProgressInput, setTaskProgressInput] = useState('50');
   const [taskStatusInput, setTaskStatusInput] = useState('In Progress');
   const [taskCommentInput, setTaskCommentInput] = useState('');
+  const [taskModalImages, setTaskModalImages] = useState<string[]>([]);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   const [updatingTask, setUpdatingTask] = useState(false);
 
   const fetchStats = useCallback(async () => {
@@ -102,19 +106,96 @@ export default function DashboardScreen() {
     fetchStats();
   };
 
+  const handlePickCamera = async () => {
+    try {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          'Permission Required',
+          'Camera permission is required to capture progress photos.',
+        );
+        return;
+      }
+      const result = await ImagePicker.launchCameraAsync({
+        quality: 0.7,
+        allowsEditing: false,
+      });
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setTaskModalImages((prev) => [...prev, result.assets[0].uri]);
+      }
+    } catch {
+      Alert.alert('Camera Error', 'Could not open camera.');
+    }
+  };
+
+  const handlePickGallery = async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          'Permission Required',
+          'Gallery permission is required to select progress photos.',
+        );
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsMultipleSelection: true,
+        quality: 0.7,
+      });
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const uris = result.assets.map((a) => a.uri);
+        setTaskModalImages((prev) => [...prev, ...uris]);
+      }
+    } catch {
+      Alert.alert('Gallery Error', 'Could not select images.');
+    }
+  };
+
+  const handleRemoveTaskImage = (indexToRemove: number) => {
+    setTaskModalImages((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+  };
+
   const handleUpdateTaskSubmit = async () => {
     if (!selectedTask) return;
     try {
       setUpdatingTask(true);
-      await projectApi.updateTaskProgress(selectedTask._id, {
+      const taskId = selectedTask._id;
+
+      // Convert local image URIs to base64 attachments for backend storage
+      const preparedAttachments: any[] = [];
+      for (let i = 0; i < taskModalImages.length; i++) {
+        const uri = taskModalImages[i];
+        try {
+          const filename = uri.split('/').pop() || `proof_${Date.now()}_${i}.jpg`;
+          const base64Data = await FileSystem.readAsStringAsync(uri, {
+            encoding: 'base64',
+          });
+          const mimeType = filename.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
+          preparedAttachments.push({
+            fileName: filename,
+            originalName: filename,
+            base64Data,
+            fileType: mimeType,
+            mimeType,
+          });
+        } catch (fileErr) {
+          console.warn('Failed reading image file as base64:', fileErr);
+        }
+      }
+
+      await projectApi.updateTaskProgress(taskId, {
         progress: Number(taskProgressInput),
         status: taskStatusInput as any,
         comment: taskCommentInput.trim() || undefined,
+        attachments: preparedAttachments.length > 0 ? preparedAttachments : undefined,
       });
+
       setSelectedTask(null);
       setTaskCommentInput('');
+      setTaskModalImages([]);
       fetchStats();
-      Alert.alert('Success', 'Task progress updated successfully!');
+      Alert.alert('Success', 'Task progress and proof images updated successfully!');
     } catch (err: any) {
       Alert.alert('Error', err.response?.data?.message || 'Failed to update task.');
     } finally {
@@ -672,14 +753,30 @@ export default function DashboardScreen() {
 
                     <View style={styles.empTaskFooter}>
                       <Text style={styles.taskStatusText}>
-                        Status: <Text style={{ fontWeight: '700', color: THEME.colors.primary }}>{task.status}</Text> ({task.progress || 0}%)
+                        Status:{' '}
+                        <Text style={{ fontWeight: '700', color: THEME.colors.primary }}>
+                          {task.status === 'Blocked'
+                            ? 'On Hold'
+                            : task.status === 'To Do'
+                            ? 'Pending'
+                            : task.status}
+                        </Text>{' '}
+                        ({task.progress || 0}%)
                       </Text>
                       <TouchableOpacity
                         style={styles.updateTaskBtn}
                         onPress={() => {
                           setSelectedTask(task);
                           setTaskProgressInput(String(task.progress || 0));
-                          setTaskStatusInput(task.status);
+                          const initialStatus =
+                            task.status === 'Blocked' || task.status === 'On Hold'
+                              ? 'On Hold'
+                              : task.status === 'To Do' || task.status === 'Pending'
+                              ? 'Pending'
+                              : task.status || 'In Progress';
+                          setTaskStatusInput(initialStatus);
+                          setTaskCommentInput('');
+                          setTaskModalImages([]);
                         }}
                         activeOpacity={0.8}
                       >
@@ -745,85 +842,210 @@ export default function DashboardScreen() {
             </View>
 
             {selectedTask ? (
-              <View style={styles.modalBody}>
-                <Text style={styles.modalTaskName}>{selectedTask.name}</Text>
-                <Text style={styles.modalTaskProject}>{selectedTask.projectName}</Text>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                style={{ maxHeight: 560 }}
+                keyboardShouldPersistTaps="handled"
+              >
+                <View style={styles.modalBody}>
+                  <Text style={styles.modalTaskName}>{selectedTask.name}</Text>
+                  <Text style={styles.modalTaskProject}>{selectedTask.projectName || 'General Operations'}</Text>
 
-                {selectedTask.pdfUrl ? (
+                  {/* Super Admin / Admin Assigned Attachments & Documents */}
+                  {((selectedTask.attachments && selectedTask.attachments.length > 0) || selectedTask.pdfUrl) && (
+                    <View style={styles.adminAttachmentsBox}>
+                      <View style={styles.adminAttachmentsHeader}>
+                        <Ionicons name="document-attach-outline" size={16} color={THEME.colors.primary} />
+                        <Text style={styles.adminAttachmentsTitle}>Assigned by Superadmin / Admin:</Text>
+                      </View>
+
+                      {selectedTask.pdfUrl && (
+                        <TouchableOpacity
+                          style={styles.attachedDocBtn}
+                          onPress={() =>
+                            handleOpenAttachment({
+                              fileUrl: selectedTask.pdfUrl,
+                              mimeType: 'application/pdf',
+                              originalName: 'Task_Document.pdf',
+                            })
+                          }
+                          disabled={!!openingFileId}
+                        >
+                          {openingFileId ? (
+                            <ActivityIndicator size="small" color="#fff" />
+                          ) : (
+                            <Ionicons name="document-text" size={16} color="#fff" />
+                          )}
+                          <Text style={styles.attachedDocBtnText}>
+                            {openingFileId ? 'Opening PDF...' : 'View Attached Document (PDF)'}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+
+                      {selectedTask.attachments && selectedTask.attachments.length > 0 && (
+                        <View style={{ gap: 6, marginTop: 6 }}>
+                          {selectedTask.attachments.map((att: any, idx: number) => {
+                            const isImg =
+                              (att.fileType || att.mimeType || '').startsWith('image/') ||
+                              /\.(jpg|jpeg|png|webp|gif)$/i.test(att.originalName || att.fileName || '');
+                            const fullUrl = getFullAttachmentUrl(att.url || att.fileUrl || att.driveUrl);
+                            return (
+                              <View key={att._id || idx} style={styles.attachmentItemRow}>
+                                {isImg && fullUrl ? (
+                                  <TouchableOpacity onPress={() => setPreviewImageUrl(fullUrl)}>
+                                    <Image source={{ uri: fullUrl }} style={styles.attachmentThumbSmall} />
+                                  </TouchableOpacity>
+                                ) : (
+                                  <Ionicons name="document-outline" size={20} color="#555" />
+                                )}
+                                <Text style={styles.attachmentItemName} numberOfLines={1}>
+                                  {att.originalName || att.fileName || `Attachment #${idx + 1}`}
+                                </Text>
+                                {fullUrl ? (
+                                  <TouchableOpacity
+                                    style={styles.viewFileBtn}
+                                    onPress={() =>
+                                      isImg ? setPreviewImageUrl(fullUrl) : handleOpenAttachment(att)
+                                    }
+                                  >
+                                    <Text style={styles.viewFileBtnText}>{isImg ? 'View' : 'Open'}</Text>
+                                  </TouchableOpacity>
+                                ) : null}
+                              </View>
+                            );
+                          })}
+                        </View>
+                      )}
+                    </View>
+                  )}
+
+                  <Text style={styles.inputLabel}>Progress Percentage (0 - 100%):</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    keyboardType="number-pad"
+                    value={taskProgressInput}
+                    onChangeText={setTaskProgressInput}
+                    placeholder="e.g. 75"
+                  />
+
+                  <Text style={styles.inputLabel}>Status:</Text>
+                  <View style={styles.modalStatusRow}>
+                    {['Pending', 'In Progress', 'On Hold', 'Completed'].map((st) => (
+                      <TouchableOpacity
+                        key={st}
+                        style={[
+                          styles.modalStatusChip,
+                          taskStatusInput === st && styles.modalStatusChipActive,
+                        ]}
+                        onPress={() => {
+                          setTaskStatusInput(st);
+                          if (st === 'Completed') setTaskProgressInput('100');
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.modalStatusChipText,
+                            taskStatusInput === st && styles.modalStatusChipTextActive,
+                          ]}
+                        >
+                          {st}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <Text style={styles.inputLabel}>Comment / Work Done:</Text>
+                  <TextInput
+                    style={[styles.textInput, { height: 70, textAlignVertical: 'top' }]}
+                    multiline
+                    value={taskCommentInput}
+                    onChangeText={setTaskCommentInput}
+                    placeholder="e.g. Completed kitchen base cabinet framing..."
+                  />
+
+                  {/* Upload Images / Camera Proof Option */}
+                  <View style={styles.uploadSectionBox}>
+                    <Text style={styles.inputLabel}>📸 Upload Images / Proof of Work:</Text>
+                    <View style={styles.uploadBtnRow}>
+                      <TouchableOpacity
+                        style={styles.uploadProofBtn}
+                        onPress={handlePickCamera}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="camera" size={18} color="#fff" />
+                        <Text style={styles.uploadProofBtnText}>Take Photo</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.uploadProofBtn, { backgroundColor: '#374151' }]}
+                        onPress={handlePickGallery}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="images" size={18} color="#fff" />
+                        <Text style={styles.uploadProofBtnText}>From Gallery</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Horizontal preview strip of selected photos */}
+                    {taskModalImages.length > 0 && (
+                      <View style={styles.previewStripContainer}>
+                        <Text style={styles.previewCountText}>
+                          {taskModalImages.length} photo{taskModalImages.length > 1 ? 's' : ''} attached:
+                        </Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.previewScroll}>
+                          {taskModalImages.map((uri, idx) => (
+                            <View key={uri + idx} style={styles.previewThumbWrap}>
+                              <TouchableOpacity onPress={() => setPreviewImageUrl(uri)}>
+                                <Image source={{ uri }} style={styles.previewThumbImg} />
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={styles.removeThumbBadge}
+                                onPress={() => handleRemoveTaskImage(idx)}
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                              >
+                                <Ionicons name="close-circle" size={20} color="#DC2626" />
+                              </TouchableOpacity>
+                            </View>
+                          ))}
+                        </ScrollView>
+                      </View>
+                    )}
+                  </View>
+
                   <TouchableOpacity
-                    style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginVertical: 12, padding: 12, backgroundColor: THEME.colors.primary, borderRadius: 8, opacity: openingFileId ? 0.7 : 1 }}
-                    onPress={() => handleOpenAttachment({ fileUrl: selectedTask.pdfUrl, mimeType: 'application/pdf', originalName: 'Task_Document.pdf' })}
-                    disabled={!!openingFileId}
+                    style={styles.modalSubmitBtn}
+                    onPress={handleUpdateTaskSubmit}
+                    disabled={updatingTask}
                   >
-                    {openingFileId ? (
+                    {updatingTask ? (
                       <ActivityIndicator size="small" color="#fff" />
                     ) : (
-                      <Ionicons name="document-text" size={18} color="#fff" />
+                      <Text style={styles.modalSubmitBtnText}>Save Update</Text>
                     )}
-                    <Text style={{ fontSize: 14, color: '#fff', fontWeight: '700' }}>
-                      {openingFileId ? 'Opening PDF...' : 'View Attached PDF'}
-                    </Text>
                   </TouchableOpacity>
-                ) : null}
-
-                <Text style={styles.inputLabel}>Progress Percentage (0 - 100%):</Text>
-                <TextInput
-                  style={styles.textInput}
-                  keyboardType="number-pad"
-                  value={taskProgressInput}
-                  onChangeText={setTaskProgressInput}
-                  placeholder="e.g. 75"
-                />
-
-                <Text style={styles.inputLabel}>Status:</Text>
-                <View style={styles.modalStatusRow}>
-                  {['To Do', 'In Progress', 'Completed', 'Blocked'].map((st) => (
-                    <TouchableOpacity
-                      key={st}
-                      style={[
-                        styles.modalStatusChip,
-                        taskStatusInput === st && styles.modalStatusChipActive,
-                      ]}
-                      onPress={() => {
-                        setTaskStatusInput(st);
-                        if (st === 'Completed') setTaskProgressInput('100');
-                      }}
-                    >
-                      <Text
-                        style={[
-                          styles.modalStatusChipText,
-                          taskStatusInput === st && styles.modalStatusChipTextActive,
-                        ]}
-                      >
-                        {st}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
                 </View>
-
-                <Text style={styles.inputLabel}>Comment / Work Done:</Text>
-                <TextInput
-                  style={[styles.textInput, { height: 70, textAlignVertical: 'top' }]}
-                  multiline
-                  value={taskCommentInput}
-                  onChangeText={setTaskCommentInput}
-                  placeholder="e.g. Completed kitchen base cabinet framing..."
-                />
-
-                <TouchableOpacity
-                  style={styles.modalSubmitBtn}
-                  onPress={handleUpdateTaskSubmit}
-                  disabled={updatingTask}
-                >
-                  {updatingTask ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <Text style={styles.modalSubmitBtnText}>Save Update</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
+              </ScrollView>
             ) : null}
           </View>
+        </View>
+      </Modal>
+
+      {/* Full Size Image Preview Modal */}
+      <Modal visible={!!previewImageUrl} transparent animationType="fade">
+        <View style={styles.previewFullOverlay}>
+          <TouchableOpacity
+            style={styles.previewFullCloseBtn}
+            onPress={() => setPreviewImageUrl(null)}
+          >
+            <Ionicons name="close" size={28} color="#fff" />
+          </TouchableOpacity>
+          {previewImageUrl && (
+            <Image
+              source={{ uri: previewImageUrl }}
+              style={styles.previewFullImage}
+              resizeMode="contain"
+            />
+          )}
         </View>
       </Modal>
     </View>
@@ -1305,4 +1527,154 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   modalSubmitBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+
+  // Superadmin / Admin attachments
+  adminAttachmentsBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginVertical: 4,
+  },
+  adminAttachmentsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  adminAttachmentsTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: THEME.colors.primary,
+  },
+  attachedDocBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginVertical: 6,
+    padding: 10,
+    backgroundColor: THEME.colors.primary,
+    borderRadius: 8,
+  },
+  attachedDocBtnText: {
+    fontSize: 13,
+    color: '#fff',
+    fontWeight: '700',
+  },
+  attachmentItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#fff',
+    padding: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#EDF2F7',
+  },
+  attachmentThumbSmall: {
+    width: 32,
+    height: 32,
+    borderRadius: 4,
+    backgroundColor: '#eee',
+  },
+  attachmentItemName: {
+    flex: 1,
+    fontSize: 11,
+    color: '#334155',
+    fontWeight: '500',
+  },
+  viewFileBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+    backgroundColor: '#F1F5F9',
+  },
+  viewFileBtnText: {
+    fontSize: 10,
+    color: THEME.colors.primary,
+    fontWeight: '700',
+  },
+
+  // Upload Images / Camera Proof Box
+  uploadSectionBox: {
+    marginTop: 6,
+    backgroundColor: '#FAFAFA',
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  uploadBtnRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 6,
+  },
+  uploadProofBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    backgroundColor: THEME.colors.primary,
+    borderRadius: 8,
+  },
+  uploadProofBtnText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  previewStripContainer: {
+    marginTop: 10,
+  },
+  previewCountText: {
+    fontSize: 11,
+    color: '#4B5563',
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  previewScroll: {
+    flexDirection: 'row',
+  },
+  previewThumbWrap: {
+    position: 'relative',
+    marginRight: 10,
+  },
+  previewThumbImg: {
+    width: 68,
+    height: 68,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  removeThumbBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+  },
+
+  // Full Screen Preview Modal
+  previewFullOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.92)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewFullCloseBtn: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 99,
+    padding: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 20,
+  },
+  previewFullImage: {
+    width: '95%',
+    height: '80%',
+  },
 });

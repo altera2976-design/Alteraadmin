@@ -302,11 +302,12 @@ export function buildQuotationHtml(q: any): string {
               const accTotal =
                 Number(acc.total) ||
                 (Number(acc.quantity) || 1) * (Number(acc.price) || 0);
+              const displayImg = acc.image || (Array.isArray(acc.images) ? acc.images[0] : "");
               return `
             <tr>
               <td class="center font-bold">${idx + 1}</td>
               <td class="center">
-                ${acc.image ? `<img src="${acc.image}" style="max-width: 80px; max-height: 80px; object-fit: contain; border-radius: 4px; border: 1px solid #CBD5E1;" />` : '<span style="color: #94A3B8; font-size: 7.5pt;">No Image</span>'}
+                ${displayImg ? `<img src="${displayImg}" style="max-width: 80px; max-height: 80px; object-fit: contain; border-radius: 4px; border: 1px solid #CBD5E1;" />` : '<span style="color: #94A3B8; font-size: 7.5pt;">No Image</span>'}
               </td>
               <td>
                 <div class="item-name">${esc(acc.name)}</div>

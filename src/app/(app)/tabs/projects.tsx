@@ -20,6 +20,7 @@ import * as Sharing from 'expo-sharing';
 import * as WebBrowser from 'expo-web-browser';
 import * as SecureStore from 'expo-secure-store';
 import * as IntentLauncher from 'expo-intent-launcher';
+import * as ImagePicker from 'expo-image-picker';
 import { THEME } from '../../../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../../context/AuthContext';
@@ -49,6 +50,16 @@ export default function ProjectsScreen() {
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   const [openingFileId, setOpeningFileId] = useState<string | null>(null);
   const [authToken, setAuthToken] = useState<string | null>(null);
+
+  // Task Status Update & Proof Images Modal
+  const [statusModalTask, setStatusModalTask] = useState<Task | null>(null);
+  const [statusModalStatus, setStatusModalStatus] = useState<
+    'Pending' | 'In Progress' | 'On Hold' | 'Completed'
+  >('In Progress');
+  const [statusModalProgress, setStatusModalProgress] = useState<number>(50);
+  const [statusModalComment, setStatusModalComment] = useState<string>('');
+  const [statusModalImages, setStatusModalImages] = useState<string[]>([]);
+  const [isSubmittingStatus, setIsSubmittingStatus] = useState<boolean>(false);
 
   useEffect(() => {
     SecureStore.getItemAsync(STORAGE_KEYS.TOKEN).then((tok) => {
@@ -138,6 +149,149 @@ export default function ProjectsScreen() {
   const onRefresh = () => {
     setRefreshing(true);
     loadData();
+  };
+
+  const handleOpenStatusModal = (
+    task: Task,
+    suggestedStatus?: 'Pending' | 'In Progress' | 'On Hold' | 'Completed',
+  ) => {
+    setStatusModalTask(task);
+    const initialStatus =
+      suggestedStatus ||
+      (task.status === 'Completed'
+        ? 'Completed'
+        : task.status === 'On Hold'
+          ? 'On Hold'
+          : task.status === 'In Progress'
+            ? 'In Progress'
+            : 'Pending');
+    setStatusModalStatus(initialStatus);
+
+    let initialProgress = task.progress || 0;
+    if (initialStatus === 'Completed') initialProgress = 100;
+    else if (initialStatus === 'Pending') initialProgress = 0;
+    else if (initialStatus === 'In Progress' && initialProgress === 0)
+      initialProgress = 50;
+
+    setStatusModalProgress(initialProgress);
+    setStatusModalComment('');
+    setStatusModalImages([]);
+  };
+
+  const handlePickStatusCameraImage = async () => {
+    try {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          'Permission Required',
+          'Camera permission is required to capture proof photos.',
+        );
+        return;
+      }
+      const result = await ImagePicker.launchCameraAsync({
+        quality: 0.7,
+        allowsEditing: false,
+      });
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setStatusModalImages((prev) => [...prev, result.assets[0].uri]);
+      }
+    } catch {
+      Alert.alert('Camera Error', 'Could not open camera.');
+    }
+  };
+
+  const handlePickStatusGalleryImages = async () => {
+    try {
+      const permission =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          'Permission Required',
+          'Gallery permission is required to select proof photos.',
+        );
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsMultipleSelection: true,
+        quality: 0.7,
+      });
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const uris = result.assets.map((a) => a.uri);
+        setStatusModalImages((prev) => [...prev, ...uris]);
+      }
+    } catch {
+      Alert.alert('Gallery Error', 'Could not select images.');
+    }
+  };
+
+  const handleRemoveStatusModalImage = (indexToRemove: number) => {
+    setStatusModalImages((prev) =>
+      prev.filter((_, idx) => idx !== indexToRemove),
+    );
+  };
+
+  const handleSubmitStatusUpdate = async () => {
+    if (!statusModalTask) return;
+    try {
+      setIsSubmittingStatus(true);
+      const taskId = statusModalTask._id;
+
+      // Convert local image URIs to base64 attachment objects for backend storage
+      const preparedAttachments: any[] = [];
+      for (let i = 0; i < statusModalImages.length; i++) {
+        const uri = statusModalImages[i];
+        try {
+          const filename =
+            uri.split('/').pop() || `proof_${Date.now()}_${i}.jpg`;
+          const base64Data = await FileSystem.readAsStringAsync(uri, {
+            encoding: 'base64',
+          });
+          const mimeType = filename.toLowerCase().endsWith('.png')
+            ? 'image/png'
+            : 'image/jpeg';
+          preparedAttachments.push({
+            fileName: filename,
+            originalName: filename,
+            base64Data,
+            fileType: mimeType,
+            mimeType,
+          });
+        } catch (fileErr) {
+          console.warn('Failed reading image file as base64:', fileErr);
+        }
+      }
+
+      const res = await projectApi.updateTaskProgress(taskId, {
+        status: statusModalStatus,
+        progress: statusModalProgress,
+        comment: statusModalComment.trim() || undefined,
+        attachments:
+          preparedAttachments.length > 0 ? preparedAttachments : undefined,
+      });
+
+      if (res?.success && res.data) {
+        if (selectedTask && selectedTask._id === taskId) {
+          setSelectedTask(res.data);
+        }
+      }
+
+      setStatusModalTask(null);
+      setStatusModalComment('');
+      setStatusModalImages([]);
+      loadData();
+      Alert.alert(
+        'Status Updated',
+        `Task status updated to "${statusModalStatus}" with proof attached.`,
+      );
+    } catch (err: any) {
+      Alert.alert(
+        'Update Failed',
+        err.response?.data?.message || 'Failed to update task status.',
+      );
+    } finally {
+      setIsSubmittingStatus(false);
+    }
   };
 
   const handleUpdateTaskStatus = async (taskId: string, newStatus: string) => {
@@ -680,7 +834,7 @@ Local file URI: ${downloadRes.uri}`);
                           ((t.status as string) === 'To Do' || (t.status as string) === 'Pending') && styles.statusActionBtnActiveTodo
                         ]}
                         disabled={updatingTaskId === t._id}
-                        onPress={() => handleUpdateTaskStatus(t._id, 'To Do')}
+                        onPress={() => handleOpenStatusModal(t, 'Pending')}
                       >
                         <Text style={[
                           styles.statusActionText,
@@ -696,7 +850,7 @@ Local file URI: ${downloadRes.uri}`);
                           isInProgress && styles.statusActionBtnActiveProgress
                         ]}
                         disabled={updatingTaskId === t._id}
-                        onPress={() => handleUpdateTaskStatus(t._id, 'In Progress')}
+                        onPress={() => handleOpenStatusModal(t, 'In Progress')}
                       >
                         <Text style={[
                           styles.statusActionText,
@@ -709,10 +863,26 @@ Local file URI: ${downloadRes.uri}`);
                       <TouchableOpacity
                         style={[
                           styles.statusActionBtn,
+                          (t.status as string) === 'On Hold' && { backgroundColor: '#fef3c7', borderColor: '#f59e0b' }
+                        ]}
+                        disabled={updatingTaskId === t._id}
+                        onPress={() => handleOpenStatusModal(t, 'On Hold')}
+                      >
+                        <Text style={[
+                          styles.statusActionText,
+                          (t.status as string) === 'On Hold' && { color: '#b45309', fontWeight: '700' }
+                        ]}>
+                          On Hold
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[
+                          styles.statusActionBtn,
                           isCompleted && styles.statusActionBtnActiveDone
                         ]}
                         disabled={updatingTaskId === t._id}
-                        onPress={() => handleUpdateTaskStatus(t._id, 'Completed')}
+                        onPress={() => handleOpenStatusModal(t, 'Completed')}
                       >
                         <Text style={[
                           styles.statusActionText,
@@ -723,6 +893,14 @@ Local file URI: ${downloadRes.uri}`);
                       </TouchableOpacity>
                     </View>
                   </View>
+
+                  <TouchableOpacity
+                    style={styles.updateProofQuickBtn}
+                    onPress={() => handleOpenStatusModal(t)}
+                  >
+                    <Ionicons name="camera-outline" size={15} color="#fff" />
+                    <Text style={styles.updateProofQuickBtnText}>Update Status & Upload Proof</Text>
+                  </TouchableOpacity>
                 </View>
               );
             })
@@ -1111,6 +1289,144 @@ Local file URI: ${downloadRes.uri}`);
                 )}
               </View>
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── UPDATE STATUS & PROOF MODAL ── */}
+      <Modal visible={!!statusModalTask} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalHeaderTitle}>Update Task Status & Proof</Text>
+              <TouchableOpacity onPress={() => setStatusModalTask(null)}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+
+            {statusModalTask && (
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.formContent}>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: THEME.colors.primary }}>
+                  {statusModalTask.name}
+                </Text>
+                <Text style={{ fontSize: 12, color: '#666', marginTop: 2 }}>
+                  Project: {statusModalTask.projectName || 'General Operations'}
+                </Text>
+
+                {/* Status selection */}
+                <Text style={[styles.inputLabel, { marginTop: 12 }]}>Select New Status:</Text>
+                <View style={[styles.statusBtnGroup, { marginTop: 4 }]}>
+                  {(['Pending', 'In Progress', 'On Hold', 'Completed'] as const).map((st) => (
+                    <TouchableOpacity
+                      key={st}
+                      style={[
+                        styles.statusActionBtn,
+                        statusModalStatus === st && { backgroundColor: THEME.colors.primary, borderColor: THEME.colors.primary },
+                      ]}
+                      onPress={() => {
+                        setStatusModalStatus(st);
+                        if (st === 'Completed') setStatusModalProgress(100);
+                        else if (st === 'Pending') setStatusModalProgress(0);
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.statusActionText,
+                          statusModalStatus === st && { color: '#fff', fontWeight: '700' },
+                        ]}
+                      >
+                        {st}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {/* Progress Percent Chips */}
+                <Text style={[styles.inputLabel, { marginTop: 10 }]}>Progress Percentage ({statusModalProgress}%):</Text>
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+                  {[0, 25, 50, 75, 100].map((pct) => (
+                    <TouchableOpacity
+                      key={pct}
+                      style={[
+                        styles.chipBtn,
+                        statusModalProgress === pct && { backgroundColor: THEME.colors.primary },
+                      ]}
+                      onPress={() => setStatusModalProgress(pct)}
+                    >
+                      <Text style={[styles.chipBtnText, statusModalProgress === pct && { color: '#fff', fontWeight: '700' }]}>
+                        {pct}%
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {/* Work Comment / Notes */}
+                <Text style={[styles.inputLabel, { marginTop: 12 }]}>Work Done / Proof Comment:</Text>
+                <TextInput
+                  style={[styles.input, { height: 75, textAlignVertical: 'top' }]}
+                  multiline
+                  placeholder="e.g. Completed carpentry framework, proof photos attached..."
+                  value={statusModalComment}
+                  onChangeText={setStatusModalComment}
+                />
+
+                {/* Proof Photos Upload (Camera / Gallery) */}
+                <Text style={[styles.inputLabel, { marginTop: 12 }]}>📸 Attach Proof Photos (Camera / Gallery):</Text>
+                <View style={{ flexDirection: 'row', gap: 10, marginTop: 6 }}>
+                  <TouchableOpacity
+                    style={[styles.uploadActionBtn, { backgroundColor: THEME.colors.primary }]}
+                    onPress={handlePickStatusCameraImage}
+                  >
+                    <Ionicons name="camera" size={18} color="#fff" />
+                    <Text style={styles.uploadActionBtnText}>Take Photo</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.uploadActionBtn, { backgroundColor: '#374151' }]}
+                    onPress={handlePickStatusGalleryImages}
+                  >
+                    <Ionicons name="images" size={18} color="#fff" />
+                    <Text style={styles.uploadActionBtnText}>From Gallery</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Selected proof preview strip */}
+                {statusModalImages.length > 0 && (
+                  <View style={{ marginTop: 10 }}>
+                    <Text style={{ fontSize: 11, color: '#4B5563', fontWeight: '600', marginBottom: 6 }}>
+                      {statusModalImages.length} proof image{statusModalImages.length > 1 ? 's' : ''} attached:
+                    </Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                      {statusModalImages.map((uri, idx) => (
+                        <View key={uri + idx} style={{ position: 'relative', marginRight: 10 }}>
+                          <TouchableOpacity onPress={() => setPreviewImageUrl(uri)}>
+                            <Image source={{ uri }} style={{ width: 68, height: 68, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' }} />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={{ position: 'absolute', top: -6, right: -6, backgroundColor: '#fff', borderRadius: 10 }}
+                            onPress={() => handleRemoveStatusModalImage(idx)}
+                          >
+                            <Ionicons name="close-circle" size={20} color="#DC2626" />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
+
+                <TouchableOpacity
+                  style={[styles.modalSubmitBtn, { marginTop: 16 }]}
+                  onPress={handleSubmitStatusUpdate}
+                  disabled={isSubmittingStatus}
+                >
+                  {isSubmittingStatus ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.modalSubmitBtnText}>Submit Status & Proof</Text>
+                  )}
+                </TouchableOpacity>
+              </ScrollView>
+            )}
           </View>
         </View>
       </Modal>
@@ -1564,5 +1880,62 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   createBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+
+  // Quick Proof & Status Update
+  updateProofQuickBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: THEME.colors.primary,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  updateProofQuickBtnText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  uploadActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  uploadActionBtnText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  modalSubmitBtn: {
+    backgroundColor: THEME.colors.primary,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalSubmitBtnText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  chipBtn: {
+    flex: 1,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#f8fafc',
+    alignItems: 'center',
+  },
+  chipBtnText: {
+    fontSize: 11,
+    color: '#475569',
+    fontWeight: '600',
+  },
 });
 
