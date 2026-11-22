@@ -78,7 +78,7 @@ export default function ForgotPasswordPage() {
     if (!email.trim()) { setError('Please enter your registered email or Employee ID.'); return; }
     setLoading(true);
     try {
-      await api.post('/auth/forgot-password', { email: email.trim() });
+      await api.post('/auth/forgot-password', { email: email.trim(), expectedRole: 'ADMIN' });
       setSuccess('A 6-digit OTP has been sent to your registered email. Check your inbox.');
       startCooldown(60);
       setStep(STEP_OTP);
@@ -97,7 +97,7 @@ export default function ForgotPasswordPage() {
     if (otpStr.length < 6) { setError('Please enter all 6 digits of the OTP.'); return; }
     setLoading(true);
     try {
-      const res = await api.post('/auth/verify-otp', { email: email.trim(), otp: otpStr });
+      const res = await api.post('/auth/verify-otp', { email: email.trim(), otp: otpStr, expectedRole: 'ADMIN' });
       if (res.data?.email) setEmail(res.data.email);
       setResetToken(res.data?.resetToken || '');
       setSuccess('OTP verified! Now set your new password.');
@@ -114,7 +114,7 @@ export default function ForgotPasswordPage() {
     clearMsgs();
     setLoading(true);
     try {
-      await api.post('/auth/forgot-password', { email: email.trim() });
+      await api.post('/auth/forgot-password', { email: email.trim(), expectedRole: 'ADMIN' });
       setSuccess('A new OTP has been sent to your email.');
       startCooldown(60);
       setOtp(['', '', '', '', '', '']);
@@ -138,6 +138,8 @@ export default function ForgotPasswordPage() {
         email: email.trim(),
         resetToken,
         newPassword: password,
+        confirmPassword: confirm,
+        expectedRole: 'ADMIN',
       });
       setStep(STEP_DONE);
     } catch (err) {
