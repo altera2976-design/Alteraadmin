@@ -524,7 +524,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backdropFilter: "blur(10px)",
   },
   googleBtnText: {
     color: "#FFFFFF",
