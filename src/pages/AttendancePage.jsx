@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { io } from "socket.io-client";
 import AdminLayout from "../layouts/AdminLayout";
+import ConfirmModal from "../components/ConfirmModal";
 import api, { SOCKET_URL } from "../services/api";
 const API_BASE = SOCKET_URL;
 
@@ -46,6 +47,31 @@ export default function AttendancePage() {
   const [dailyUpdateText, setDailyUpdateText] = useState("");
   const [otHours, setOtHours] = useState("");
   const [isSavingDailyUpdate, setIsSavingDailyUpdate] = useState(false);
+
+  // Edit Attendance Modal State
+  const [editingAttendance, setEditingAttendance] = useState(null);
+  const [editingAttendanceForm, setEditingAttendanceForm] = useState({
+    name: "",
+    employeeId: "",
+    date: "",
+    status: "PRESENT",
+    checkInTime: "",
+    checkOutTime: "",
+    totalHours: 0,
+    otHours: 0,
+    remarks: "",
+  });
+  const [isSavingAttendance, setIsSavingAttendance] = useState(false);
+
+  // Delete Attendance Modal State
+  const [deleteAttendanceModal, setDeleteAttendanceModal] = useState({
+    isOpen: false,
+    item: null,
+    loading: false,
+  });
+
+  // Toast Notification State
+  const [toast, setToast] = useState({ message: "", type: "" });
 
   // Zoomed Image Modal State
   const [zoomedImage, setZoomedImage] = useState(null);
@@ -195,6 +221,99 @@ export default function AttendancePage() {
       alert("Failed to save daily update and OT.");
     } finally {
       setIsSavingDailyUpdate(false);
+    }
+  };
+
+  const formatTimeInput = (dateVal) => {
+    if (!dateVal) return "";
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return "";
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mm = String(d.getMinutes()).padStart(2, "0");
+    return `${hh}:${mm}`;
+  };
+
+  const calculateHours = (inStr, outStr) => {
+    if (!inStr || !outStr) return 0;
+    const [inH, inM] = inStr.split(":").map(Number);
+    const [outH, outM] = outStr.split(":").map(Number);
+    let diff = (outH * 60 + outM) - (inH * 60 + inM);
+    if (diff < 0) diff += 24 * 60;
+    return Math.round((diff / 60) * 10) / 10;
+  };
+
+  const handleOpenEditAttendance = (emp) => {
+    setEditingAttendance(emp);
+    const inTime = formatTimeInput(emp.checkInTime);
+    const outTime = formatTimeInput(emp.checkOutTime);
+    setEditingAttendanceForm({
+      name: emp.name || "Employee",
+      employeeId: emp.employeeId || "",
+      date: emp.date || selectedDate,
+      status: emp.status || "PRESENT",
+      checkInTime: inTime,
+      checkOutTime: outTime,
+      totalHours: emp.totalHours || (inTime && outTime ? calculateHours(inTime, outTime) : 0),
+      otHours: emp.otHours || 0,
+      remarks: emp.reviewNotes || "",
+    });
+  };
+
+  const handleSaveAttendance = async (e) => {
+    e.preventDefault();
+    const targetId = editingAttendance.attendanceId || editingAttendance._id;
+    if (!targetId) return;
+    setIsSavingAttendance(true);
+    try {
+      const recDate = editingAttendanceForm.date || selectedDate;
+      let checkInISO = null;
+      let checkOutISO = null;
+
+      if (editingAttendanceForm.checkInTime) {
+        checkInISO = new Date(`${recDate}T${editingAttendanceForm.checkInTime}:00`).toISOString();
+      }
+      if (editingAttendanceForm.checkOutTime) {
+        checkOutISO = new Date(`${recDate}T${editingAttendanceForm.checkOutTime}:00`).toISOString();
+      }
+
+      const res = await api.put(`/attendance/${targetId}`, {
+        date: recDate,
+        status: editingAttendanceForm.status,
+        checkInTime: checkInISO,
+        checkOutTime: checkOutISO,
+        totalHours: Number(editingAttendanceForm.totalHours) || 0,
+        otHours: Number(editingAttendanceForm.otHours) || 0,
+        remarks: editingAttendanceForm.remarks,
+      });
+
+      if (res.data.success) {
+        setToast({ message: `Attendance for ${editingAttendanceForm.name} updated successfully!`, type: "success" });
+        setEditingAttendance(null);
+        fetchDailyData(selectedDate);
+        if (month) fetchMonthlyData(month);
+      }
+    } catch (err) {
+      setToast({ message: err?.response?.data?.message || "Failed to update attendance record.", type: "error" });
+    } finally {
+      setIsSavingAttendance(false);
+    }
+  };
+
+  const handleDeleteAttendance = async () => {
+    const targetId = deleteAttendanceModal.item?.attendanceId || deleteAttendanceModal.item?._id;
+    if (!targetId) return;
+    setDeleteAttendanceModal(prev => ({ ...prev, loading: true }));
+    try {
+      const res = await api.delete(`/attendance/${targetId}`);
+      if (res.data.success) {
+        setToast({ message: `Attendance record deleted successfully!`, type: "success" });
+        setDeleteAttendanceModal({ isOpen: false, item: null, loading: false });
+        fetchDailyData(selectedDate);
+        if (month) fetchMonthlyData(month);
+      }
+    } catch (err) {
+      setToast({ message: err?.response?.data?.message || "Failed to delete attendance record.", type: "error" });
+      setDeleteAttendanceModal(prev => ({ ...prev, loading: false }));
     }
   };
 
@@ -707,30 +826,50 @@ export default function AttendancePage() {
 
                           {/* Action */}
                           <td style={{ textAlign: "right" }}>
-                            {emp.attendanceId ? (
-                              <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                            <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                              <button
+                                className="btn btn-secondary btn-sm"
+                                style={{ ...styles.inspectBtn, color: '#0284C7', fontWeight: 600 }}
+                                onClick={() => handleOpenEditAttendance(emp)}
+                                title="Edit Attendance Record"
+                              >
+                                <span>✏️</span>
+                                <span>Edit</span>
+                              </button>
+                              {emp.attendanceId && (
+                                <button
+                                  className="btn btn-secondary btn-sm"
+                                  style={{ ...styles.inspectBtn, color: '#DC2626', fontWeight: 600 }}
+                                  onClick={() => setDeleteAttendanceModal({ isOpen: true, item: emp, loading: false })}
+                                  title="Delete Attendance Record"
+                                >
+                                  <span>🗑️</span>
+                                  <span>Delete</span>
+                                </button>
+                              )}
+                              {emp.attendanceId && (
                                 <button
                                   className="btn btn-secondary btn-sm"
                                   style={styles.inspectBtn}
                                   onClick={() => handleOpenDailyUpdate(emp)}
+                                  title="Daily Update & Overtime"
                                 >
                                   <span>📝</span>
-                                  <span>OT & Update</span>
+                                  <span>OT</span>
                                 </button>
+                              )}
+                              {emp.attendanceId && (
                                 <button
                                   className="btn btn-secondary btn-sm"
                                   style={styles.inspectBtn}
                                   onClick={() => handleOpenReview(emp)}
+                                  title="Audit & Verification"
                                 >
                                   <span>🔍</span>
-                                  <span>Audit Record</span>
+                                  <span>Audit</span>
                                 </button>
-                              </div>
-                            ) : (
-                              <span style={{ color: "#C8CBD4", fontSize: 12 }}>
-                                —
-                              </span>
-                            )}
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -1407,6 +1546,222 @@ export default function AttendancePage() {
               ✕ Close
             </button>
           </div>
+        </div>
+      )}
+
+      {/* ── MODAL: EDIT ATTENDANCE RECORD ──────────────────────── */}
+      {editingAttendance && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "rgba(0,0,0,0.5)",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          zIndex: 9999,
+          padding: 16,
+        }}>
+          <div style={{
+            backgroundColor: "#FFFFFF",
+            borderRadius: 14,
+            width: "100%",
+            maxWidth: 580,
+            maxHeight: "90vh",
+            overflowY: "auto",
+            padding: 24,
+            boxShadow: "0 20px 40px rgba(0,0,0,0.25)",
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #E2E8F0", paddingBottom: 14, marginBottom: 18 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#0F172A" }}>
+                  ✏️ Edit Attendance: {editingAttendanceForm.name}
+                </h3>
+                <span style={{ fontSize: 12, color: "#64748B" }}>
+                  Emp ID: {editingAttendanceForm.employeeId || "—"} • Date: {editingAttendanceForm.date}
+                </span>
+              </div>
+              <button
+                onClick={() => setEditingAttendance(null)}
+                style={{ border: "none", background: "none", fontSize: 20, cursor: "pointer", color: "#64748B" }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveAttendance} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <div>
+                  <label style={{ fontSize: 12.5, fontWeight: 600, color: "#334155", display: "block", marginBottom: 4 }}>
+                    Attendance Date *:
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    className="form-input"
+                    value={editingAttendanceForm.date}
+                    onChange={(e) => setEditingAttendanceForm({ ...editingAttendanceForm, date: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12.5, fontWeight: 600, color: "#334155", display: "block", marginBottom: 4 }}>
+                    Attendance Status *:
+                  </label>
+                  <select
+                    className="form-select"
+                    value={editingAttendanceForm.status}
+                    onChange={(e) => setEditingAttendanceForm({ ...editingAttendanceForm, status: e.target.value })}
+                  >
+                    <option value="PRESENT">PRESENT</option>
+                    <option value="ABSENT">ABSENT</option>
+                    <option value="HALF_DAY">HALF_DAY</option>
+                    <option value="LATE">LATE</option>
+                    <option value="LEAVE">LEAVE</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <div>
+                  <label style={{ fontSize: 12.5, fontWeight: 600, color: "#334155", display: "block", marginBottom: 4 }}>
+                    ⏰ Check-in Time:
+                  </label>
+                  <input
+                    type="time"
+                    className="form-input"
+                    value={editingAttendanceForm.checkInTime}
+                    onChange={(e) => {
+                      const newIn = e.target.value;
+                      const hrs = newIn && editingAttendanceForm.checkOutTime ? calculateHours(newIn, editingAttendanceForm.checkOutTime) : editingAttendanceForm.totalHours;
+                      setEditingAttendanceForm({
+                        ...editingAttendanceForm,
+                        checkInTime: newIn,
+                        totalHours: hrs,
+                      });
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12.5, fontWeight: 600, color: "#334155", display: "block", marginBottom: 4 }}>
+                    ⏰ Check-out Time:
+                  </label>
+                  <input
+                    type="time"
+                    className="form-input"
+                    value={editingAttendanceForm.checkOutTime}
+                    onChange={(e) => {
+                      const newOut = e.target.value;
+                      const hrs = editingAttendanceForm.checkInTime && newOut ? calculateHours(editingAttendanceForm.checkInTime, newOut) : editingAttendanceForm.totalHours;
+                      setEditingAttendanceForm({
+                        ...editingAttendanceForm,
+                        checkOutTime: newOut,
+                        totalHours: hrs,
+                      });
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <div>
+                  <label style={{ fontSize: 12.5, fontWeight: 600, color: "#334155", display: "block", marginBottom: 4 }}>
+                    ⏱️ Total Working Hours (Auto-calculated):
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="24"
+                    className="form-input"
+                    value={editingAttendanceForm.totalHours}
+                    onChange={(e) => setEditingAttendanceForm({ ...editingAttendanceForm, totalHours: Number(e.target.value) })}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12.5, fontWeight: 600, color: "#334155", display: "block", marginBottom: 4 }}>
+                    🔥 Overtime Hours (OT):
+                  </label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    max="12"
+                    className="form-input"
+                    value={editingAttendanceForm.otHours}
+                    onChange={(e) => setEditingAttendanceForm({ ...editingAttendanceForm, otHours: Number(e.target.value) })}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12.5, fontWeight: 600, color: "#334155", display: "block", marginBottom: 4 }}>
+                  📝 Remarks & Modification Reason:
+                </label>
+                <textarea
+                  className="form-input"
+                  rows="2"
+                  placeholder="Reason for editing check-in / check-out time or attendance status..."
+                  value={editingAttendanceForm.remarks}
+                  onChange={(e) => setEditingAttendanceForm({ ...editingAttendanceForm, remarks: e.target.value })}
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 12 }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setEditingAttendance(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingAttendance}
+                  className="btn btn-primary"
+                >
+                  {isSavingAttendance ? "Saving..." : "💾 Save Attendance"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: DELETE CONFIRMATION ──────────────────────────── */}
+      <ConfirmModal
+        isOpen={deleteAttendanceModal.isOpen}
+        title="Delete Attendance Record"
+        message={`Are you sure you want to delete the attendance record for "${deleteAttendanceModal.item?.name}" on "${deleteAttendanceModal.item?.date || selectedDate}"? This will clear check-in/out timestamps and recalculate monthly attendance totals.`}
+        confirmText="Yes, Delete Record"
+        cancelText="Cancel"
+        danger={true}
+        loading={deleteAttendanceModal.loading}
+        onConfirm={handleDeleteAttendance}
+        onCancel={() => setDeleteAttendanceModal({ isOpen: false, item: null, loading: false })}
+      />
+
+      {/* ── TOAST NOTIFICATION ──────────────────────────────────── */}
+      {toast.message && (
+        <div style={{
+          position: "fixed",
+          bottom: 24,
+          right: 24,
+          padding: "12px 20px",
+          borderRadius: 8,
+          background: toast.type === "error" ? "#EF4444" : "#10B981",
+          color: "#FFFFFF",
+          fontWeight: 600,
+          fontSize: 13,
+          boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
+          zIndex: 99999,
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+        }}>
+          <span>{toast.type === "error" ? "⚠️" : "✅"}</span>
+          <span>{toast.message}</span>
         </div>
       )}
     </AdminLayout>

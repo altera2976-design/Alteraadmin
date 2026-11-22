@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../layouts/AdminLayout';
+import ConfirmModal from '../../components/ConfirmModal';
 import api from '../../services/api';
 import { printOfferLetterPdf } from '../../services/offerLetterPdfGenerator';
 import { COMPANY_LOGO_DATA_URL } from '../../constants/companyLogo';
@@ -112,6 +113,66 @@ export default function AdminOfferLettersPage({ subRoute = 'list', offerLetterId
   const [submitting, setSubmitting] = useState(false);
   const [emailSending, setEmailSending] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState(null);
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, item: null, loading: false });
+  const [toast, setToast] = useState({ message: '', type: '' });
+  const [quickEditOffer, setQuickEditOffer] = useState(null);
+  const [quickEditSubmitting, setQuickEditSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (toast.message) {
+      const timer = setTimeout(() => setToast({ message: '', type: '' }), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
+  const handleDeleteOffer = async () => {
+    if (!deleteModal.item) return;
+    setDeleteModal(prev => ({ ...prev, loading: true }));
+    try {
+      await api.delete(`/offer-letters/${deleteModal.item._id}`);
+      setToast({ message: `Offer letter ${deleteModal.item.offerLetterNumber} deleted successfully.`, type: 'success' });
+      setDeleteModal({ isOpen: false, item: null, loading: false });
+      fetchOfferLetters();
+    } catch (err) {
+      setToast({ message: err.response?.data?.message || 'Failed to delete offer letter.', type: 'error' });
+      setDeleteModal(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  const handleOpenQuickEdit = (offer) => {
+    setQuickEditOffer({
+      _id: offer._id,
+      offerLetterNumber: offer.offerLetterNumber,
+      candidateName: offer.candidateName || '',
+      email: offer.email || '',
+      mobile: offer.mobile || '',
+      designation: offer.designation || '',
+      department: offer.department || '',
+      joiningDate: offer.joiningDate ? new Date(offer.joiningDate).toISOString().split('T')[0] : '',
+      employmentType: offer.employmentType || 'Full Time',
+      reportingManager: offer.reportingManager || '',
+      workLocation: offer.workLocation || '',
+      monthlySalary: offer.monthlySalary || 0,
+      annualCTC: offer.annualCTC || 0,
+      status: offer.status || 'DRAFT',
+    });
+  };
+
+  const handleSaveQuickEdit = async (e) => {
+    e.preventDefault();
+    if (!quickEditOffer) return;
+    setQuickEditSubmitting(true);
+    try {
+      await api.put(`/offer-letters/${quickEditOffer._id}`, quickEditOffer);
+      setToast({ message: `Offer letter ${quickEditOffer.offerLetterNumber} updated successfully.`, type: 'success' });
+      setQuickEditOffer(null);
+      fetchOfferLetters();
+    } catch (err) {
+      setToast({ message: err.response?.data?.message || 'Failed to update offer letter.', type: 'error' });
+    } finally {
+      setQuickEditSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     fetchOfferLetters();
@@ -517,10 +578,19 @@ export default function AdminOfferLettersPage({ subRoute = 'list', offerLetterId
                           </span>
                         </td>
                         <td style={styles.td}>
-                          <div style={{ display: 'flex', gap: 6 }}>
-                            <button onClick={() => navigate(`/super-admin/offer-letters/${o._id}`)} style={styles.actionBtn}>View / PDF</button>
-                            <button onClick={() => handleSendEmail(o._id)} style={{ ...styles.actionBtn, color: '#7A131A' }}>Email</button>
-                            <button onClick={() => navigate(`/super-admin/offer-letters/${o._id}/edit`)} style={styles.actionBtn}>Edit</button>
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                            <button onClick={() => navigate(`/super-admin/offer-letters/${o._id}`)} style={styles.actionBtn} title="View / PDF">
+                              👁️ View
+                            </button>
+                            <button onClick={() => handleSendEmail(o._id)} style={{ ...styles.actionBtn, color: '#7A131A' }} title="Send Email">
+                              ✉️ Email
+                            </button>
+                            <button onClick={() => handleOpenQuickEdit(o)} style={{ ...styles.actionBtn, color: '#0284C7' }} title="Edit Offer Letter">
+                              ✏️ Edit
+                            </button>
+                            <button onClick={() => setDeleteModal({ isOpen: true, item: o, loading: false })} style={{ ...styles.actionBtn, color: '#DC2626' }} title="Delete Offer Letter">
+                              🗑️ Delete
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -529,6 +599,239 @@ export default function AdminOfferLettersPage({ subRoute = 'list', offerLetterId
                 </table>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast.message && (
+        <div style={{
+          position: 'fixed',
+          bottom: 24,
+          right: 24,
+          padding: '12px 20px',
+          borderRadius: 8,
+          background: toast.type === 'error' ? '#EF4444' : '#10B981',
+          color: '#FFFFFF',
+          fontWeight: 600,
+          fontSize: 13,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+          zIndex: 99999,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+        }}>
+          <span>{toast.type === 'error' ? '⚠️' : '✅'}</span>
+          <span>{toast.message}</span>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={deleteModal.isOpen}
+        title="Delete Offer Letter"
+        message={`Are you sure you want to delete offer letter "${deleteModal.item?.offerLetterNumber}" for candidate "${deleteModal.item?.candidateName}"? This action cannot be undone.`}
+        confirmText="Yes, Delete"
+        cancelText="Cancel"
+        danger={true}
+        loading={deleteModal.loading}
+        onConfirm={handleDeleteOffer}
+        onCancel={() => setDeleteModal({ isOpen: false, item: null, loading: false })}
+      />
+
+      {/* Quick Edit Modal */}
+      {quickEditOffer && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 9999,
+          padding: 16,
+        }}>
+          <div style={{
+            backgroundColor: '#FFFFFF',
+            borderRadius: 14,
+            width: '100%',
+            maxWidth: 680,
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            padding: 26,
+            boxShadow: '0 20px 40px rgba(0,0,0,0.25)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #E2E8F0', paddingBottom: 14, marginBottom: 18 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#0F172A' }}>
+                  ✏️ Edit Offer Letter: {quickEditOffer.offerLetterNumber}
+                </h3>
+                <span style={{ fontSize: 12, color: '#64748B' }}>Modify candidate details, salary and employment terms</span>
+              </div>
+              <button
+                onClick={() => setQuickEditOffer(null)}
+                style={{ border: 'none', background: 'none', fontSize: 20, cursor: 'pointer', color: '#64748B' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveQuickEdit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div style={styles.field}>
+                  <label style={styles.label}>Candidate Name *</label>
+                  <input
+                    type="text"
+                    required
+                    style={styles.input}
+                    value={quickEditOffer.candidateName}
+                    onChange={(e) => setQuickEditOffer({ ...quickEditOffer, candidateName: e.target.value })}
+                  />
+                </div>
+                <div style={styles.field}>
+                  <label style={styles.label}>Email Address *</label>
+                  <input
+                    type="email"
+                    required
+                    style={styles.input}
+                    value={quickEditOffer.email}
+                    onChange={(e) => setQuickEditOffer({ ...quickEditOffer, email: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div style={styles.field}>
+                  <label style={styles.label}>Phone Number</label>
+                  <input
+                    type="text"
+                    style={styles.input}
+                    value={quickEditOffer.mobile}
+                    onChange={(e) => setQuickEditOffer({ ...quickEditOffer, mobile: e.target.value })}
+                  />
+                </div>
+                <div style={styles.field}>
+                  <label style={styles.label}>Joining Date *</label>
+                  <input
+                    type="date"
+                    required
+                    style={styles.input}
+                    value={quickEditOffer.joiningDate}
+                    onChange={(e) => setQuickEditOffer({ ...quickEditOffer, joiningDate: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div style={styles.field}>
+                  <label style={styles.label}>Designation *</label>
+                  <input
+                    type="text"
+                    required
+                    style={styles.input}
+                    value={quickEditOffer.designation}
+                    onChange={(e) => setQuickEditOffer({ ...quickEditOffer, designation: e.target.value })}
+                  />
+                </div>
+                <div style={styles.field}>
+                  <label style={styles.label}>Department</label>
+                  <input
+                    type="text"
+                    style={styles.input}
+                    value={quickEditOffer.department}
+                    onChange={(e) => setQuickEditOffer({ ...quickEditOffer, department: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div style={styles.field}>
+                  <label style={styles.label}>Monthly Salary (₹)</label>
+                  <input
+                    type="number"
+                    style={styles.input}
+                    value={quickEditOffer.monthlySalary}
+                    onChange={(e) => {
+                      const m = Number(e.target.value) || 0;
+                      setQuickEditOffer({ ...quickEditOffer, monthlySalary: m, annualCTC: m * 12 });
+                    }}
+                  />
+                </div>
+                <div style={styles.field}>
+                  <label style={styles.label}>Annual CTC (₹)</label>
+                  <input
+                    type="number"
+                    style={styles.input}
+                    value={quickEditOffer.annualCTC}
+                    onChange={(e) => {
+                      const a = Number(e.target.value) || 0;
+                      setQuickEditOffer({ ...quickEditOffer, annualCTC: a, monthlySalary: Math.round(a / 12) });
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div style={styles.field}>
+                  <label style={styles.label}>Employment Type</label>
+                  <select
+                    style={styles.select}
+                    value={quickEditOffer.employmentType}
+                    onChange={(e) => setQuickEditOffer({ ...quickEditOffer, employmentType: e.target.value })}
+                  >
+                    <option value="Full Time">Full Time</option>
+                    <option value="Part Time">Part Time</option>
+                    <option value="Contract">Contract</option>
+                    <option value="Internship">Internship</option>
+                  </select>
+                </div>
+                <div style={styles.field}>
+                  <label style={styles.label}>Status</label>
+                  <select
+                    style={styles.select}
+                    value={quickEditOffer.status}
+                    onChange={(e) => setQuickEditOffer({ ...quickEditOffer, status: e.target.value })}
+                  >
+                    <option value="DRAFT">DRAFT</option>
+                    <option value="PENDING_APPROVAL">PENDING_APPROVAL</option>
+                    <option value="RELEASED">RELEASED</option>
+                    <option value="ACCEPTED">ACCEPTED</option>
+                    <option value="REJECTED">REJECTED</option>
+                    <option value="REVOKED">REVOKED</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={styles.field}>
+                <label style={styles.label}>Work Location</label>
+                <input
+                  type="text"
+                  style={styles.input}
+                  value={quickEditOffer.workLocation}
+                  onChange={(e) => setQuickEditOffer({ ...quickEditOffer, workLocation: e.target.value })}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 12 }}>
+                <button
+                  type="button"
+                  onClick={() => setQuickEditOffer(null)}
+                  style={styles.secondaryBtn}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={quickEditSubmitting}
+                  style={styles.primaryBtn}
+                >
+                  {quickEditSubmitting ? 'Saving...' : '💾 Save Changes'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
