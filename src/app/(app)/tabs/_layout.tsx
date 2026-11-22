@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Tabs, useNavigation } from 'expo-router';
+import { Tabs, useNavigation, useRouter } from 'expo-router';
 import React from 'react';
 import {
   Platform,
@@ -49,8 +49,11 @@ function NotificationButton() {
   );
 }
 
-function CustomBottomTabBar({ state, navigation }: any) {
+function CustomBottomTabBar({ state, navigation: propNavigation }: any) {
   const insets = useSafeAreaInsets();
+  const hookNavigation = useNavigation<any>();
+  const router = useRouter();
+  const navigation = propNavigation || hookNavigation;
 
   // The 3 options for the fixed bottom navigation bar
   const tabs = [
@@ -75,7 +78,7 @@ function CustomBottomTabBar({ state, navigation }: any) {
     },
   ];
 
-  const currentRouteName = state.routes[state.index]?.name;
+  const currentRouteName = state?.routes ? state.routes[state.index]?.name : undefined;
 
   return (
     <View
@@ -97,22 +100,40 @@ function CustomBottomTabBar({ state, navigation }: any) {
           const onPress = () => {
             if (tab.isMore) {
               try {
-                (navigation as any)?.getParent?.()?.openDrawer?.() ??
-                  (navigation as any)?.openDrawer?.();
+                navigation?.getParent?.()?.openDrawer?.() ??
+                  navigation?.openDrawer?.() ??
+                  hookNavigation?.getParent?.()?.openDrawer?.() ??
+                  hookNavigation?.openDrawer?.();
               } catch {
                 // safe fallback
               }
               return;
             }
 
-            const event = navigation.emit({
-              type: 'tabPress',
-              target: tab.name,
-              canPreventDefault: true,
-            });
+            try {
+              let isPrevented = false;
+              if (navigation && typeof navigation.emit === 'function') {
+                const event = navigation.emit({
+                  type: 'tabPress',
+                  target: tab.name,
+                  canPreventDefault: true,
+                });
+                isPrevented = !!event?.defaultPrevented;
+              }
 
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(tab.name);
+              if (!isFocused && !isPrevented) {
+                if (navigation && typeof navigation.navigate === 'function') {
+                  navigation.navigate(tab.name);
+                } else {
+                  router.push(`/(app)/tabs/${tab.name}` as any);
+                }
+              }
+            } catch (navErr) {
+              try {
+                router.push(`/(app)/tabs/${tab.name}` as any);
+              } catch {
+                // safe fallback
+              }
             }
           };
 
