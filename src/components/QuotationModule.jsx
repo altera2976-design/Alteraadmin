@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
+import { PREDEFINED_ACCESSORIES } from "../constants/predefinedAccessories";
 import api, { SOCKET_URL } from "../services/api";
 import {
   buildQuotationHtml,
@@ -10,11 +11,15 @@ import {
   utf8ToBase64,
 } from "../services/quotationWebPdf";
 import LoadingSpinner from "./LoadingSpinner";
-import { PREDEFINED_ACCESSORIES } from "../constants/predefinedAccessories";
 
 export const resolveAccessoryImageSrc = (img) => {
   if (!img) return "";
-  if (img.startsWith("data:") || img.startsWith("http://") || img.startsWith("https://")) return img;
+  if (
+    img.startsWith("data:") ||
+    img.startsWith("http://") ||
+    img.startsWith("https://")
+  )
+    return img;
   if (img.startsWith("/hardware-accessories/")) return img;
   if (img.startsWith("/")) {
     const base = (api?.defaults?.baseURL || "").replace(/\/api\/?$/, "");
@@ -344,11 +349,15 @@ export default function QuotationModule({
   const [showAccGalleryModal, setShowAccGalleryModal] = useState(false);
   const [accGallerySearch, setAccGallerySearch] = useState("");
   const [accGalleryCategory, setAccGalleryCategory] = useState("All");
-  const [catalogAccessories, setCatalogAccessories] = useState(PREDEFINED_ACCESSORIES);
+  const [catalogAccessories, setCatalogAccessories] = useState(
+    PREDEFINED_ACCESSORIES,
+  );
   const [modalSelectedItems, setModalSelectedItems] = useState([]);
   const [showAddCustomModalItem, setShowAddCustomModalItem] = useState(false);
   const [customModalItemName, setCustomModalItemName] = useState("");
-  const [customModalItemCategory, setCustomModalItemCategory] = useState("Kitchen Accessories");
+  const [customModalItemCategory, setCustomModalItemCategory] = useState(
+    "Kitchen Accessories",
+  );
   const [customModalItemImage, setCustomModalItemImage] = useState("");
   const [accFormQty, setAccFormQty] = useState("1");
   const [accFormUnit, setAccFormUnit] = useState("Pcs");
@@ -711,10 +720,12 @@ export default function QuotationModule({
         copy.splice(copy.length - 1, 0, finalHardware);
         return copy;
       });
-      api.post("/quotations/config/options", {
-        type: "standaloneHardware",
-        option: finalHardware,
-      }).catch(console.warn);
+      api
+        .post("/quotations/config/options", {
+          type: "standaloneHardware",
+          option: finalHardware,
+        })
+        .catch(console.warn);
     }
 
     if (
@@ -722,15 +733,20 @@ export default function QuotationModule({
       name &&
       !stAccessoryOptions.includes(name)
     ) {
-      api.post("/quotations/config/options", {
-        type: "standaloneAccessory",
-        option: name,
-      }).catch(console.warn);
+      api
+        .post("/quotations/config/options", {
+          type: "standaloneAccessory",
+          option: name,
+        })
+        .catch(console.warn);
     }
 
-    const finalImages = accFormImages && accFormImages.length > 0
-      ? accFormImages
-      : (accFormImage ? [accFormImage] : []);
+    const finalImages =
+      accFormImages && accFormImages.length > 0
+        ? accFormImages
+        : accFormImage
+          ? [accFormImage]
+          : [];
     const newAcc = {
       name,
       description: finalHardware,
@@ -777,9 +793,12 @@ export default function QuotationModule({
       setShowStAccCustomHardware(true);
       setStAccCustomHardware(desc);
     }
-    const accImgs = Array.isArray(acc.images) && acc.images.length > 0
-      ? acc.images
-      : (acc.image ? [acc.image] : []);
+    const accImgs =
+      Array.isArray(acc.images) && acc.images.length > 0
+        ? acc.images
+        : acc.image
+          ? [acc.image]
+          : [];
     setAccFormImage(accImgs[0] || "");
     setAccFormImages(accImgs);
     setAccFormImageId(acc.imageId || "");
@@ -841,7 +860,8 @@ export default function QuotationModule({
 
   const handleRemoveSingleAccFormImage = (indexToRemove) => {
     setAccFormImages((prev) => {
-      const current = prev.length > 0 ? prev : (accFormImage ? [accFormImage] : []);
+      const current =
+        prev.length > 0 ? prev : accFormImage ? [accFormImage] : [];
       const updated = current.filter((_, i) => i !== indexToRemove);
       setAccFormImage(updated[0] || "");
       if (updated.length === 0) {
@@ -852,9 +872,12 @@ export default function QuotationModule({
   };
 
   const handleOpenGalleryModal = () => {
-    const currentImgs = accFormImages.length > 0
-      ? accFormImages
-      : (accFormImage ? [accFormImage] : []);
+    const currentImgs =
+      accFormImages.length > 0
+        ? accFormImages
+        : accFormImage
+          ? [accFormImage]
+          : [];
     const preselected = [];
     currentImgs.forEach((imgSrc) => {
       const foundInCatalog = catalogAccessories.find((c) => c.image === imgSrc);
@@ -863,7 +886,9 @@ export default function QuotationModule({
           preselected.push(foundInCatalog);
         }
       } else {
-        const foundInPredefined = PREDEFINED_ACCESSORIES.find((p) => p.image === imgSrc);
+        const foundInPredefined = PREDEFINED_ACCESSORIES.find(
+          (p) => p.image === imgSrc,
+        );
         if (foundInPredefined) {
           if (!preselected.some((p) => p.id === foundInPredefined.id)) {
             preselected.push(foundInPredefined);
@@ -884,9 +909,13 @@ export default function QuotationModule({
 
   const handleToggleModalItemSelect = (item) => {
     setModalSelectedItems((prev) => {
-      const exists = prev.some((it) => it.id === item.id || it.image === item.image);
+      const exists = prev.some(
+        (it) => it.id === item.id || it.image === item.image,
+      );
       if (exists) {
-        return prev.filter((it) => it.id !== item.id && it.image !== item.image);
+        return prev.filter(
+          (it) => it.id !== item.id && it.image !== item.image,
+        );
       } else {
         return [...prev, item];
       }
@@ -895,14 +924,20 @@ export default function QuotationModule({
 
   const handleDeleteCustomCatalogItem = (itemId, e) => {
     if (e) e.stopPropagation();
-    if (window.confirm("Do you want to delete this custom hardware accessory from catalog?")) {
+    if (
+      window.confirm(
+        "Do you want to delete this custom hardware accessory from catalog?",
+      )
+    ) {
       setCatalogAccessories((prev) => prev.filter((it) => it.id !== itemId));
       setModalSelectedItems((prev) => prev.filter((it) => it.id !== itemId));
     }
   };
 
   const handleApplyModalSelection = () => {
-    const selectedPhotos = modalSelectedItems.map((it) => it.image).filter(Boolean);
+    const selectedPhotos = modalSelectedItems
+      .map((it) => it.image)
+      .filter(Boolean);
     setAccFormImages(selectedPhotos);
     setAccFormImage(selectedPhotos[0] || "");
     setAccFormImageId(modalSelectedItems[0]?.id || "");
@@ -1046,7 +1081,8 @@ export default function QuotationModule({
   };
 
   const handleConfirmCustomSubItem = (overrideName) => {
-    const raw = typeof overrideName === "string" ? overrideName : customSubItemName;
+    const raw =
+      typeof overrideName === "string" ? overrideName : customSubItemName;
     const trimmed = (raw || "").trim();
     if (!trimmed) return;
 
@@ -1075,7 +1111,8 @@ export default function QuotationModule({
   };
 
   const handleConfirmCustomDescription = (overrideVal) => {
-    const raw = typeof overrideVal === "string" ? overrideVal : customDescriptionText;
+    const raw =
+      typeof overrideVal === "string" ? overrideVal : customDescriptionText;
     const trimmed = (raw || "").trim();
     if (!trimmed) return;
 
@@ -1096,7 +1133,8 @@ export default function QuotationModule({
   };
 
   const handleConfirmCustomUnit = (overrideName) => {
-    const raw = typeof overrideName === "string" ? overrideName : customUnitName;
+    const raw =
+      typeof overrideName === "string" ? overrideName : customUnitName;
     const trimmed = (raw || "").trim();
     if (!trimmed) return;
 
@@ -1126,7 +1164,8 @@ export default function QuotationModule({
   };
 
   const handleConfirmCustomMaterial = (overrideName) => {
-    const raw = typeof overrideName === "string" ? overrideName : customMaterialName;
+    const raw =
+      typeof overrideName === "string" ? overrideName : customMaterialName;
     const trimmed = (raw || "").trim();
     if (!trimmed) return;
 
@@ -1156,7 +1195,8 @@ export default function QuotationModule({
   };
 
   const handleConfirmCustomHardware = (overrideName) => {
-    const raw = typeof overrideName === "string" ? overrideName : customHardwareName;
+    const raw =
+      typeof overrideName === "string" ? overrideName : customHardwareName;
     const trimmed = (raw || "").trim();
     if (!trimmed) return;
 
@@ -1177,7 +1217,8 @@ export default function QuotationModule({
   };
 
   const handleConfirmCustomStAccAccessory = async (overrideName) => {
-    const raw = typeof overrideName === "string" ? overrideName : stAccCustomAccessory;
+    const raw =
+      typeof overrideName === "string" ? overrideName : stAccCustomAccessory;
     const trimmed = (raw || "").trim();
     if (!trimmed) return;
 
@@ -1219,7 +1260,8 @@ export default function QuotationModule({
   };
 
   const handleConfirmCustomAccessory = (overrideName) => {
-    const raw = typeof overrideName === "string" ? overrideName : customAccessoryName;
+    const raw =
+      typeof overrideName === "string" ? overrideName : customAccessoryName;
     const trimmed = (raw || "").trim();
     if (!trimmed) return;
 
@@ -3702,7 +3744,9 @@ export default function QuotationModule({
                             <button
                               type="button"
                               className="btn btn-primary"
-                              onClick={() => handleConfirmCustomStAccAccessory()}
+                              onClick={() =>
+                                handleConfirmCustomStAccAccessory()
+                              }
                               style={{
                                 padding: "6px 12px",
                                 fontSize: 12,
@@ -3873,7 +3917,13 @@ export default function QuotationModule({
                       </div>
                       <div>
                         <label style={styles.label}>Accessory Image</label>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "6px",
+                          }}
+                        >
                           <input
                             type="file"
                             accept="image/*"
@@ -3903,7 +3953,8 @@ export default function QuotationModule({
                             }}
                             title="Select from catalog hardware accessories (multi-select supported)"
                           >
-                            <span>🖼️</span> Select Predefined Images ({catalogAccessories.length} items)
+                            <span>🖼️</span> Select Predefined Images (
+                            {catalogAccessories.length} items)
                           </button>
                         </div>
                       </div>
@@ -3928,9 +3979,12 @@ export default function QuotationModule({
                     </div>
 
                     {(() => {
-                      const currentDisplayImages = accFormImages.length > 0
-                        ? accFormImages
-                        : (accFormImage ? [accFormImage] : []);
+                      const currentDisplayImages =
+                        accFormImages.length > 0
+                          ? accFormImages
+                          : accFormImage
+                            ? [accFormImage]
+                            : [];
                       if (currentDisplayImages.length === 0) return null;
                       return (
                         <div
@@ -3950,10 +4004,22 @@ export default function QuotationModule({
                               marginBottom: 8,
                             }}
                           >
-                            <div style={{ fontSize: 12, fontWeight: 700, color: "#1e293b" }}>
+                            <div
+                              style={{
+                                fontSize: 12,
+                                fontWeight: 700,
+                                color: "#1e293b",
+                              }}
+                            >
                               Selected Photos ({currentDisplayImages.length})
                             </div>
-                            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                            <div
+                              style={{
+                                display: "flex",
+                                gap: 8,
+                                alignItems: "center",
+                              }}
+                            >
                               <button
                                 type="button"
                                 onClick={handleOpenGalleryModal}
@@ -4002,8 +4068,11 @@ export default function QuotationModule({
                             }}
                           >
                             {currentDisplayImages.map((imgSrc, imgIdx) => {
-                              const catalogItem = catalogAccessories.find((a) => a.image === imgSrc);
-                              const nameHint = catalogItem?.name || `Photo #${imgIdx + 1}`;
+                              const catalogItem = catalogAccessories.find(
+                                (a) => a.image === imgSrc,
+                              );
+                              const nameHint =
+                                catalogItem?.name || `Photo #${imgIdx + 1}`;
                               return (
                                 <div
                                   key={imgIdx}
@@ -4113,8 +4182,8 @@ export default function QuotationModule({
                             setAccFormName("");
                             setAccFormDesc("");
                             setAccFormImage("");
-      setAccFormImages([]);
-      setAccFormImageId("");
+                            setAccFormImages([]);
+                            setAccFormImageId("");
                             setAccFormQty("1");
                             setAccFormUnit("Pcs");
                             setAccFormPrice("");
@@ -4251,9 +4320,13 @@ export default function QuotationModule({
                                   }}
                                 >
                                   {(() => {
-                                    const imgs = Array.isArray(acc.images) && acc.images.length > 0
-                                      ? acc.images
-                                      : (acc.image ? [acc.image] : []);
+                                    const imgs =
+                                      Array.isArray(acc.images) &&
+                                      acc.images.length > 0
+                                        ? acc.images
+                                        : acc.image
+                                          ? [acc.image]
+                                          : [];
                                     if (imgs.length === 0) {
                                       return (
                                         <span
@@ -4268,9 +4341,16 @@ export default function QuotationModule({
                                       );
                                     }
                                     return (
-                                      <div style={{ position: "relative", display: "inline-block" }}>
+                                      <div
+                                        style={{
+                                          position: "relative",
+                                          display: "inline-block",
+                                        }}
+                                      >
                                         <img
-                                          src={resolveAccessoryImageSrc(imgs[0])}
+                                          src={resolveAccessoryImageSrc(
+                                            imgs[0],
+                                          )}
                                           alt={acc.name}
                                           style={{
                                             width: 40,
@@ -5224,9 +5304,13 @@ export default function QuotationModule({
                               }}
                             >
                               {(() => {
-                                const imgs = Array.isArray(acc.images) && acc.images.length > 0
-                                  ? acc.images
-                                  : (acc.image ? [acc.image] : []);
+                                const imgs =
+                                  Array.isArray(acc.images) &&
+                                  acc.images.length > 0
+                                    ? acc.images
+                                    : acc.image
+                                      ? [acc.image]
+                                      : [];
                                 if (imgs.length === 0) {
                                   return (
                                     <div
@@ -5248,7 +5332,12 @@ export default function QuotationModule({
                                   );
                                 }
                                 return (
-                                  <div style={{ position: "relative", display: "inline-block" }}>
+                                  <div
+                                    style={{
+                                      position: "relative",
+                                      display: "inline-block",
+                                    }}
+                                  >
                                     <img
                                       src={resolveAccessoryImageSrc(imgs[0])}
                                       alt={acc.name}
@@ -6118,7 +6207,9 @@ export default function QuotationModule({
                     color: "#64748b",
                   }}
                 >
-                  Select one or multiple photos from the catalog ({catalogAccessories.length} items), or click "+ Add More" to upload custom hardware.
+                  Select one or multiple photos from the catalog (
+                  {catalogAccessories.length} items), or click "+ Add More" to
+                  upload custom hardware.
                 </p>
               </div>
               <button
@@ -6179,44 +6270,54 @@ export default function QuotationModule({
               </div>
 
               {/* Category Filters + Add More Button */}
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-                {["All", "Kitchen Accessories", "Wardrobe Accessories"].map((cat) => {
-                  const isActive = accGalleryCategory === cat;
-                  const count =
-                    cat === "All"
-                      ? catalogAccessories.length
-                      : catalogAccessories.filter((a) => a.category === cat).length;
-                  const label =
-                    cat === "All"
-                      ? `All (${count})`
-                      : cat === "Kitchen Accessories"
-                      ? `Kitchen (${count})`
-                      : `Wardrobe (${count})`;
-                  return (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => {
-                        setAccGalleryCategory(cat);
-                        setShowAddCustomModalItem(false);
-                      }}
-                      style={{
-                        padding: "5px 10px",
-                        borderRadius: 6,
-                        fontSize: 11,
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        border: "1px solid",
-                        borderColor: isActive ? "#7A131A" : "#cbd5e1",
-                        backgroundColor: isActive ? "#7A131A" : "#f8fafc",
-                        color: isActive ? "#ffffff" : "#475569",
-                        transition: "all 0.15s ease",
-                      }}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
+              <div
+                style={{
+                  display: "flex",
+                  gap: 6,
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                }}
+              >
+                {["All", "Kitchen Accessories", "Wardrobe Accessories"].map(
+                  (cat) => {
+                    const isActive = accGalleryCategory === cat;
+                    const count =
+                      cat === "All"
+                        ? catalogAccessories.length
+                        : catalogAccessories.filter((a) => a.category === cat)
+                            .length;
+                    const label =
+                      cat === "All"
+                        ? `All (${count})`
+                        : cat === "Kitchen Accessories"
+                          ? `Kitchen (${count})`
+                          : `Wardrobe (${count})`;
+                    return (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => {
+                          setAccGalleryCategory(cat);
+                          setShowAddCustomModalItem(false);
+                        }}
+                        style={{
+                          padding: "5px 10px",
+                          borderRadius: 6,
+                          fontSize: 11,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          border: "1px solid",
+                          borderColor: isActive ? "#7A131A" : "#cbd5e1",
+                          backgroundColor: isActive ? "#7A131A" : "#f8fafc",
+                          color: isActive ? "#ffffff" : "#475569",
+                          transition: "all 0.15s ease",
+                        }}
+                      >
+                        {label}
+                      </button>
+                    );
+                  },
+                )}
 
                 {/* + Add More category pill */}
                 <button
@@ -6228,8 +6329,12 @@ export default function QuotationModule({
                     fontSize: 11,
                     fontWeight: 700,
                     cursor: "pointer",
-                    border: showAddCustomModalItem ? "1px solid #7A131A" : "1px dashed #7A131A",
-                    backgroundColor: showAddCustomModalItem ? "#7A131A" : "#fff5f5",
+                    border: showAddCustomModalItem
+                      ? "1px solid #7A131A"
+                      : "1px dashed #7A131A",
+                    backgroundColor: showAddCustomModalItem
+                      ? "#7A131A"
+                      : "#fff5f5",
                     color: showAddCustomModalItem ? "#ffffff" : "#7A131A",
                     display: "inline-flex",
                     alignItems: "center",
@@ -6273,21 +6378,50 @@ export default function QuotationModule({
                   gap: 10,
                 }}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#7A131A" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <div
+                    style={{ fontSize: 13, fontWeight: 700, color: "#7A131A" }}
+                  >
                     ➕ Add More Hardware Accessory to Catalog
                   </div>
                   <button
                     type="button"
                     onClick={() => setShowAddCustomModalItem(false)}
-                    style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: 13 }}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#64748b",
+                      cursor: "pointer",
+                      fontSize: 13,
+                    }}
                   >
                     ✕
                   </button>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr auto", gap: 10, alignItems: "center" }}>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1.5fr 1fr 1fr auto",
+                    gap: 10,
+                    alignItems: "center",
+                  }}
+                >
                   <div>
-                    <label style={{ fontSize: 11, fontWeight: 600, color: "#334155", display: "block", marginBottom: 2 }}>
+                    <label
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: "#334155",
+                        display: "block",
+                        marginBottom: 2,
+                      }}
+                    >
                       Accessory Name *
                     </label>
                     <input
@@ -6295,31 +6429,65 @@ export default function QuotationModule({
                       placeholder="e.g. Cutlery Organizer, Pantry Basket"
                       value={customModalItemName}
                       onChange={(e) => setCustomModalItemName(e.target.value)}
-                      style={{ ...styles.formInput, fontSize: 12, padding: "5px 8px" }}
+                      style={{
+                        ...styles.formInput,
+                        fontSize: 12,
+                        padding: "5px 8px",
+                      }}
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: 11, fontWeight: 600, color: "#334155", display: "block", marginBottom: 2 }}>
+                    <label
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: "#334155",
+                        display: "block",
+                        marginBottom: 2,
+                      }}
+                    >
                       Category
                     </label>
                     <select
                       value={customModalItemCategory}
-                      onChange={(e) => setCustomModalItemCategory(e.target.value)}
-                      style={{ ...styles.formInput, fontSize: 12, padding: "5px 8px" }}
+                      onChange={(e) =>
+                        setCustomModalItemCategory(e.target.value)
+                      }
+                      style={{
+                        ...styles.formInput,
+                        fontSize: 12,
+                        padding: "5px 8px",
+                      }}
                     >
-                      <option value="Kitchen Accessories">Kitchen Accessories</option>
-                      <option value="Wardrobe Accessories">Wardrobe Accessories</option>
+                      <option value="Kitchen Accessories">
+                        Kitchen Accessories
+                      </option>
+                      <option value="Wardrobe Accessories">
+                        Wardrobe Accessories
+                      </option>
                     </select>
                   </div>
                   <div>
-                    <label style={{ fontSize: 11, fontWeight: 600, color: "#334155", display: "block", marginBottom: 2 }}>
+                    <label
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: "#334155",
+                        display: "block",
+                        marginBottom: 2,
+                      }}
+                    >
                       Accessory Photo *
                     </label>
                     <input
                       type="file"
                       accept="image/*"
                       onChange={handleCustomModalItemUpload}
-                      style={{ ...styles.formInput, fontSize: 11, padding: "3px" }}
+                      style={{
+                        ...styles.formInput,
+                        fontSize: 11,
+                        padding: "3px",
+                      }}
                     />
                   </div>
                   <div style={{ paddingTop: 16 }}>
@@ -6360,10 +6528,25 @@ export default function QuotationModule({
                   overflowX: "auto",
                 }}
               >
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#7A131A", whiteSpace: "nowrap" }}>
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "#7A131A",
+                    whiteSpace: "nowrap",
+                  }}
+                >
                   Selected Photos ({modalSelectedItems.length}):
                 </div>
-                <div style={{ display: "flex", gap: 6, flex: 1, overflowX: "auto", padding: "2px 0" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 6,
+                    flex: 1,
+                    overflowX: "auto",
+                    padding: "2px 0",
+                  }}
+                >
                   {modalSelectedItems.map((item, idx) => (
                     <div
                       key={item.id || idx}
@@ -6382,7 +6565,12 @@ export default function QuotationModule({
                       <img
                         src={resolveAccessoryImageSrc(item.image)}
                         alt={item.name}
-                        style={{ width: 28, height: 28, objectFit: "contain", borderRadius: 4 }}
+                        style={{
+                          width: 28,
+                          height: 28,
+                          objectFit: "contain",
+                          borderRadius: 4,
+                        }}
                       />
                       <span
                         style={{
@@ -6503,7 +6691,9 @@ export default function QuotationModule({
                   >
                     ➕
                   </div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#7A131A" }}>
+                  <div
+                    style={{ fontSize: 13, fontWeight: 700, color: "#7A131A" }}
+                  >
                     + Add More
                   </div>
                   <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
@@ -6527,7 +6717,7 @@ export default function QuotationModule({
               ) : (
                 filteredPredefinedAccessories.map((item) => {
                   const isSelected = modalSelectedItems.some(
-                    (it) => it.id === item.id || it.image === item.image
+                    (it) => it.id === item.id || it.image === item.image,
                   );
                   return (
                     <div
@@ -6566,7 +6756,9 @@ export default function QuotationModule({
                       {item.isCustom && (
                         <button
                           type="button"
-                          onClick={(e) => handleDeleteCustomCatalogItem(item.id, e)}
+                          onClick={(e) =>
+                            handleDeleteCustomCatalogItem(item.id, e)
+                          }
                           style={{
                             position: "absolute",
                             top: 8,
@@ -6596,8 +6788,12 @@ export default function QuotationModule({
                           width: 22,
                           height: 22,
                           borderRadius: "50%",
-                          backgroundColor: isSelected ? "#7A131A" : "rgba(255,255,255,0.9)",
-                          border: isSelected ? "2px solid #7A131A" : "2px solid #cbd5e1",
+                          backgroundColor: isSelected
+                            ? "#7A131A"
+                            : "rgba(255,255,255,0.9)",
+                          border: isSelected
+                            ? "2px solid #7A131A"
+                            : "2px solid #cbd5e1",
                           color: "#ffffff",
                           display: "flex",
                           alignItems: "center",
@@ -6713,33 +6909,35 @@ export default function QuotationModule({
               }}
             >
               <div style={{ fontSize: 11, color: "#64748b" }}>
-                💡 Select multiple photos at once. Click <strong>Apply Selection</strong> to attach them to your item.
+                💡 Select multiple photos at once. Click{" "}
+                <strong>Apply Selection</strong> to attach them to your item.
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                {modalSelectedItems.length === 0 && (accFormImages.length > 0 || accFormImage) && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAccFormImages([]);
-                      setAccFormImage("");
-                      setAccFormImageId("");
-                      setShowAccGalleryModal(false);
-                    }}
-                    style={{
-                      padding: "6px 14px",
-                      fontSize: 12,
-                      fontWeight: 600,
-                      borderRadius: 6,
-                      border: "1px solid #fecdd3",
-                      backgroundColor: "#fee2e2",
-                      color: "#dc2626",
-                      cursor: "pointer",
-                    }}
-                    title="Remove all photos from this accessory item"
-                  >
-                    🗑️ Remove All Photos from Item
-                  </button>
-                )}
+                {modalSelectedItems.length === 0 &&
+                  (accFormImages.length > 0 || accFormImage) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAccFormImages([]);
+                        setAccFormImage("");
+                        setAccFormImageId("");
+                        setShowAccGalleryModal(false);
+                      }}
+                      style={{
+                        padding: "6px 14px",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        borderRadius: 6,
+                        border: "1px solid #fecdd3",
+                        backgroundColor: "#fee2e2",
+                        color: "#dc2626",
+                        cursor: "pointer",
+                      }}
+                      title="Remove all photos from this accessory item"
+                    >
+                      🗑️ Remove All Photos from Item
+                    </button>
+                  )}
                 {modalSelectedItems.length > 0 && (
                   <>
                     <button
@@ -6775,7 +6973,8 @@ export default function QuotationModule({
                         }}
                         title="Add each selected accessory as a separate row in the quotation"
                       >
-                        ➕ Add All as Separate Items ({modalSelectedItems.length})
+                        ➕ Add All as Separate Items (
+                        {modalSelectedItems.length})
                       </button>
                     )}
                     <button
