@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useConfig } from "../../context/ConfigContext";
 
 const ADMIN_NAV_ITEMS = [
   { to: "/admin/dashboard", label: "Dashboard", key: "dashboard" },
@@ -20,6 +21,7 @@ const ADMIN_NAV_ITEMS = [
 
 export default function AdminAppLayout({ children, title = "Admin Dashboard" }) {
   const { user, logout, isSuperAdmin } = useAuth();
+  const { modules, socketConnected } = useConfig();
   const navigate = useNavigate();
 
   const [windowWidth, setWindowWidth] = useState(
@@ -39,12 +41,32 @@ export default function AdminAppLayout({ children, title = "Admin Dashboard" }) 
   const isMobile = windowWidth < 768;
   const isCompactTablet = isTablet && !tabletExpanded;
 
+  const dynamicNavItems = useMemo(() => {
+    if (modules && modules.length > 0) {
+      return modules
+        .filter((m) => m.enabled !== false && m.webVisible !== false)
+        .map((m) => ({
+          to: m.webPath || `/admin/${m.id}`,
+          label: m.label,
+          key: m.id,
+          allowedRoles: m.allowedRoles,
+        }));
+    }
+    return ADMIN_NAV_ITEMS;
+  }, [modules]);
+
   const hasPermission = (item) => {
     if (item.superAdminOnly) {
       return isSuperAdmin || user?.role === 'SUPER_ADMIN';
     }
 
     if (isSuperAdmin || user?.role === 'SUPER_ADMIN') return true;
+
+    if (item.allowedRoles && item.allowedRoles.length > 0) {
+      const uRole = (user?.role || 'EMPLOYEE').toUpperCase();
+      if (!item.allowedRoles.includes(uRole)) return false;
+    }
+
     if (!user?.permissions || Object.keys(user.permissions).length === 0) return true;
 
     const key = item.key;
@@ -72,7 +94,7 @@ export default function AdminAppLayout({ children, title = "Admin Dashboard" }) 
     return true;
   };
 
-  const filteredNavItems = ADMIN_NAV_ITEMS.filter(hasPermission);
+  const filteredNavItems = dynamicNavItems.filter(hasPermission);
 
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to sign out from Admin Portal?")) {
@@ -260,6 +282,32 @@ export default function AdminAppLayout({ children, title = "Admin Dashboard" }) 
           </div>
 
           <div style={styles.headerRight}>
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 12px",
+                borderRadius: 20,
+                fontSize: 12,
+                fontWeight: 700,
+                background: socketConnected ? "#DCFCE7" : "#FEF3C7",
+                color: socketConnected ? "#15803D" : "#B45309",
+                border: socketConnected ? "1px solid #BBF7D0" : "1px solid #FDE68A",
+              }}
+              title={socketConnected ? "Real-time synchronization connected with Mobile & Database" : "Reconnecting to synchronization server..."}
+            >
+              <span
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: "50%",
+                  background: socketConnected ? "#22C55E" : "#F59E0B",
+                }}
+              />
+              <span>{socketConnected ? "Live Synced" : "Connecting..."}</span>
+            </div>
+
             <div style={styles.dateBadge}>
               <span>{todayFormatted}</span>
             </div>

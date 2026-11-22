@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
+import { ConfigProvider } from './context/ConfigContext';
 
 import AddEmployeePage from './pages/AddEmployeePage';
 import AdminAccessPage from './pages/AdminAccessPage';
@@ -79,8 +80,9 @@ function AdminOfferLetterWrapper({ subRoute }) {
 export default function App() {
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <AuthProvider>
-        <Routes>
+      <ConfigProvider>
+        <AuthProvider>
+          <Routes>
           {/* ───────────────────────────────────────────────────────────────── */}
           {/* 1. SUPER ADMIN PANEL ROUTES (/super-admin/*)                      */}
           {/* ───────────────────────────────────────────────────────────────── */}
@@ -157,7 +159,8 @@ export default function App() {
           <Route path="/" element={<Navigate to="/super-admin/dashboard" replace />} />
           <Route path="*" element={<Navigate to="/super-admin/dashboard" replace />} />
         </Routes>
-      </AuthProvider>
+        </AuthProvider>
+      </ConfigProvider>
     </BrowserRouter>
   );
 }
