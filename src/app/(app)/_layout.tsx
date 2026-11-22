@@ -1,7 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { usePathname, useRouter } from "expo-router";
 import { Drawer } from "expo-router/drawer";
-import React from "react";
 import {
   Image,
   Platform,
@@ -67,16 +66,48 @@ function CustomDrawerContent(props: any) {
 
   // Exact 10 main menu items + Logout matching the reference screenshot
   const adminMenuItems = [
-    { label: "Dashboard", icon: "grid-outline", route: "/(app)/tabs/dashboard" },
+    {
+      label: "Dashboard",
+      icon: "grid-outline",
+      route: "/(app)/tabs/dashboard",
+    },
     { label: "CRM", icon: "person-outline", route: "/(app)/tabs/crm" },
-    { label: "Projects", icon: "git-network-outline", route: "/(app)/tabs/projects" },
+    {
+      label: "Projects",
+      icon: "git-network-outline",
+      route: "/(app)/tabs/projects",
+    },
     { label: "Salary", icon: "cash-outline", route: "/(app)/salary" },
-    { label: "Attendance", icon: "calendar-outline", route: "/(app)/attendance" },
-    { label: "Bike Tracking", icon: "bicycle-outline", route: "/(app)/tabs/bike" },
-    { label: "Quotation", icon: "document-text-outline", route: "/(app)/quotation" },
-    { label: "Transactions", icon: "swap-horizontal-outline", route: "/(app)/transactions" },
-    { label: "Reports", icon: "stats-chart-outline", route: "/(app)/tabs/reports" },
-    { label: "Settings", icon: "settings-outline", route: "/(app)/tabs/profile" },
+    {
+      label: "Attendance",
+      icon: "calendar-outline",
+      route: "/(app)/attendance",
+    },
+    {
+      label: "Bike Tracking",
+      icon: "bicycle-outline",
+      route: "/(app)/tabs/bike",
+    },
+    {
+      label: "Quotation",
+      icon: "document-text-outline",
+      route: "/(app)/quotation",
+    },
+    {
+      label: "Transactions",
+      icon: "swap-horizontal-outline",
+      route: "/(app)/transactions",
+    },
+    {
+      label: "Reports",
+      icon: "stats-chart-outline",
+      route: "/(app)/tabs/reports",
+    },
+    {
+      label: "Settings",
+      icon: "settings-outline",
+      route: "/(app)/tabs/profile",
+    },
   ];
 
   return (
@@ -104,9 +135,7 @@ function CustomDrawerContent(props: any) {
             <Text style={styles.profileName} numberOfLines={1}>
               {user?.name || (isAdmin ? "Super Admin" : "Employee")}
             </Text>
-            <Text style={styles.profileRole}>
-              {displayRole.toUpperCase()}
-            </Text>
+            <Text style={styles.profileRole}>{displayRole.toUpperCase()}</Text>
           </View>
 
           {/* Right Arrow Icon */}
@@ -231,10 +260,7 @@ function CustomDrawerContent(props: any) {
 function DrawerMenuItem({ icon, label, isActive, onPress }: any) {
   return (
     <TouchableOpacity
-      style={[
-        styles.menuItem,
-        isActive && styles.menuItemActive,
-      ]}
+      style={[styles.menuItem, isActive && styles.menuItemActive]}
       onPress={onPress}
       activeOpacity={0.75}
     >
@@ -247,12 +273,7 @@ function DrawerMenuItem({ icon, label, isActive, onPress }: any) {
         color={isActive ? THEME.colors.primary : "#111827"}
         style={styles.menuIcon}
       />
-      <Text
-        style={[
-          styles.menuLabel,
-          isActive && styles.menuLabelActive,
-        ]}
-      >
+      <Text style={[styles.menuLabel, isActive && styles.menuLabelActive]}>
         {label}
       </Text>
     </TouchableOpacity>
@@ -281,8 +302,8 @@ export default function AppLayout() {
             width: drawerWidth,
             backgroundColor: "#FFFFFF",
             marginTop: headerHeight + 6,
-            marginBottom: Math.max(insets.bottom + 20, 32),
-            maxHeight: Math.min(Math.round(height * 0.88), 750),
+            marginBottom: Math.max(insets.bottom + 6, 12),
+            maxHeight: Math.min(Math.round(height * 0.92), 820),
             borderRadius: 28,
             borderTopLeftRadius: 28,
             borderTopRightRadius: 28,
@@ -298,11 +319,26 @@ export default function AppLayout() {
         }}
       >
         <Drawer.Screen name="tabs" options={{ title: "Home" }} />
-        <Drawer.Screen name="attendance" options={{ drawerItemStyle: { display: "none" } }} />
-        <Drawer.Screen name="project-detail" options={{ drawerItemStyle: { display: "none" } }} />
-        <Drawer.Screen name="quotation" options={{ drawerItemStyle: { display: "none" } }} />
-        <Drawer.Screen name="salary" options={{ drawerItemStyle: { display: "none" } }} />
-        <Drawer.Screen name="transactions" options={{ drawerItemStyle: { display: "none" } }} />
+        <Drawer.Screen
+          name="attendance"
+          options={{ drawerItemStyle: { display: "none" } }}
+        />
+        <Drawer.Screen
+          name="project-detail"
+          options={{ drawerItemStyle: { display: "none" } }}
+        />
+        <Drawer.Screen
+          name="quotation"
+          options={{ drawerItemStyle: { display: "none" } }}
+        />
+        <Drawer.Screen
+          name="salary"
+          options={{ drawerItemStyle: { display: "none" } }}
+        />
+        <Drawer.Screen
+          name="transactions"
+          options={{ drawerItemStyle: { display: "none" } }}
+        />
       </Drawer>
     </GestureHandlerRootView>
   );
@@ -371,7 +407,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
   },
   menuScrollContent: {
-    paddingVertical: 14,
+    paddingVertical: 15,
     paddingHorizontal: 10,
   },
   menuList: {
@@ -383,7 +419,7 @@ const styles = StyleSheet.create({
     position: "relative",
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 12.5,
+    paddingVertical: 14,
     paddingHorizontal: 14,
     borderRadius: 18,
     backgroundColor: "transparent",
