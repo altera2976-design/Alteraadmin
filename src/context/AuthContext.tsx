@@ -42,7 +42,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 function normalizeUser(u: User | null): User | null {
   if (!u) return null;
   if (
-    u.email?.toLowerCase() === "admin@company.com" ||
+    u.email?.toLowerCase() === "alterakitcheninterior@gmail.com" ||
     (u as any).role === "SUPER_ADMIN"
   ) {
     return { ...u, role: "ADMIN" };

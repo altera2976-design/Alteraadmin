@@ -24,7 +24,7 @@ export default function ModulesScreen() {
     userRole === 'SUPER_ADMIN' ||
     userRole?.toUpperCase() === 'ADMIN' ||
     userRole?.toUpperCase() === 'SUPER_ADMIN' ||
-    user?.email?.toLowerCase() === 'admin@company.com' ||
+    user?.email?.toLowerCase() === 'alterakitcheninterior@gmail.com' ||
     user?.email?.toLowerCase()?.includes('admin');
 
   const cardWidth = width > 500 ? (width - 48) / 3 : (width - 44) / 2;

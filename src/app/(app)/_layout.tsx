@@ -27,11 +27,10 @@ function CustomDrawerContent(props: any) {
     userRole === "SUPER_ADMIN" ||
     userRole?.toUpperCase() === "ADMIN" ||
     userRole?.toUpperCase() === "SUPER_ADMIN" ||
-    user?.email?.toLowerCase() === "admin@company.com" ||
-    user?.email?.toLowerCase()?.includes("admin");
+    user?.email?.toLowerCase() === "alterakitcheninterior@gmail.com";
 
   const displayRole =
-    isAdmin || user?.email?.toLowerCase() === "admin@company.com"
+    isAdmin || user?.email?.toLowerCase() === "alterakitcheninterior@gmail.com"
       ? "ADMIN"
       : user?.designation || userRole || "EMPLOYEE";
 
