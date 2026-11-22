@@ -112,7 +112,7 @@ function CustomDrawerContent(props: any) {
           {/* Right Arrow Icon */}
           <Ionicons
             name="chevron-forward"
-            size={22}
+            size={20}
             color="#FFFFFF"
             style={{ marginLeft: 6 }}
           />
@@ -280,9 +280,9 @@ export default function AppLayout() {
           drawerStyle: {
             width: drawerWidth,
             backgroundColor: "#FFFFFF",
-            marginTop: headerHeight + 10,
-            marginBottom: Math.max(insets.bottom + 50, 75),
-            maxHeight: Math.min(Math.round(height * 0.82), 680),
+            marginTop: headerHeight + 6,
+            marginBottom: Math.max(insets.bottom + 20, 32),
+            maxHeight: Math.min(Math.round(height * 0.88), 750),
             borderRadius: 28,
             borderTopLeftRadius: 28,
             borderTopRightRadius: 28,
@@ -371,11 +371,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
   },
   menuScrollContent: {
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 10,
   },
   menuList: {
-    gap: 3,
+    gap: 4,
   },
 
   // 3. Menu items: outline icons, bold labels
@@ -383,7 +383,7 @@ const styles = StyleSheet.create({
     position: "relative",
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 11,
+    paddingVertical: 12.5,
     paddingHorizontal: 14,
     borderRadius: 18,
     backgroundColor: "transparent",
