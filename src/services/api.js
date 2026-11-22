@@ -26,8 +26,10 @@ api.interceptors.request.use(
       config.url?.includes("/auth/login") ||
       config.url?.includes("/auth/register") ||
       config.url?.includes("/auth/forgot-password") ||
+      config.url?.includes("/auth/verify-otp") ||
       config.url?.includes("/auth/reset-password") ||
-      config.url?.includes("/auth/google");
+      config.url?.includes("/auth/google") ||
+      config.url?.includes("/auth/superadmin/");
     if (!isAuthRoute) {
       const token = localStorage.getItem("ems_token");
       if (token) {

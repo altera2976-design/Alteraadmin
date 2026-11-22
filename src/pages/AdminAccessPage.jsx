@@ -291,7 +291,7 @@ export default function AdminAccessPage() {
 
   const adminUsers = users.filter((u) => {
     const r = (u.role || '').toUpperCase();
-    const isPanelAllowed = u.isAdminPanelEnabled === true || r === 'SUPER_ADMIN' || u.email === 'alterakitcheninterior@gmail.com';
+    const isPanelAllowed = u.isAdminPanelEnabled === true || r === 'SUPER_ADMIN' || u.email === 'alterakitcheninteriorr@gmail.com';
 
     if (activeFilter === 'ADMIN_ACCESS_ONLY' && !isPanelAllowed) {
       return false;
@@ -560,7 +560,7 @@ export default function AdminAccessPage() {
                   const badge = getRoleBadge(u.role);
                   const isPanelEnabled = u.isAdminPanelEnabled !== false;
                   const isActive = u.status === 'ACTIVE';
-                  const isPrimarySuperAdmin = u.role === 'SUPER_ADMIN' || u.email === 'alterakitcheninterior@gmail.com';
+                  const isPrimarySuperAdmin = u.role === 'SUPER_ADMIN' || u.email === 'alterakitcheninteriorr@gmail.com';
 
                   return (
                     <tr key={u._id} style={{ borderBottom: '1px solid #f1f5f9' }}>

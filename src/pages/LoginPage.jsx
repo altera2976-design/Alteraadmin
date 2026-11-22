@@ -42,7 +42,7 @@ export default function LoginPage() {
     setError('');
     try {
       const loggedUser = await login(form.email, form.password);
-      const isSuper = loggedUser?.role === 'SUPER_ADMIN' || loggedUser?.email?.toLowerCase() === 'alterakitcheninterior@gmail.com';
+      const isSuper = loggedUser?.role === 'SUPER_ADMIN' || loggedUser?.email?.toLowerCase() === 'alterakitcheninteriorr@gmail.com';
       navigate(isSuper ? '/super-admin/dashboard' : '/admin/dashboard', { replace: true });
     } catch (err) {
       let msg = err.message || err.response?.data?.message;
@@ -104,7 +104,7 @@ export default function LoginPage() {
               name="email"
               type="email"
               className="form-input"
-              placeholder="alterakitcheninterior@gmail.com"
+              placeholder="alterakitcheninteriorr@gmail.com"
               value={form.email}
               onChange={handleChange}
               autoComplete="email"
