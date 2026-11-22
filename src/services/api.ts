@@ -6,11 +6,9 @@ const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
-    'X-Requested-With': 'XMLHttpRequest',
-    'Cache-Control': 'no-cache, no-store, must-revalidate',
-    'Pragma': 'no-cache',
+    'Accept': 'application/json',
   },
-  timeout: 15000,
+  timeout: 45000,
 });
 
 // Attach JWT token to every request securely from SecureStore

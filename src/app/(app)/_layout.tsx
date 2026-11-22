@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { usePathname, useRouter } from "expo-router";
 import { Drawer } from "expo-router/drawer";
 import { StatusBar } from "expo-status-bar";
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import {
     Image,
     Platform,
@@ -71,26 +71,106 @@ function CustomDrawerContent(props: any) {
 
   // The 11 exact menu items as default fallback
   const adminMenuItems = [
-    { label: "Dashboard", icon: "grid-outline", route: "/(app)/tabs/dashboard", isLogout: false },
-    { label: "CRM", icon: "people-outline", route: "/(app)/tabs/crm", isLogout: false },
-    { label: "Projects", icon: "briefcase-outline", route: "/(app)/tabs/projects", isLogout: false },
-    { label: "Salary", icon: "cash-outline", route: "/(app)/salary", isLogout: false },
-    { label: "Attendance", icon: "calendar-outline", route: "/(app)/attendance", isLogout: false },
-    { label: "Bike Tracking", icon: "bicycle-outline", route: "/(app)/tabs/bike", isLogout: false },
-    { label: "Quotation", icon: "document-text-outline", route: "/(app)/quotation", isLogout: false },
-    { label: "Transactions", icon: "card-outline", route: "/(app)/transactions", isLogout: false },
-    { label: "Reports", icon: "stats-chart-outline", route: "/(app)/tabs/reports", isLogout: false },
-    { label: "Settings", icon: "settings-outline", route: "/(app)/tabs/profile", isLogout: false },
+    {
+      label: "Dashboard",
+      icon: "grid-outline",
+      route: "/(app)/tabs/dashboard",
+      isLogout: false,
+    },
+    {
+      label: "CRM",
+      icon: "people-outline",
+      route: "/(app)/tabs/crm",
+      isLogout: false,
+    },
+    {
+      label: "Projects",
+      icon: "briefcase-outline",
+      route: "/(app)/tabs/projects",
+      isLogout: false,
+    },
+    {
+      label: "Salary",
+      icon: "cash-outline",
+      route: "/(app)/salary",
+      isLogout: false,
+    },
+    {
+      label: "Attendance",
+      icon: "calendar-outline",
+      route: "/(app)/attendance",
+      isLogout: false,
+    },
+    {
+      label: "Bike Tracking",
+      icon: "bicycle-outline",
+      route: "/(app)/tabs/bike",
+      isLogout: false,
+    },
+    {
+      label: "Quotation",
+      icon: "document-text-outline",
+      route: "/(app)/quotation",
+      isLogout: false,
+    },
+    {
+      label: "Transactions",
+      icon: "card-outline",
+      route: "/(app)/transactions",
+      isLogout: false,
+    },
+    {
+      label: "Reports",
+      icon: "stats-chart-outline",
+      route: "/(app)/tabs/reports",
+      isLogout: false,
+    },
+    {
+      label: "Settings",
+      icon: "settings-outline",
+      route: "/(app)/tabs/profile",
+      isLogout: false,
+    },
     { label: "Logout", icon: "log-out-outline", route: "", isLogout: true },
   ];
 
   const employeeMenuItems = [
-    { label: "Dashboard", icon: "grid-outline", route: "/(app)/tabs/dashboard", isLogout: false },
-    { label: "Projects", icon: "briefcase-outline", route: "/(app)/tabs/projects", isLogout: false },
-    { label: "Salary", icon: "cash-outline", route: "/(app)/salary", isLogout: false },
-    { label: "Attendance", icon: "calendar-outline", route: "/(app)/attendance", isLogout: false },
-    { label: "Bike Tracking", icon: "bicycle-outline", route: "/(app)/tabs/bike", isLogout: false },
-    { label: "Settings", icon: "settings-outline", route: "/(app)/tabs/profile", isLogout: false },
+    {
+      label: "Dashboard",
+      icon: "grid-outline",
+      route: "/(app)/tabs/dashboard",
+      isLogout: false,
+    },
+    {
+      label: "Projects",
+      icon: "briefcase-outline",
+      route: "/(app)/tabs/projects",
+      isLogout: false,
+    },
+    {
+      label: "Salary",
+      icon: "cash-outline",
+      route: "/(app)/salary",
+      isLogout: false,
+    },
+    {
+      label: "Attendance",
+      icon: "calendar-outline",
+      route: "/(app)/attendance",
+      isLogout: false,
+    },
+    {
+      label: "Bike Tracking",
+      icon: "bicycle-outline",
+      route: "/(app)/tabs/bike",
+      isLogout: false,
+    },
+    {
+      label: "Settings",
+      icon: "settings-outline",
+      route: "/(app)/tabs/profile",
+      isLogout: false,
+    },
     { label: "Logout", icon: "log-out-outline", route: "", isLogout: true },
   ];
 

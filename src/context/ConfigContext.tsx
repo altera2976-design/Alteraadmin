@@ -25,6 +25,19 @@ export interface AppConfig {
   tableSchemas?: Record<string, any>;
 }
 
+export const DEFAULT_MODULES: AppModuleConfig[] = [
+  { key: "dashboard", label: "Dashboard", icon: "grid-outline", mobileRoute: "/(app)/tabs/dashboard", enabled: true, mobileVisible: true },
+  { key: "crm", label: "CRM", icon: "people-outline", mobileRoute: "/(app)/tabs/crm", enabled: true, mobileVisible: true, allowedRoles: ["ADMIN", "SUPER_ADMIN"] },
+  { key: "projects", label: "Projects", icon: "briefcase-outline", mobileRoute: "/(app)/tabs/projects", enabled: true, mobileVisible: true },
+  { key: "salary", label: "Salary", icon: "cash-outline", mobileRoute: "/(app)/salary", enabled: true, mobileVisible: true },
+  { key: "attendance", label: "Attendance", icon: "calendar-outline", mobileRoute: "/(app)/attendance", enabled: true, mobileVisible: true },
+  { key: "bikeTracking", label: "Bike Tracking", icon: "bicycle-outline", mobileRoute: "/(app)/tabs/bike", enabled: true, mobileVisible: true },
+  { key: "quotation", label: "Quotation", icon: "document-text-outline", mobileRoute: "/(app)/quotation", enabled: true, mobileVisible: true, allowedRoles: ["ADMIN", "SUPER_ADMIN"] },
+  { key: "transactions", label: "Transactions", icon: "card-outline", mobileRoute: "/(app)/transactions", enabled: true, mobileVisible: true, allowedRoles: ["ADMIN", "SUPER_ADMIN"] },
+  { key: "reports", label: "Reports", icon: "stats-chart-outline", mobileRoute: "/(app)/tabs/reports", enabled: true, mobileVisible: true, allowedRoles: ["ADMIN", "SUPER_ADMIN"] },
+  { key: "settings", label: "Settings", icon: "settings-outline", mobileRoute: "/(app)/tabs/profile", enabled: true, mobileVisible: true },
+];
+
 interface ConfigContextValue {
   config: AppConfig | null;
   modules: AppModuleConfig[];
@@ -38,7 +51,7 @@ const CACHE_KEY = '@ems_app_config';
 
 export function ConfigProvider({ children }: { children: React.ReactNode }) {
   const [config, setConfig] = useState<AppConfig | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const fetchConfig = useCallback(async () => {
     try {
@@ -48,8 +61,8 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
         setConfig(fresh);
         await SecureStore.setItemAsync(CACHE_KEY, JSON.stringify(fresh));
       }
-    } catch (err: any) {
-      console.log('⚠️ [ConfigContext] Failed to fetch app-config:', err?.message);
+    } catch {
+      // Quiet fallback to default / cached modules during initial boot
     } finally {
       setLoading(false);
     }
@@ -61,7 +74,6 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
         const cached = await SecureStore.getItemAsync(CACHE_KEY);
         if (cached) {
           setConfig(JSON.parse(cached));
-          setLoading(false);
         }
       } catch {
         // ignore
@@ -72,7 +84,7 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
 
   const value: ConfigContextValue = {
     config,
-    modules: config?.modules || [],
+    modules: config?.modules && config.modules.length > 0 ? config.modules : DEFAULT_MODULES,
     loading,
     refreshConfig: fetchConfig,
   };
