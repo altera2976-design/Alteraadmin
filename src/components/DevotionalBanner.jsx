@@ -7,7 +7,7 @@ const DEITIES = [
     title: 'जय श्री श्याम',
     subtitle: '🙏 खाटू श्याम जी',
     accent: '#fbbf24',
-    objectPos: 'center 52%',
+    objectPos: 'center 60%',
     scale: 1, 
   },
   {
@@ -16,7 +16,7 @@ const DEITIES = [
     title: 'श्री बालाजी सरकार',
     subtitle: '🙏 श्री बालाजी सरकार • सालासर धाम',
     accent: '#f97316',
-    objectPos: 'center 50%',
+    objectPos: 'center 56%',
     scale: 1,
   },
   {
@@ -25,7 +25,7 @@ const DEITIES = [
     title: 'ॐ नमः शिवाय',
     subtitle: '🙏 हर हर महादेव • कैलाश पति',
     accent: '#38bdf8',
-    objectPos: 'center 35%',
+    objectPos: 'center 40%',
     scale: 1,
   },
   {
@@ -34,7 +34,7 @@ const DEITIES = [
     title: '॥ श्री ॥ राधे कृष्ण',
     subtitle: '🙏 श्री राधा कृष्ण जी • वृन्दावन धाम',
     accent: '#4ade80',
-    objectPos: 'center 35%',
+    objectPos: 'center 42%',
     scale: 1,
   },
 ];
@@ -49,24 +49,27 @@ const CSS = `
   .dbanner-wrap {
     position: relative;
     width: 100%;
-    height: 480px;
+    height: 520px;
     border-radius: 18px;
     overflow: hidden;
     margin-bottom: 24px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    box-shadow: 0 12px 35px rgba(0,0,0,0.28);
     cursor: pointer;
     background: #000;
     border: none !important;
     outline: none !important;
   }
+  @media (min-width: 1600px) {
+    .dbanner-wrap { height: 560px; }
+  }
   @media (max-width: 1400px) {
-    .dbanner-wrap { height: 440px; }
+    .dbanner-wrap { height: 480px; }
   }
   @media (max-width: 1024px) {
-    .dbanner-wrap { height: 360px; border-radius: 14px; }
+    .dbanner-wrap { height: 380px; border-radius: 14px; }
   }
   @media (max-width: 640px) {
-    .dbanner-wrap { height: 260px; border-radius: 12px; }
+    .dbanner-wrap { height: 280px; border-radius: 12px; }
   }
   .dbanner-track {
     display: flex;

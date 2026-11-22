@@ -98,7 +98,7 @@ export default function AdminLoginPage() {
             <label style={styles.label}>Admin Email / Phone / ID</label>
             <input
               type="text"
-              placeholder="e.g. admin@alterainterior.com"
+              placeholder="e.g. alterakitcheninterior@gmail.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required

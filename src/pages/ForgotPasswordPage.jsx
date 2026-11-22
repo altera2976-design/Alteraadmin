@@ -239,7 +239,7 @@ export default function ForgotPasswordPage() {
               <label style={S.label}>Registered Email Address or Employee ID</label>
               <input
                 type="text"
-                placeholder="e.g. alterakitcheninteriorr@gmail.com or EMP001"
+                placeholder="e.g. alterakitcheninterior@gmail.com or EMP001"
                 value={email}
                 onChange={e => { setEmail(e.target.value); clearMsgs(); }}
                 required

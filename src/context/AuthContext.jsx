@@ -37,9 +37,7 @@ export function AuthProvider({ children }) {
         const freshUser = meRes.data?.user || meRes.data;
         if (freshUser) {
           const isSuperEmail =
-            freshUser.email?.toLowerCase() === 'admin@alterainterior.com' ||
-            freshUser.email?.toLowerCase() === 'admin@company.com' ||
-            freshUser.email?.toLowerCase() === 'alterakitcheninteriorr@gmail.com';
+            freshUser.email?.toLowerCase() === 'alterakitcheninterior@gmail.com';
           const effectiveRole = isSuperEmail ? 'SUPER_ADMIN' : (freshUser.role || 'EMPLOYEE');
           const normalized = { ...freshUser, role: effectiveRole };
           setUser(normalized);
@@ -67,9 +65,7 @@ export function AuthProvider({ children }) {
     const res = await api.post('/auth/login', { email, password });
     const { token: newToken, user: newUser } = res.data;
     const isSuperAdminEmail =
-      newUser?.email?.toLowerCase() === 'admin@alterainterior.com' ||
-      newUser?.email?.toLowerCase() === 'admin@company.com' ||
-      newUser?.email?.toLowerCase() === 'alterakitcheninteriorr@gmail.com';
+      newUser?.email?.toLowerCase() === 'alterakitcheninterior@gmail.com';
     const effectiveRole = isSuperAdminEmail ? 'SUPER_ADMIN' : (newUser?.role || 'EMPLOYEE');
     const normalizedUser = { ...newUser, role: effectiveRole };
 
@@ -102,9 +98,7 @@ export function AuthProvider({ children }) {
 
   const isSuperAdmin =
     user?.role === 'SUPER_ADMIN' ||
-    user?.email?.toLowerCase() === 'admin@alterainterior.com' ||
-    user?.email?.toLowerCase() === 'admin@company.com' ||
-    user?.email?.toLowerCase() === 'alterakitcheninteriorr@gmail.com';
+    user?.email?.toLowerCase() === 'alterakitcheninterior@gmail.com';
 
   return (
     <AuthContext.Provider
