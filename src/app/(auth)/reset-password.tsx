@@ -18,6 +18,7 @@ export default function ResetPasswordScreen() {
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [resendingOtp, setResendingOtp] = useState(false);
   const [isOtpVerified, setIsOtpVerified] = useState(false);
+  const [verifiedEmail, setVerifiedEmail] = useState<string | null>(null);
   const [resetToken, setResetToken] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(60);
   const [error, setError] = useState('');
@@ -82,6 +83,9 @@ export default function ResetPasswordScreen() {
       const res = await authService.verifyOtp(email as string, otp.trim());
       if (res.success) {
         setIsOtpVerified(true);
+        if (res.email) {
+          setVerifiedEmail(res.email);
+        }
         if (res.resetToken) {
           setResetToken(res.resetToken);
         }
@@ -114,8 +118,9 @@ export default function ResetPasswordScreen() {
     setError('');
 
     try {
+      const targetEmail = verifiedEmail || (email as string);
       const res = await authService.resetPassword(
-        email as string,
+        targetEmail,
         isOtpVerified ? undefined : otp.trim(),
         newPassword,
         resetToken || undefined,
@@ -124,7 +129,7 @@ export default function ResetPasswordScreen() {
       if (res.success) {
         Alert.alert('Success', 'Your password has been reset successfully. You can now login.');
         // Navigate back to login screen with the email pre-filled
-        router.replace({ pathname: '/(auth)/login', params: { registeredEmail: email } });
+        router.replace({ pathname: '/(auth)/login', params: { registeredEmail: targetEmail } });
       } else {
         setError(res.message || 'Failed to reset password.');
       }

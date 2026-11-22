@@ -76,7 +76,7 @@ export default function TransactionsScreen() {
     userRole === 'SUPER_ADMIN' ||
     userRole?.toUpperCase() === 'ADMIN' ||
     userRole?.toUpperCase() === 'SUPER_ADMIN' ||
-    user?.email?.toLowerCase() === 'alterakitcheninterior@gmail.com' ||
+    user?.email?.toLowerCase() === 'alterakitcheninteriorr@gmail.com' ||
     user?.email?.toLowerCase()?.includes('admin');
 
   const [loading, setLoading] = useState(true);

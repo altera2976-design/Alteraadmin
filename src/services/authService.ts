@@ -105,7 +105,7 @@ export const authService = {
     return res.data;
   },
 
-  verifyOtp: async (email: string, otp: string, expectedRole?: string): Promise<{ success: boolean; message: string; resetToken?: string }> => {
+  verifyOtp: async (email: string, otp: string, expectedRole?: string): Promise<{ success: boolean; message: string; resetToken?: string; email?: string }> => {
     const res = await api.post('/auth/verify-otp', { email, otp, expectedRole });
     return res.data;
   },
