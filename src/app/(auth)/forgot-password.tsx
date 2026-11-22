@@ -13,7 +13,7 @@ export default function ForgotPasswordScreen() {
 
   const handleRequestOtp = async () => {
     if (!email.trim()) {
-      setError('Please enter your email address');
+      setError('Please enter your registered email or Employee ID');
       return;
     }
 
@@ -23,7 +23,7 @@ export default function ForgotPasswordScreen() {
     try {
       const res = await authService.forgotPassword(email.trim());
       if (res.success) {
-        Alert.alert('OTP Sent', 'Please check your email for the verification code.');
+        Alert.alert('OTP Sent', 'Please check your email for the 6-digit verification code.');
         router.push({ pathname: '/(auth)/reset-password', params: { email: email.trim() } });
       } else {
         setError(res.message || 'Failed to request password reset');
@@ -67,7 +67,7 @@ export default function ForgotPasswordScreen() {
               <Ionicons name="mail-outline" size={20} color="#757575" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder="Enter your email"
+                placeholder="Enter email or Employee ID"
                 placeholderTextColor="#999999"
                 autoCapitalize="none"
                 keyboardType="email-address"

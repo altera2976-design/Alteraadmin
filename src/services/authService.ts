@@ -100,13 +100,13 @@ export const authService = {
     return res.data;
   },
 
-  forgotPassword: async (email: string): Promise<{ success: boolean; message: string }> => {
-    const res = await api.post('/auth/forgot-password', { email });
+  forgotPassword: async (email: string, expectedRole?: string): Promise<{ success: boolean; message: string }> => {
+    const res = await api.post('/auth/forgot-password', { email, expectedRole });
     return res.data;
   },
 
-  verifyOtp: async (email: string, otp: string): Promise<{ success: boolean; message: string; resetToken?: string }> => {
-    const res = await api.post('/auth/verify-otp', { email, otp });
+  verifyOtp: async (email: string, otp: string, expectedRole?: string): Promise<{ success: boolean; message: string; resetToken?: string }> => {
+    const res = await api.post('/auth/verify-otp', { email, otp, expectedRole });
     return res.data;
   },
 
@@ -114,14 +114,25 @@ export const authService = {
     email: string,
     otp?: string,
     newPassword?: string,
-    resetToken?: string
+    resetToken?: string,
+    confirmPassword?: string,
+    expectedRole?: string
   ): Promise<{ success: boolean; message: string }> => {
-    const payload: { email: string; newPassword?: string; otp?: string; resetToken?: string } = {
+    const payload: {
+      email: string;
+      newPassword?: string;
+      otp?: string;
+      resetToken?: string;
+      confirmPassword?: string;
+      expectedRole?: string;
+    } = {
       email,
       newPassword,
     };
     if (otp) payload.otp = otp;
     if (resetToken) payload.resetToken = resetToken;
+    if (confirmPassword) payload.confirmPassword = confirmPassword;
+    if (expectedRole) payload.expectedRole = expectedRole;
     const res = await api.post('/auth/reset-password', payload);
     return res.data;
   },

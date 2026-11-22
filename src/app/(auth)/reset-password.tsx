@@ -11,7 +11,9 @@ export default function ResetPasswordScreen() {
   
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [resendingOtp, setResendingOtp] = useState(false);
@@ -103,6 +105,10 @@ export default function ResetPasswordScreen() {
       setError('New password must be at least 6 characters long.');
       return;
     }
+    if (confirmPassword && newPassword !== confirmPassword) {
+      setError('New password and confirm password do not match.');
+      return;
+    }
 
     setLoading(true);
     setError('');
@@ -112,7 +118,8 @@ export default function ResetPasswordScreen() {
         email as string,
         isOtpVerified ? undefined : otp.trim(),
         newPassword,
-        resetToken || undefined
+        resetToken || undefined,
+        confirmPassword || undefined
       );
       if (res.success) {
         Alert.alert('Success', 'Your password has been reset successfully. You can now login.');
@@ -227,6 +234,24 @@ export default function ResetPasswordScreen() {
               />
               <TouchableOpacity onPress={() => setShowPass(!showPass)} style={styles.eyeBtn} activeOpacity={0.7}>
                 <Ionicons name={showPass ? 'eye-outline' : 'eye-off-outline'} size={20} color="#757575" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Confirm Password Input */}
+            <View style={styles.inputWrapper}>
+              <Ionicons name="lock-closed-outline" size={20} color="#757575" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Confirm New Password"
+                placeholderTextColor="#999999"
+                secureTextEntry={!showConfirmPass}
+                autoCapitalize="none"
+                autoCorrect={false}
+                value={confirmPassword}
+                onChangeText={(v) => { setConfirmPassword(v); setError(''); }}
+              />
+              <TouchableOpacity onPress={() => setShowConfirmPass(!showConfirmPass)} style={styles.eyeBtn} activeOpacity={0.7}>
+                <Ionicons name={showConfirmPass ? 'eye-outline' : 'eye-off-outline'} size={20} color="#757575" />
               </TouchableOpacity>
             </View>
 
