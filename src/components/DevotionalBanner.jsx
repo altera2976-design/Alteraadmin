@@ -6,64 +6,169 @@ const DEITIES = [
     image: '/assets/devotional/shyam_ji.jpg',
     title: 'जय श्री श्याम',
     subtitle: '🙏 Khatu Shyam Ji',
-    accent: '#60a5fa',
-    objectPos: 'center 20%',
+    accent: '#fbbf24',
+    objectPos: 'center center',
     message: 'जिसके सिर पर हाथ हो श्याम का, उसका जीवन खुशियों से भर जाता है।',
   },
   {
     id: 'hanuman',
     image: '/assets/devotional/hanuman_ji.jpg',
-    title: 'जय श्री राम 🚩',
-    subtitle: '🙏 Sankat Mochan Hanuman Ji',
-    accent: '#fb923c',
-    objectPos: 'center 10%',
-    message: 'संकट मोचन हनुमान आपके सभी कष्टों को दूर करें। जय बजरंगबली!',
+    title: 'श्री बालाजी सरकार 🚩',
+    subtitle: '🙏 Shri Balaji Sarkar • Salasar & Mehndipur Dham',
+    accent: '#f97316',
+    objectPos: 'center center',
+    message: 'संकट मोचन श्री बालाजी महाराज आपके सभी संकट और कष्ट दूर करें। जय श्री राम!',
   },
   {
     id: 'shiva',
     image: '/assets/devotional/shiva_ji.jpg',
-    title: 'हर हर महादेव 🔱',
-    subtitle: '🙏 Bholenath Shiva Ji',
-    accent: '#a78bfa',
-    objectPos: 'center 5%',
-    message: 'ॐ नमः शिवाय! भोलेनाथ की कृपा से आपके जीवन में सुख-शांति आए।',
+    title: 'ॐ नमः शिवाय 🔱',
+    subtitle: '🙏 Har Har Mahadev • Kailash Pati',
+    accent: '#38bdf8',
+    objectPos: 'center center',
+    message: 'भोलेनाथ और माता पार्वती की असीम कृपा से आपके जीवन में सुख, शांति और समृद्धि आए।',
   },
   {
     id: 'krishna',
     image: '/assets/devotional/radha_krishna.png',
-    title: 'राधे राधे ❤️',
-    subtitle: '🙏 Shri Radha Krishna Ji',
+    title: '॥ श्री ॥ राधे कृष्ण 🦚',
+    subtitle: '🙏 Shri Radha Krishna Ji • Vrindavan Dham',
     accent: '#4ade80',
-    objectPos: 'center 15%',
-    message: 'राधे राधे! श्री कृष्णा की कृपा से आपका जीवन प्रेम और खुशियों से भरा रहे।',
+    objectPos: 'center center',
+    message: 'राधे कृष्ण के पावन प्रेम और आशीर्वाद से आपका घर-आँगन सदैव आनंदित और खुशहाल रहे।',
   },
   {
     id: 'durga',
     image: '/assets/devotional/maa_durga.jpg',
-    title: 'जय माता दी 🙏',
-    subtitle: '🙏 Maa Durga Ji',
-    accent: '#f472b6',
-    objectPos: 'center 10%',
-    message: 'माँ दुर्गा की कृपा से आपके जीवन से सभी कष्ट दूर हों। जय माता दी!',
+    title: 'जय माता दी 🚩',
+    subtitle: '🙏 Maa Durga Ji • Navdurga',
+    accent: '#f43f5e',
+    objectPos: 'center 15%',
+    message: 'माँ भगवती की कृपा से आपके जीवन से सभी कष्ट दूर हों और यश-वैभव प्राप्त हो।',
   },
 ];
 
-const INTERVAL = 3500;
+const INTERVAL = 4000;
 
 const CSS = `
   @keyframes slideProgress {
     from { width: 0%; }
     to { width: 100%; }
   }
-  .dbanner-wrap { position: relative; width: 100%; height: 280px; border-radius: 18px; overflow: hidden; margin-bottom: 24px; box-shadow: 0 12px 36px rgba(0,0,0,0.22); cursor: pointer; }
-  .dbanner-track { display: flex; height: 100%; transition: transform 0.65s cubic-bezier(0.77,0,0.18,1); will-change: transform; }
-  .dbanner-slide { flex: 0 0 100%; height: 100%; position: relative; }
-  .dbanner-slide img { width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block; }
-  .dbanner-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.08) 100%); }
-  .dbanner-content { position: absolute; bottom: 0; left: 0; right: 0; padding: 20px 28px 18px; color: #fff; }
-  .dbanner-title { font-size: 26px; font-weight: 900; margin: 0 0 4px; text-shadow: 0 2px 8px rgba(0,0,0,0.7); letter-spacing: 0.5px; }
-  .dbanner-sub { font-size: 13px; font-weight: 600; opacity: 0.75; margin: 0 0 8px; letter-spacing: 0.3px; }
-  .dbanner-msg { font-size: 14px; font-weight: 500; opacity: 0.95; margin: 0; line-height: 1.6; text-shadow: 0 1px 4px rgba(0,0,0,0.6); max-width: 680px; }
+  .dbanner-wrap {
+    position: relative;
+    width: 100%;
+    height: 340px;
+    border-radius: 20px;
+    overflow: hidden;
+    margin-bottom: 24px;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.28);
+    cursor: pointer;
+    background: #020c10;
+  }
+  @media (max-width: 1024px) {
+    .dbanner-wrap { height: 280px; border-radius: 16px; }
+  }
+  @media (max-width: 640px) {
+    .dbanner-wrap { height: 230px; border-radius: 12px; }
+  }
+  .dbanner-track {
+    display: flex;
+    height: 100%;
+    transition: transform 0.65s cubic-bezier(0.77,0,0.18,1);
+    will-change: transform;
+  }
+  .dbanner-slide {
+    flex: 0 0 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+    background: #020c10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .dbanner-slide-bg {
+    position: absolute;
+    inset: -20px;
+    background-size: cover;
+    background-position: center;
+    filter: blur(28px) brightness(0.45);
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+  .dbanner-slide img {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center center;
+    display: block;
+    transition: transform 0.6s ease;
+  }
+  .dbanner-wrap:hover .dbanner-slide img {
+    transform: scale(1.02);
+  }
+  .dbanner-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    background: linear-gradient(to top, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.22) 35%, transparent 70%);
+    pointer-events: none;
+  }
+  .dbanner-content {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 3;
+    padding: 16px 28px 16px;
+    color: #fff;
+    pointer-events: none;
+  }
+  .dbanner-title-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 4px;
+    flex-wrap: wrap;
+  }
+  .dbanner-title {
+    font-size: 24px;
+    font-weight: 900;
+    margin: 0;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.85);
+    letter-spacing: 0.5px;
+  }
+  .dbanner-sub-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 12px;
+    border-radius: 20px;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+  }
+  .dbanner-msg {
+    font-size: 13.5px;
+    font-weight: 500;
+    opacity: 0.95;
+    margin: 0;
+    line-height: 1.5;
+    text-shadow: 0 1px 6px rgba(0,0,0,0.9);
+    max-width: 720px;
+  }
+  .dbanner-accent-line {
+    width: 42px;
+    height: 3px;
+    border-radius: 2px;
+    margin-top: 8px;
+    opacity: 0.9;
+  }
   .dbanner-progress { position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: rgba(255,255,255,0.18); z-index: 10; }
   .dbanner-bar { height: 100%; animation: slideProgress var(--dur) linear forwards; border-radius: 2px; }
   .dbanner-dots { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; z-index: 10; }
@@ -73,7 +178,6 @@ const CSS = `
   .dbanner-arrow:hover { background: rgba(0,0,0,0.7); transform: translateY(-50%) scale(1.1); }
   .dbanner-arrow.left { left: 14px; }
   .dbanner-arrow.right { right: 14px; }
-  .dbanner-accent-line { width: 48px; height: 3px; border-radius: 2px; margin-top: 10px; opacity: 0.85; }
 `;
 
 const DevotionalBanner = () => {
@@ -115,10 +219,16 @@ const DevotionalBanner = () => {
         >
           {DEITIES.map((deity) => (
             <div key={deity.id} className='dbanner-slide'>
+              <div
+                className='dbanner-slide-bg'
+                style={{ backgroundImage: `url(${deity.image})` }}
+              />
               <img
                 src={deity.image}
                 alt={deity.title}
-                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: deity.objectPos || 'center 15%' }}
+                style={{
+                  objectPosition: deity.objectPos || 'center center',
+                }}
                 onError={e => { e.currentTarget.style.display = 'none'; }}
               />
               <div className='dbanner-overlay' />
@@ -128,8 +238,10 @@ const DevotionalBanner = () => {
 
         {/* Content overlay on current slide */}
         <div className='dbanner-content'>
-          <div className='dbanner-title'>{d.title}</div>
-          <div className='dbanner-sub'>{d.subtitle}</div>
+          <div className='dbanner-title-row'>
+            <span className='dbanner-title'>{d.title}</span>
+            <span className='dbanner-sub-pill'>{d.subtitle}</span>
+          </div>
           <div className='dbanner-msg'>{d.message}</div>
           <div className='dbanner-accent-line' style={{ background: d.accent }} />
         </div>
