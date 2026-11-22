@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { usePathname, useRouter } from "expo-router";
 import { Drawer } from "expo-router/drawer";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
+import React from "react";
 import {
   Image,
   Platform,
@@ -12,6 +12,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { THEME } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
@@ -20,7 +21,6 @@ function CustomDrawerContent(props: any) {
   const { user, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const insets = useSafeAreaInsets();
 
   const userRole = (user as any)?.role;
   const isAdmin =
@@ -64,33 +64,48 @@ function CustomDrawerContent(props: any) {
   };
 
   const avatarUri = (user as any)?.profileImage || (user as any)?.avatar;
-  const dynamicTopPadding = Math.max(insets.top + 12, Platform.OS === "ios" ? 52 : 44);
+
+  // Exact 11 menu items specified by user with outline icons
+  const adminMenuItems = [
+    { label: "Dashboard", icon: "grid-outline", route: "/(app)/tabs/dashboard" },
+    { label: "CRM", icon: "people-outline", route: "/(app)/tabs/crm" },
+    { label: "Projects", icon: "briefcase-outline", route: "/(app)/tabs/projects" },
+    { label: "Salary", icon: "cash-outline", route: "/(app)/salary" },
+    { label: "Attendance", icon: "calendar-outline", route: "/(app)/attendance" },
+    { label: "Bike Tracking", icon: "bicycle-outline", route: "/(app)/tabs/bike" },
+    { label: "Quotation", icon: "document-text-outline", route: "/(app)/quotation" },
+    { label: "Transactions", icon: "card-outline", route: "/(app)/transactions" },
+    { label: "Reports", icon: "stats-chart-outline", route: "/(app)/tabs/reports" },
+    { label: "Settings", icon: "settings-outline", route: "/(app)/tabs/profile" },
+  ];
 
   return (
     <View style={styles.drawerRoot}>
-      {/* 1. RED HEADER SECTION */}
+      {/* 1. DARK MAROON PROFILE HEADER (Top Rounded Corners) */}
       <TouchableOpacity
-        style={[styles.headerSection, { paddingTop: dynamicTopPadding }]}
+        style={styles.profileSection}
         onPress={() => navigateTo("/(app)/tabs/profile")}
         activeOpacity={0.85}
       >
-        <View style={styles.userInfo}>
-          <View style={styles.avatar}>
+        <View style={styles.profileRow}>
+          <View style={styles.avatarCircle}>
             {avatarUri ? (
-              <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+              <Image source={{ uri: avatarUri }} style={styles.avatarImg} />
             ) : (
-              <Text style={styles.avatarText}>
+              <Text style={styles.avatarInitial}>
                 {user?.name?.charAt(0)?.toUpperCase() || "S"}
               </Text>
             )}
           </View>
-          <View style={styles.userDetails}>
-            <Text style={styles.userName} numberOfLines={1}>
-              {user?.name || "Sahendra kumar"}
+          <View style={styles.profileInfo}>
+            <Text style={styles.profileName} numberOfLines={1}>
+              {user?.name || (isAdmin ? "Super Admin" : "Employee")}
             </Text>
-            <Text style={styles.userRole} numberOfLines={1}>
-              {displayRole.toUpperCase()}
-            </Text>
+            <View style={styles.roleBadge}>
+              <Text style={styles.roleBadgeText}>
+                {displayRole.toUpperCase()}
+              </Text>
+            </View>
           </View>
           <Ionicons
             name="chevron-forward"
@@ -101,145 +116,94 @@ function CustomDrawerContent(props: any) {
         </View>
       </TouchableOpacity>
 
-      {/* 2. WHITE NAVIGATION AREA */}
+      {/* 2. MENU ITEMS (Vertically Scrollable, Light Pink Active Background, Maroon Active Indicator) */}
       <ScrollView
-        style={styles.whiteNavArea}
-        contentContainerStyle={styles.navContainerStyle}
+        style={styles.menuScroll}
+        contentContainerStyle={styles.menuScrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.navLinks}>
-          <DrawerItem
-            icon="grid"
-            label="Dashboard"
-            isActive={isItemActive("/(app)/tabs/dashboard")}
-            onPress={() => navigateTo("/(app)/tabs/dashboard")}
-          />
-
+        <View style={styles.menuContainer}>
           {isAdmin ? (
             <>
-              <DrawerItem
-                icon="people"
-                label="CRM"
-                isActive={isItemActive("/(app)/tabs/crm")}
-                onPress={() => navigateTo("/(app)/tabs/crm")}
-              />
-              <DrawerItem
-                icon="briefcase"
-                label="Projects"
-                isActive={isItemActive("/(app)/tabs/projects")}
-                onPress={() => navigateTo("/(app)/tabs/projects")}
-              />
-              <DrawerItem
-                icon="cash"
-                label="Salary"
-                isActive={isItemActive("/(app)/salary")}
-                onPress={() => navigateTo("/(app)/salary")}
-              />
-              <DrawerItem
-                icon="calendar"
-                label="Attendance"
-                isActive={isItemActive("/(app)/attendance")}
-                onPress={() => navigateTo("/(app)/attendance")}
-              />
-              <DrawerItem
-                icon="bicycle"
-                label="Bike Tracking"
-                isActive={isItemActive("/(app)/tabs/bike")}
-                onPress={() => navigateTo("/(app)/tabs/bike")}
-              />
-              <DrawerItem
-                icon="document-text"
-                label="Quotation"
-                isActive={isItemActive("/(app)/quotation")}
-                onPress={() => navigateTo("/(app)/quotation")}
-              />
-              <DrawerItem
-                icon="card"
-                label="Transactions"
-                isActive={isItemActive("/(app)/transactions")}
-                onPress={() => navigateTo("/(app)/transactions")}
-              />
-              <DrawerItem
-                icon="stats-chart"
-                label="Reports"
-                isActive={isItemActive("/(app)/tabs/reports")}
-                onPress={() => navigateTo("/(app)/tabs/reports")}
-              />
-              <DrawerItem
-                icon="settings"
-                label="Settings"
-                isActive={isItemActive("/(app)/tabs/profile")}
-                onPress={() => navigateTo("/(app)/tabs/profile")}
-              />
+              {adminMenuItems.map((item) => {
+                const active = isItemActive(item.route);
+                return (
+                  <DrawerMenuItem
+                    key={item.label}
+                    icon={item.icon}
+                    label={item.label}
+                    isActive={active}
+                    onPress={() => navigateTo(item.route)}
+                  />
+                );
+              })}
             </>
           ) : (
             <>
+              <DrawerMenuItem
+                icon="grid-outline"
+                label="Dashboard"
+                isActive={isItemActive("/(app)/tabs/dashboard")}
+                onPress={() => navigateTo("/(app)/tabs/dashboard")}
+              />
               {(user?.employeeAppPermissions?.projects ?? true) && (
-                <DrawerItem
-                  icon="briefcase"
-                  label="My Projects"
-                  isActive={isItemActive("/(app)/tabs/projects")}
-                  onPress={() => navigateTo("/(app)/tabs/projects")}
-                />
-              )}
-              {user?.employeeAppPermissions?.tasks === true && (
-                <DrawerItem
-                  icon="checkbox"
-                  label="My Tasks"
+                <DrawerMenuItem
+                  icon="briefcase-outline"
+                  label="Projects"
                   isActive={isItemActive("/(app)/tabs/projects")}
                   onPress={() => navigateTo("/(app)/tabs/projects")}
                 />
               )}
               {user?.employeeAppPermissions?.salary === true && (
-                <DrawerItem
-                  icon="cash"
-                  label="My Salary"
+                <DrawerMenuItem
+                  icon="cash-outline"
+                  label="Salary"
                   isActive={isItemActive("/(app)/salary")}
                   onPress={() => navigateTo("/(app)/salary")}
                 />
               )}
               {(user?.employeeAppPermissions?.attendance ?? true) && (
-                <DrawerItem
-                  icon="calendar"
-                  label="Selfie Attendance"
+                <DrawerMenuItem
+                  icon="calendar-outline"
+                  label="Attendance"
                   isActive={isItemActive("/(app)/attendance")}
                   onPress={() => navigateTo("/(app)/attendance")}
                 />
               )}
               {user?.employeeAppPermissions?.bikeTracking === true && (
-                <DrawerItem
-                  icon="bicycle"
+                <DrawerMenuItem
+                  icon="bicycle-outline"
                   label="Bike Tracking"
                   isActive={isItemActive("/(app)/tabs/bike")}
                   onPress={() => navigateTo("/(app)/tabs/bike")}
                 />
               )}
               {user?.employeeAppPermissions?.crm === true && (
-                <DrawerItem
-                  icon="people"
+                <DrawerMenuItem
+                  icon="people-outline"
                   label="CRM"
                   isActive={isItemActive("/(app)/tabs/crm")}
                   onPress={() => navigateTo("/(app)/tabs/crm")}
                 />
               )}
               {user?.employeeAppPermissions?.quotation === true && (
-                <DrawerItem
-                  icon="document-text"
+                <DrawerMenuItem
+                  icon="document-text-outline"
                   label="Quotation"
                   isActive={isItemActive("/(app)/quotation")}
                   onPress={() => navigateTo("/(app)/quotation")}
                 />
               )}
               {user?.employeeAppPermissions?.reports === true && (
-                <DrawerItem
-                  icon="stats-chart"
+                <DrawerMenuItem
+                  icon="stats-chart-outline"
                   label="Reports"
                   isActive={isItemActive("/(app)/tabs/reports")}
                   onPress={() => navigateTo("/(app)/tabs/reports")}
                 />
               )}
-              <DrawerItem
-                icon="settings"
+              <DrawerMenuItem
+                icon="settings-outline"
                 label="Settings"
                 isActive={isItemActive("/(app)/tabs/profile")}
                 onPress={() => navigateTo("/(app)/tabs/profile")}
@@ -247,10 +211,12 @@ function CustomDrawerContent(props: any) {
             </>
           )}
 
-          <DrawerItem
-            icon="log-out"
+          {/* Logout Menu Item */}
+          <DrawerMenuItem
+            icon="log-out-outline"
             label="Logout"
             isActive={false}
+            isLogout={true}
             onPress={handleLogout}
           />
         </View>
@@ -259,33 +225,35 @@ function CustomDrawerContent(props: any) {
   );
 }
 
-function DrawerItem({ icon, emoji, label, isActive, onPress }: any) {
-  const getIconName = (name: string) => {
-    if (!name) return null;
-    if (name === "bar-chart") return "stats-chart-outline";
-    if (name.endsWith("-outline")) return name;
-    return `${name}-outline`;
-  };
-
-  const iconName = getIconName(icon);
-
+function DrawerMenuItem({ icon, label, isActive, isLogout, onPress }: any) {
   return (
     <TouchableOpacity
-      style={[styles.drawerItem, isActive && styles.drawerItemActive]}
+      style={[
+        styles.drawerItem,
+        isActive && styles.drawerItemActive,
+      ]}
       onPress={onPress}
       activeOpacity={0.7}
     >
-      {emoji ? (
-        <Text style={{ fontSize: 18, marginRight: 14 }}>{emoji}</Text>
-      ) : iconName ? (
-        <Ionicons
-          name={iconName as any}
-          size={20}
-          color={isActive ? THEME.colors.primary : "#333333"}
-          style={styles.drawerIcon}
-        />
-      ) : null}
-      <Text style={[styles.drawerLabel, isActive && styles.drawerLabelActive]}>
+      <Ionicons
+        name={icon as any}
+        size={21}
+        color={
+          isLogout
+            ? "#E53E3E"
+            : isActive
+            ? THEME.colors.primary
+            : "#333333"
+        }
+        style={styles.drawerIcon}
+      />
+      <Text
+        style={[
+          styles.drawerLabel,
+          isActive && styles.drawerLabelActive,
+          isLogout && styles.logoutLabel,
+        ]}
+      >
         {label}
       </Text>
     </TouchableOpacity>
@@ -294,7 +262,13 @@ function DrawerItem({ icon, emoji, label, isActive, onPress }: any) {
 
 export default function AppLayout() {
   const { width } = useWindowDimensions();
-  const drawerWidth = Math.min(Math.round(width * 0.78), 340);
+  const insets = useSafeAreaInsets();
+
+  // Android standard header is 56dp, iOS ~50dp; positioned below mobile header
+  const headerHeight = insets.top + (Platform.OS === "android" ? 56 : 50);
+
+  // Approximately 80-85% of mobile screen width
+  const drawerWidth = Math.min(Math.round(width * 0.83), 340);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -302,13 +276,25 @@ export default function AppLayout() {
         drawerContent={(props) => <CustomDrawerContent {...props} />}
         screenOptions={{
           headerShown: false,
+          drawerType: "front",
+          overlayColor: "rgba(0, 0, 0, 0.55)",
           drawerStyle: {
             width: drawerWidth,
-            backgroundColor: "#fff",
+            backgroundColor: "#FFFFFF",
+            marginTop: headerHeight + 6,
+            marginBottom: Math.max(insets.bottom, 16) + 16,
+            borderRadius: 26,
+            borderTopRightRadius: 26,
+            borderBottomRightRadius: 26,
+            overflow: "hidden",
+            elevation: 12,
+            shadowColor: "#000",
+            shadowOffset: { width: 4, height: 4 },
+            shadowOpacity: 0.25,
+            shadowRadius: 10,
           },
         }}
       >
-        {/* We set the main tabs layout as the primary screen in the drawer */}
         <Drawer.Screen name="tabs" options={{ title: "Home" }} />
         <Drawer.Screen name="attendance" options={{ drawerItemStyle: { display: "none" } }} />
         <Drawer.Screen name="project-detail" options={{ drawerItemStyle: { display: "none" } }} />
@@ -325,92 +311,106 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#FFFFFF",
   },
-  headerSection: {
-    backgroundColor: THEME.colors.primary,
-    paddingTop: Platform.OS === "ios" ? 56 : 48,
-    paddingBottom: 22,
-    paddingHorizontal: 20,
-    borderBottomRightRadius: 36,
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
+  // 1. Profile section: Dark maroon background, proper padding & alignment
+  profileSection: {
+    backgroundColor: THEME.colors.primary, // #7A131A
+    paddingVertical: 18,
+    paddingHorizontal: 16,
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
   },
-  userInfo: {
+  profileRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
   },
-  avatar: {
+  avatarCircle: {
     width: 48,
     height: 48,
     borderRadius: 24,
     backgroundColor: "#FFFFFF",
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
     borderWidth: 2,
-    borderColor: "rgba(255, 255, 255, 0.8)",
+    borderColor: "rgba(255, 255, 255, 0.85)",
   },
-  avatarImage: {
+  avatarImg: {
     width: 44,
     height: 44,
     borderRadius: 22,
   },
-  avatarText: {
-    color: THEME.colors.primary,
+  avatarInitial: {
     fontSize: 20,
-    fontWeight: "bold",
+    fontWeight: "800",
+    color: THEME.colors.primary,
   },
-  userDetails: {
+  profileInfo: {
     flex: 1,
   },
-  userName: {
-    color: "#FFFFFF",
+  profileName: {
     fontSize: 16,
     fontWeight: "700",
+    color: "#FFFFFF",
+    letterSpacing: 0.2,
   },
-  userRole: {
-    color: "rgba(255, 255, 255, 0.85)",
-    fontSize: 12,
-    fontWeight: "600",
-    marginTop: 2,
+  roleBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(255, 255, 255, 0.22)",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    marginTop: 4,
+  },
+  roleBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#FFFFFF",
     letterSpacing: 0.5,
   },
-  whiteNavArea: {
+  // 2. Menu scroll container
+  menuScroll: {
     flex: 1,
     backgroundColor: "#FFFFFF",
   },
-  navContainerStyle: {
-    paddingVertical: 18,
-    paddingHorizontal: 16,
+  menuScrollContent: {
+    paddingVertical: 14,
+    paddingHorizontal: 10,
   },
-  navLinks: {
-    gap: 10,
+  menuContainer: {
+    gap: 4,
   },
+  // 3. Menu items: outline icons, bold labels, light pink active background, maroon left indicator
   drawerItem: {
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: "transparent",
     backgroundColor: "transparent",
   },
   drawerItemActive: {
-    backgroundColor: "#FCE8EB",
-    borderLeftWidth: 4,
-    borderLeftColor: THEME.colors.primary,
+    backgroundColor: "#FCE8EB", // Light pink active background
+    borderLeftColor: THEME.colors.primary, // Maroon active indicator
   },
   drawerIcon: {
     marginRight: 14,
+    width: 24,
+    textAlign: "center",
   },
   drawerLabel: {
-    fontSize: 15,
+    fontSize: 14.5,
+    fontWeight: "600",
     color: "#333333",
-    fontWeight: "500",
+    letterSpacing: 0.2,
   },
   drawerLabelActive: {
     color: THEME.colors.primary,
     fontWeight: "700",
+  },
+  logoutLabel: {
+    color: "#E53E3E",
+    fontWeight: "600",
   },
 });
