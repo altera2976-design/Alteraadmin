@@ -241,7 +241,18 @@ const DevotionalBanner = () => {
                   objectPosition: deity.objectPos || 'center top',
                   transform: deity.scale ? `scale(${deity.scale})` : 'scale(1)',
                 }}
-                onError={e => { e.currentTarget.style.display = 'none'; }}
+                onError={e => {
+                  const target = e.currentTarget;
+                  if (!target.dataset.retried) {
+                    target.dataset.retried = '1';
+                    if (target.src && target.src.includes('/assets/devotional/')) {
+                      const filename = target.src.split('/assets/devotional/').pop();
+                      target.src = `./assets/devotional/${filename}`;
+                      return;
+                    }
+                  }
+                  target.style.display = 'none';
+                }}
               />
             </div>
           ))}
