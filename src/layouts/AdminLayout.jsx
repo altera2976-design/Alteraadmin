@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useConfig } from "../context/ConfigContext";
 
 const NAV_ITEMS = [
   { to: "/super-admin/dashboard", label: "Super Admin Dashboard", key: "dashboard", icon: "👑" },
@@ -22,6 +23,7 @@ const NAV_ITEMS = [
 
 export default function AdminLayout({ children, title }) {
   const { user, logout, isSuperAdmin } = useAuth();
+  const { modules, socketConnected } = useConfig();
   const navigate = useNavigate();
 
   const [windowWidth, setWindowWidth] = useState(
@@ -41,12 +43,31 @@ export default function AdminLayout({ children, title }) {
   const isTablet = windowWidth >= 768 && windowWidth < 1200;
   const isMobile = windowWidth < 768;
 
-  const filteredNavItems = NAV_ITEMS.filter((item) => {
+  const dynamicNavItems = useMemo(() => {
+    if (modules && modules.length > 0) {
+      return modules
+        .filter((m) => m.enabled !== false && m.webVisible !== false)
+        .map((m) => ({
+          to: m.superAdminPath || m.webPath || `/super-admin/${m.id}`,
+          label: m.label,
+          key: m.id,
+          icon: m.emoji || "📁",
+          allowedRoles: m.allowedRoles,
+        }));
+    }
+    return NAV_ITEMS;
+  }, [modules]);
+
+  const filteredNavItems = dynamicNavItems.filter((item) => {
     const isUserSuper = isSuperAdmin || user?.role === 'SUPER_ADMIN';
     if (item.superAdminOnly && !isUserSuper) {
       return false;
     }
     if (isUserSuper) return true;
+    if (item.allowedRoles && item.allowedRoles.length > 0) {
+      const uRole = (user?.role || 'EMPLOYEE').toUpperCase();
+      if (!item.allowedRoles.includes(uRole)) return false;
+    }
     if (user?.permissions && item.key) {
       return user.permissions[item.key]?.view === true || user.permissions[item.key] === true;
     }
@@ -258,6 +279,32 @@ export default function AdminLayout({ children, title }) {
 
           {/* Right Actions & Profile Pill */}
           <div style={styles.headerRight}>
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 12px",
+                borderRadius: 20,
+                fontSize: 12,
+                fontWeight: 700,
+                background: socketConnected ? "#DCFCE7" : "#FEF3C7",
+                color: socketConnected ? "#15803D" : "#B45309",
+                border: socketConnected ? "1px solid #BBF7D0" : "1px solid #FDE68A",
+              }}
+              title={socketConnected ? "Real-time synchronization active across Web and Mobile" : "Connecting to synchronization server..."}
+            >
+              <span
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: "50%",
+                  background: socketConnected ? "#22C55E" : "#F59E0B",
+                }}
+              />
+              <span>{socketConnected ? "Live Synced" : "Connecting..."}</span>
+            </div>
+
             <div style={styles.dateBadge} className="app-date-badge">
               <span style={{ fontSize: 13 }}>📅</span>
               <span>{todayFormatted}</span>
