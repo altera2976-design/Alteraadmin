@@ -143,12 +143,33 @@ export default function App() {
           <Route path="/administration" element={<ProtectedRoute permissionKey="administration"><AdministrationPage /></ProtectedRoute>} />
 
           {/* ───────────────────────────────────────────────────────────────── */}
-          {/* 2. LEGACY ADMIN PANEL ROUTES (/admin/*) Redirecting to unified    */}
+          {/* 2. ADMIN PANEL ROUTES (/admin/*)                                  */}
           {/* ───────────────────────────────────────────────────────────────── */}
-          <Route path="/admin/login" element={<Navigate to="/super-admin/login" replace />} />
-          <Route path="/admin/*" element={<Navigate to="/super-admin/dashboard" replace />} />
-
-          {/* Admin Settings */}
+          <Route path="/admin/login" element={<AdminLoginPage />} />
+          <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+          <Route path="/admin/dashboard" element={<AdminProtectedRoute permissionKey="dashboard"><AdminDashboardPage /></AdminProtectedRoute>} />
+          <Route path="/admin/employees" element={<AdminProtectedRoute permissionKey="employees" altPermissionKey="administration"><AdminEmployeesPage /></AdminProtectedRoute>} />
+          <Route path="/admin/employees/:id" element={<AdminProtectedRoute permissionKey="employees" altPermissionKey="administration"><AdminEmployeeViewWrapper subRoute="view" /></AdminProtectedRoute>} />
+          <Route path="/admin/employees/:id/edit" element={<AdminProtectedRoute permissionKey="employees" altPermissionKey="administration"><AdminEmployeeViewWrapper subRoute="edit" /></AdminProtectedRoute>} />
+          <Route path="/admin/attendance" element={<AdminProtectedRoute permissionKey="attendance"><AdminAttendancePage /></AdminProtectedRoute>} />
+          <Route path="/admin/attendance/:id" element={<AdminProtectedRoute permissionKey="attendance"><AdminAttendanceEmployeeWrapper /></AdminProtectedRoute>} />
+          <Route path="/admin/bike-tracking" element={<AdminProtectedRoute permissionKey="tracking"><AdminBikeTrackingPage activeTab="live" /></AdminProtectedRoute>} />
+          <Route path="/admin/bike-tracking/live" element={<AdminProtectedRoute permissionKey="tracking"><AdminBikeTrackingPage activeTab="live" /></AdminProtectedRoute>} />
+          <Route path="/admin/bike-tracking/history" element={<AdminProtectedRoute permissionKey="tracking"><AdminBikeTrackingPage activeTab="history" /></AdminProtectedRoute>} />
+          <Route path="/admin/payroll" element={<AdminProtectedRoute permissionKey="payroll" altPermissionKey="salary"><AdminPayrollPage /></AdminProtectedRoute>} />
+          <Route path="/admin/payroll/:id" element={<AdminProtectedRoute permissionKey="payroll" altPermissionKey="salary"><AdminPayrollViewWrapper /></AdminProtectedRoute>} />
+          <Route path="/admin/tasks" element={<AdminProtectedRoute permissionKey="tasks"><TaskManagementPage /></AdminProtectedRoute>} />
+          <Route path="/admin/crm" element={<AdminProtectedRoute permissionKey="crm"><AdminCRMPage /></AdminProtectedRoute>} />
+          <Route path="/admin/crm/:id" element={<AdminProtectedRoute permissionKey="crm"><AdminCRMViewWrapper /></AdminProtectedRoute>} />
+          <Route path="/admin/transactions" element={<AdminProtectedRoute permissionKey="transactions"><AdminTransactionsPage /></AdminProtectedRoute>} />
+          <Route path="/admin/quotations" element={<AdminProtectedRoute permissionKey="quotations" altPermissionKey="quotation"><AdminQuotationsPage /></AdminProtectedRoute>} />
+          <Route path="/admin/quotations/:id" element={<AdminProtectedRoute permissionKey="quotations" altPermissionKey="quotation"><AdminQuotationViewWrapper subRoute="view" /></AdminProtectedRoute>} />
+          <Route path="/admin/offer-letters" element={<AdminProtectedRoute permissionKey="offer_letters" altPermissionKey="offerLetters"><AdminOfferLettersPage subRoute="list" /></AdminProtectedRoute>} />
+          <Route path="/admin/offer-letters/create" element={<AdminProtectedRoute permissionKey="offer_letters" altPermissionKey="offerLetters"><AdminOfferLettersPage subRoute="create" /></AdminProtectedRoute>} />
+          <Route path="/admin/offer-letters/:id" element={<AdminProtectedRoute permissionKey="offer_letters" altPermissionKey="offerLetters"><AdminOfferLetterWrapper subRoute="view" /></AdminProtectedRoute>} />
+          <Route path="/admin/reports" element={<AdminProtectedRoute permissionKey="reports"><AdminReportsPage /></AdminProtectedRoute>} />
+          <Route path="/admin/notifications" element={<AdminProtectedRoute permissionKey="notifications"><AdminNotificationsPage /></AdminProtectedRoute>} />
+          <Route path="/admin/profile" element={<AdminProtectedRoute><AdminProfilePage /></AdminProtectedRoute>} />
           <Route path="/admin/settings" element={<AdminProtectedRoute permissionKey="settings" altPermissionKey="administration"><AdminSettingsPage /></AdminProtectedRoute>} />
 
           {/* Admin Error Pages */}
