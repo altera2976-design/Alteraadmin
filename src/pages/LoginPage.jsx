@@ -41,12 +41,21 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
     try {
-      await login(form.email, form.password);
-      navigate('/admin-panel', { replace: true });
+      const loggedUser = await login(form.email, form.password);
+      const isSuper = loggedUser?.role === 'SUPER_ADMIN' || loggedUser?.email?.toLowerCase() === 'admin@company.com' || loggedUser?.email?.toLowerCase() === 'admin@alterainterior.com' || loggedUser?.email?.toLowerCase() === 'alterakitcheninteriorr@gmail.com';
+      navigate(isSuper ? '/super-admin/dashboard' : '/admin/dashboard', { replace: true });
     } catch (err) {
-      setError(
-        err.message || err.response?.data?.message || 'Login failed. Please check your credentials.'
-      );
+      let msg = err.message || err.response?.data?.message;
+      if (!msg) {
+        if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+          msg = 'Server connection timeout. The backend server may be waking up, please try again in a moment.';
+        } else if (err.message === 'Network Error' || !err.response) {
+          msg = 'Cannot connect to server. Please check your internet connection.';
+        } else {
+          msg = 'Login failed. Please check your credentials.';
+        }
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }
