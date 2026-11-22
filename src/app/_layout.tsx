@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import "react-native-gesture-handler";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AuthProvider, useAuth } from "../context/AuthContext";
+import { ConfigProvider } from "../context/ConfigContext";
 
 // Prevent the splash screen from auto-hiding before auth loads
 SplashScreen.preventAutoHideAsync();
@@ -47,9 +48,11 @@ function RootLayoutNav() {
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AuthProvider>
-        <RootLayoutNav />
-      </AuthProvider>
+      <ConfigProvider>
+        <AuthProvider>
+          <RootLayoutNav />
+        </AuthProvider>
+      </ConfigProvider>
     </GestureHandlerRootView>
   );
 }

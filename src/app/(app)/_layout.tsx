@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { usePathname, useRouter } from "expo-router";
 import { Drawer } from "expo-router/drawer";
 import { StatusBar } from "expo-status-bar";
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Image,
   Platform,
@@ -17,6 +17,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { THEME } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
+import { useConfig } from "../../context/ConfigContext";
 
 function CustomDrawerContent(props: any) {
   const { user, logout } = useAuth();
@@ -66,32 +67,68 @@ function CustomDrawerContent(props: any) {
 
   const avatarUri = (user as any)?.profileImage || (user as any)?.avatar;
 
-  // The 11 exact menu items specified in the redesign requirements
+  const { modules } = useConfig();
+
+  // The 11 exact menu items as default fallback
   const adminMenuItems = [
-    { label: "Dashboard", icon: "grid-outline", route: "/(app)/tabs/dashboard" },
-    { label: "CRM", icon: "people-outline", route: "/(app)/tabs/crm" },
-    { label: "Projects", icon: "briefcase-outline", route: "/(app)/tabs/projects" },
-    { label: "Salary", icon: "cash-outline", route: "/(app)/salary" },
-    { label: "Attendance", icon: "calendar-outline", route: "/(app)/attendance" },
-    { label: "Bike Tracking", icon: "bicycle-outline", route: "/(app)/tabs/bike" },
-    { label: "Quotation", icon: "document-text-outline", route: "/(app)/quotation" },
-    { label: "Transactions", icon: "card-outline", route: "/(app)/transactions" },
-    { label: "Reports", icon: "stats-chart-outline", route: "/(app)/tabs/reports" },
-    { label: "Settings", icon: "settings-outline", route: "/(app)/tabs/profile" },
-    { label: "Logout", icon: "log-out-outline", isLogout: true },
+    { label: "Dashboard", icon: "grid-outline", route: "/(app)/tabs/dashboard", isLogout: false },
+    { label: "CRM", icon: "people-outline", route: "/(app)/tabs/crm", isLogout: false },
+    { label: "Projects", icon: "briefcase-outline", route: "/(app)/tabs/projects", isLogout: false },
+    { label: "Salary", icon: "cash-outline", route: "/(app)/salary", isLogout: false },
+    { label: "Attendance", icon: "calendar-outline", route: "/(app)/attendance", isLogout: false },
+    { label: "Bike Tracking", icon: "bicycle-outline", route: "/(app)/tabs/bike", isLogout: false },
+    { label: "Quotation", icon: "document-text-outline", route: "/(app)/quotation", isLogout: false },
+    { label: "Transactions", icon: "card-outline", route: "/(app)/transactions", isLogout: false },
+    { label: "Reports", icon: "stats-chart-outline", route: "/(app)/tabs/reports", isLogout: false },
+    { label: "Settings", icon: "settings-outline", route: "/(app)/tabs/profile", isLogout: false },
+    { label: "Logout", icon: "log-out-outline", route: "", isLogout: true },
   ];
 
   const employeeMenuItems = [
-    { label: "Dashboard", icon: "grid-outline", route: "/(app)/tabs/dashboard" },
-    { label: "Projects", icon: "briefcase-outline", route: "/(app)/tabs/projects" },
-    { label: "Salary", icon: "cash-outline", route: "/(app)/salary" },
-    { label: "Attendance", icon: "calendar-outline", route: "/(app)/attendance" },
-    { label: "Bike Tracking", icon: "bicycle-outline", route: "/(app)/tabs/bike" },
-    { label: "Settings", icon: "settings-outline", route: "/(app)/tabs/profile" },
-    { label: "Logout", icon: "log-out-outline", isLogout: true },
+    { label: "Dashboard", icon: "grid-outline", route: "/(app)/tabs/dashboard", isLogout: false },
+    { label: "Projects", icon: "briefcase-outline", route: "/(app)/tabs/projects", isLogout: false },
+    { label: "Salary", icon: "cash-outline", route: "/(app)/salary", isLogout: false },
+    { label: "Attendance", icon: "calendar-outline", route: "/(app)/attendance", isLogout: false },
+    { label: "Bike Tracking", icon: "bicycle-outline", route: "/(app)/tabs/bike", isLogout: false },
+    { label: "Settings", icon: "settings-outline", route: "/(app)/tabs/profile", isLogout: false },
+    { label: "Logout", icon: "log-out-outline", route: "", isLogout: true },
   ];
 
-  const menuList = isAdmin ? adminMenuItems : employeeMenuItems;
+  // Dynamic modules synchronized from Dashboard in real-time
+  const menuList = useMemo(() => {
+    if (modules && modules.length > 0) {
+      const activeMobileModules = modules.filter(
+        (m) => m.enabled !== false && m.mobileVisible !== false
+      );
+
+      const userRoleUpper = ((userRole as string) || "EMPLOYEE").toUpperCase();
+      const isSuper = isAdmin || userRoleUpper === "SUPER_ADMIN";
+
+      const filtered = activeMobileModules.filter((m) => {
+        if (isSuper) return true;
+        if (!m.allowedRoles || m.allowedRoles.length === 0) return true;
+        return m.allowedRoles.includes(userRoleUpper);
+      });
+
+      const dynamicList: { label: string; icon: string; route: string; isLogout: boolean }[] = filtered.map((m) => ({
+        label: m.label,
+        icon: m.icon || "grid-outline",
+        route: m.mobileRoute || "/(app)/tabs/dashboard",
+        isLogout: false,
+      }));
+
+      dynamicList.push({
+        label: "Logout",
+        icon: "log-out-outline",
+        route: "",
+        isLogout: true,
+      });
+
+      return dynamicList;
+    }
+
+    return isAdmin ? adminMenuItems : employeeMenuItems;
+  }, [modules, isAdmin, userRole]);
 
   return (
     <View style={styles.drawerRoot}>
