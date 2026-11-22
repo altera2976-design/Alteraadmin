@@ -65,29 +65,30 @@ function CustomDrawerContent(props: any) {
 
   const avatarUri = (user as any)?.profileImage || (user as any)?.avatar;
 
-  // Exact 11 menu items specified by user with outline icons
+  // Exact 10 main menu items + Logout matching the reference screenshot
   const adminMenuItems = [
     { label: "Dashboard", icon: "grid-outline", route: "/(app)/tabs/dashboard" },
-    { label: "CRM", icon: "people-outline", route: "/(app)/tabs/crm" },
-    { label: "Projects", icon: "briefcase-outline", route: "/(app)/tabs/projects" },
+    { label: "CRM", icon: "person-outline", route: "/(app)/tabs/crm" },
+    { label: "Projects", icon: "git-network-outline", route: "/(app)/tabs/projects" },
     { label: "Salary", icon: "cash-outline", route: "/(app)/salary" },
     { label: "Attendance", icon: "calendar-outline", route: "/(app)/attendance" },
     { label: "Bike Tracking", icon: "bicycle-outline", route: "/(app)/tabs/bike" },
     { label: "Quotation", icon: "document-text-outline", route: "/(app)/quotation" },
-    { label: "Transactions", icon: "card-outline", route: "/(app)/transactions" },
+    { label: "Transactions", icon: "swap-horizontal-outline", route: "/(app)/transactions" },
     { label: "Reports", icon: "stats-chart-outline", route: "/(app)/tabs/reports" },
     { label: "Settings", icon: "settings-outline", route: "/(app)/tabs/profile" },
   ];
 
   return (
-    <View style={styles.drawerRoot}>
+    <View style={styles.drawerCard}>
       {/* 1. DARK MAROON PROFILE HEADER (Top Rounded Corners) */}
       <TouchableOpacity
-        style={styles.profileSection}
+        style={styles.profileHeader}
         onPress={() => navigateTo("/(app)/tabs/profile")}
-        activeOpacity={0.85}
+        activeOpacity={0.88}
       >
         <View style={styles.profileRow}>
+          {/* Circular White Avatar */}
           <View style={styles.avatarCircle}>
             {avatarUri ? (
               <Image source={{ uri: avatarUri }} style={styles.avatarImg} />
@@ -97,32 +98,35 @@ function CustomDrawerContent(props: any) {
               </Text>
             )}
           </View>
-          <View style={styles.profileInfo}>
+
+          {/* User Name & Role */}
+          <View style={styles.profileTextWrap}>
             <Text style={styles.profileName} numberOfLines={1}>
               {user?.name || (isAdmin ? "Super Admin" : "Employee")}
             </Text>
-            <View style={styles.roleBadge}>
-              <Text style={styles.roleBadgeText}>
-                {displayRole.toUpperCase()}
-              </Text>
-            </View>
+            <Text style={styles.profileRole}>
+              {displayRole.toUpperCase()}
+            </Text>
           </View>
+
+          {/* Right Arrow Icon */}
           <Ionicons
             name="chevron-forward"
-            size={20}
+            size={22}
             color="#FFFFFF"
-            style={{ opacity: 0.9 }}
+            style={{ marginLeft: 6 }}
           />
         </View>
       </TouchableOpacity>
 
-      {/* 2. MENU ITEMS (Vertically Scrollable, Light Pink Active Background, Maroon Active Indicator) */}
+      {/* 2. MENU ITEMS (Clean White Background, Scrollable if needed) */}
       <ScrollView
         style={styles.menuScroll}
         contentContainerStyle={styles.menuScrollContent}
         showsVerticalScrollIndicator={false}
+        bounces={false}
       >
-        <View style={styles.menuContainer}>
+        <View style={styles.menuList}>
           {isAdmin ? (
             <>
               {adminMenuItems.map((item) => {
@@ -148,7 +152,7 @@ function CustomDrawerContent(props: any) {
               />
               {(user?.employeeAppPermissions?.projects ?? true) && (
                 <DrawerMenuItem
-                  icon="briefcase-outline"
+                  icon="git-network-outline"
                   label="Projects"
                   isActive={isItemActive("/(app)/tabs/projects")}
                   onPress={() => navigateTo("/(app)/tabs/projects")}
@@ -180,7 +184,7 @@ function CustomDrawerContent(props: any) {
               )}
               {user?.employeeAppPermissions?.crm === true && (
                 <DrawerMenuItem
-                  icon="people-outline"
+                  icon="person-outline"
                   label="CRM"
                   isActive={isItemActive("/(app)/tabs/crm")}
                   onPress={() => navigateTo("/(app)/tabs/crm")}
@@ -211,12 +215,11 @@ function CustomDrawerContent(props: any) {
             </>
           )}
 
-          {/* Logout Menu Item */}
+          {/* Logout Item */}
           <DrawerMenuItem
-            icon="log-out-outline"
+            icon="exit-outline"
             label="Logout"
             isActive={false}
-            isLogout={true}
             onPress={handleLogout}
           />
         </View>
@@ -225,33 +228,29 @@ function CustomDrawerContent(props: any) {
   );
 }
 
-function DrawerMenuItem({ icon, label, isActive, isLogout, onPress }: any) {
+function DrawerMenuItem({ icon, label, isActive, onPress }: any) {
   return (
     <TouchableOpacity
       style={[
-        styles.drawerItem,
-        isActive && styles.drawerItemActive,
+        styles.menuItem,
+        isActive && styles.menuItemActive,
       ]}
       onPress={onPress}
-      activeOpacity={0.7}
+      activeOpacity={0.75}
     >
+      {/* Maroon vertical indicator capsule on far left of active pink pill */}
+      {isActive && <View style={styles.activeIndicator} />}
+
       <Ionicons
         name={icon as any}
-        size={21}
-        color={
-          isLogout
-            ? "#E53E3E"
-            : isActive
-            ? THEME.colors.primary
-            : "#333333"
-        }
-        style={styles.drawerIcon}
+        size={23}
+        color={isActive ? THEME.colors.primary : "#111827"}
+        style={styles.menuIcon}
       />
       <Text
         style={[
-          styles.drawerLabel,
-          isActive && styles.drawerLabelActive,
-          isLogout && styles.logoutLabel,
+          styles.menuLabel,
+          isActive && styles.menuLabelActive,
         ]}
       >
         {label}
@@ -261,14 +260,14 @@ function DrawerMenuItem({ icon, label, isActive, isLogout, onPress }: any) {
 }
 
 export default function AppLayout() {
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
 
-  // Android standard header is 56dp, iOS ~50dp; positioned below mobile header
+  // Position sidebar strictly below the top mobile header
   const headerHeight = insets.top + (Platform.OS === "android" ? 56 : 50);
 
-  // Approximately 80-85% of mobile screen width
-  const drawerWidth = Math.min(Math.round(width * 0.83), 340);
+  // Approximately 78-83% of mobile screen width, leaving 17-22% visible on the right
+  const drawerWidth = Math.min(Math.round(width * 0.79), 320);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -277,21 +276,24 @@ export default function AppLayout() {
         screenOptions={{
           headerShown: false,
           drawerType: "front",
-          overlayColor: "rgba(0, 0, 0, 0.55)",
+          overlayColor: "rgba(0, 0, 0, 0.45)",
           drawerStyle: {
             width: drawerWidth,
             backgroundColor: "#FFFFFF",
-            marginTop: headerHeight + 6,
-            marginBottom: Math.max(insets.bottom, 16) + 16,
-            borderRadius: 26,
-            borderTopRightRadius: 26,
-            borderBottomRightRadius: 26,
+            marginTop: headerHeight + 10,
+            marginBottom: Math.max(insets.bottom + 50, 75),
+            maxHeight: Math.min(Math.round(height * 0.82), 680),
+            borderRadius: 28,
+            borderTopLeftRadius: 28,
+            borderTopRightRadius: 28,
+            borderBottomLeftRadius: 28,
+            borderBottomRightRadius: 28,
             overflow: "hidden",
-            elevation: 12,
+            elevation: 16,
             shadowColor: "#000",
-            shadowOffset: { width: 4, height: 4 },
-            shadowOpacity: 0.25,
-            shadowRadius: 10,
+            shadowOffset: { width: 3, height: 6 },
+            shadowOpacity: 0.28,
+            shadowRadius: 14,
           },
         }}
       >
@@ -307,17 +309,21 @@ export default function AppLayout() {
 }
 
 const styles = StyleSheet.create({
-  drawerRoot: {
+  // Main floating drawer card
+  drawerCard: {
     flex: 1,
     backgroundColor: "#FFFFFF",
+    borderRadius: 28,
+    overflow: "hidden",
   },
-  // 1. Profile section: Dark maroon background, proper padding & alignment
-  profileSection: {
-    backgroundColor: THEME.colors.primary, // #7A131A
+
+  // 1. Profile Header in Dark Maroon with rounded top corners
+  profileHeader: {
+    backgroundColor: THEME.colors.primary, // Dark maroon (#7A131A)
     paddingVertical: 18,
     paddingHorizontal: 16,
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
   },
   profileRow: {
     flexDirection: "row",
@@ -330,21 +336,19 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 12,
-    borderWidth: 2,
-    borderColor: "rgba(255, 255, 255, 0.85)",
+    marginRight: 14,
   },
   avatarImg: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
   avatarInitial: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "800",
-    color: THEME.colors.primary,
+    color: "#111827", // Bold black initial
   },
-  profileInfo: {
+  profileTextWrap: {
     flex: 1,
   },
   profileName: {
@@ -353,64 +357,70 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     letterSpacing: 0.2,
   },
-  roleBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(255, 255, 255, 0.22)",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
-    marginTop: 4,
+  profileRole: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "rgba(255, 255, 255, 0.9)",
+    marginTop: 2,
+    letterSpacing: 0.6,
   },
-  roleBadgeText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#FFFFFF",
-    letterSpacing: 0.5,
-  },
+
   // 2. Menu scroll container
   menuScroll: {
     flex: 1,
     backgroundColor: "#FFFFFF",
   },
   menuScrollContent: {
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: 10,
   },
-  menuContainer: {
-    gap: 4,
+  menuList: {
+    gap: 3,
   },
-  // 3. Menu items: outline icons, bold labels, light pink active background, maroon left indicator
-  drawerItem: {
+
+  // 3. Menu items: outline icons, bold labels
+  menuItem: {
+    position: "relative",
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 12,
+    paddingVertical: 11,
     paddingHorizontal: 14,
-    borderRadius: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: "transparent",
+    borderRadius: 18,
     backgroundColor: "transparent",
   },
-  drawerItemActive: {
-    backgroundColor: "#FCE8EB", // Light pink active background
-    borderLeftColor: THEME.colors.primary, // Maroon active indicator
+
+  // Active item: Light pink pill background
+  menuItemActive: {
+    backgroundColor: "#FDECEF", // Exact light pink matching reference screenshot
   },
-  drawerIcon: {
-    marginRight: 14,
-    width: 24,
+
+  // Maroon indicator capsule on far left of active pill
+  activeIndicator: {
+    position: "absolute",
+    left: 0,
+    top: 5,
+    bottom: 5,
+    width: 5,
+    backgroundColor: THEME.colors.primary, // #7A131A
+    borderTopLeftRadius: 18,
+    borderBottomLeftRadius: 18,
+    borderTopRightRadius: 4,
+    borderBottomRightRadius: 4,
+  },
+
+  menuIcon: {
+    marginRight: 16,
+    width: 26,
     textAlign: "center",
   },
-  drawerLabel: {
-    fontSize: 14.5,
-    fontWeight: "600",
-    color: "#333333",
+  menuLabel: {
+    fontSize: 15.5,
+    fontWeight: "700",
+    color: "#111827", // Bold readable black label
     letterSpacing: 0.2,
   },
-  drawerLabelActive: {
-    color: THEME.colors.primary,
-    fontWeight: "700",
-  },
-  logoutLabel: {
-    color: "#E53E3E",
-    fontWeight: "600",
+  menuLabelActive: {
+    color: "#111827",
+    fontWeight: "800",
   },
 });
