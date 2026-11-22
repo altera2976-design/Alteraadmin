@@ -75,11 +75,11 @@ export default function ForgotPasswordPage() {
   async function handleSendOtp(e) {
     e.preventDefault();
     clearMsgs();
-    if (!email.trim()) { setError('Please enter your email address.'); return; }
+    if (!email.trim()) { setError('Please enter your registered email or Employee ID.'); return; }
     setLoading(true);
     try {
       await api.post('/auth/forgot-password', { email: email.trim() });
-      setSuccess('A 6-digit OTP has been sent to your email. Check your inbox.');
+      setSuccess('A 6-digit OTP has been sent to your registered email. Check your inbox.');
       startCooldown(60);
       setStep(STEP_OTP);
     } catch (err) {
@@ -98,6 +98,7 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     try {
       const res = await api.post('/auth/verify-otp', { email: email.trim(), otp: otpStr });
+      if (res.data?.email) setEmail(res.data.email);
       setResetToken(res.data?.resetToken || '');
       setSuccess('OTP verified! Now set your new password.');
       setStep(STEP_RESET);
@@ -134,6 +135,7 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     try {
       await api.post('/auth/reset-password', {
+        email: email.trim(),
         resetToken,
         newPassword: password,
       });
@@ -195,13 +197,13 @@ export default function ForgotPasswordPage() {
             {step === STEP_DONE   ? 'Your password has been changed successfully.'
             : step === STEP_RESET ? 'Create a strong new password for your account.'
             : step === STEP_OTP  ? `A 6-digit OTP was sent to ${email}`
-            : 'Enter your registered email to receive a reset OTP.'}
+            : 'Enter your registered email or Employee ID to receive a reset OTP.'}
           </p>
         </div>
 
         {/* ── Step indicators ── */}
         <div style={S.steps}>
-          {['Email', 'OTP', 'Reset'].map((label, i) => {
+          {['Email/ID', 'OTP', 'Reset'].map((label, i) => {
             const stepKeys = [STEP_EMAIL, STEP_OTP, STEP_RESET];
             const idx = [STEP_EMAIL, STEP_OTP, STEP_RESET, STEP_DONE].indexOf(step);
             const done   = idx > i;
@@ -232,10 +234,10 @@ export default function ForgotPasswordPage() {
         {step === STEP_EMAIL && (
           <form onSubmit={handleSendOtp} style={S.form}>
             <div style={S.field}>
-              <label style={S.label}>Registered Email Address</label>
+              <label style={S.label}>Registered Email Address or Employee ID</label>
               <input
-                type="email"
-                placeholder="e.g. admin@alterainterior.com"
+                type="text"
+                placeholder="e.g. alterakitcheninteriorr@gmail.com or EMP001"
                 value={email}
                 onChange={e => { setEmail(e.target.value); clearMsgs(); }}
                 required
@@ -244,7 +246,7 @@ export default function ForgotPasswordPage() {
               />
             </div>
             <button type="submit" disabled={loading} style={S.btn}>
-              {loading ? 'Sending OTP…' : 'Send OTP to Email'}
+              {loading ? 'Sending OTP…' : 'Send OTP'}
             </button>
           </form>
         )}
