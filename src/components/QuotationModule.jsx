@@ -366,94 +366,6 @@ export default function QuotationModule({
     });
   }, [catalogAccessories, accGallerySearch, accGalleryCategory]);
 
-  // Image metadata cache: imageSrc -> { width, height, format, sizeStr }
-  const [accImageMetaCache, setAccImageMetaCache] = useState({});
-  const [previewModalItem, setPreviewModalItem] = useState(null);
-
-  // Dynamically load image dimensions, file format, and file size from actual files
-  useEffect(() => {
-    if (!showAccGalleryModal) return;
-    let isCancelled = false;
-
-    filteredPredefinedAccessories.forEach((item) => {
-      const src = item.image;
-      if (!src) return;
-
-      // Detect format from URL or data URI
-      let detectedFormat = "IMG";
-      if (src.startsWith("data:image/")) {
-        const mime = src.split(";")[0].replace("data:image/", "").toUpperCase();
-        detectedFormat = mime === "JPEG" ? "JPG" : mime;
-      } else {
-        const ext = src.split("?")[0].split("#")[0].split(".").pop();
-        if (ext && ext.length <= 5) {
-          detectedFormat = ext.toUpperCase() === "JPEG" ? "JPG" : ext.toUpperCase();
-        }
-      }
-
-      // 1. Dynamic dimensions via Image object
-      const img = new Image();
-      img.onload = () => {
-        if (isCancelled) return;
-        setAccImageMetaCache((prev) => ({
-          ...prev,
-          [src]: {
-            ...(prev[src] || {}),
-            width: img.naturalWidth,
-            height: img.naturalHeight,
-            format: prev[src]?.format || detectedFormat,
-          },
-        }));
-      };
-      img.src = src;
-
-      // 2. Dynamic file size via fetch or data-uri byte length
-      if (src.startsWith("data:image/")) {
-        const base64Data = src.split(",")[1] || "";
-        const bytes = Math.round((base64Data.length * 3) / 4);
-        const sizeStr =
-          bytes >= 1048576
-            ? `${(bytes / 1048576).toFixed(2)} MB`
-            : `${Math.round(bytes / 1024)} KB`;
-        setAccImageMetaCache((prev) => ({
-          ...prev,
-          [src]: {
-            ...(prev[src] || {}),
-            format: detectedFormat,
-            sizeStr,
-          },
-        }));
-      } else {
-        fetch(src, { cache: "force-cache" })
-          .then((res) => {
-            const cl = res.headers.get("content-length");
-            if (cl) return parseInt(cl, 10);
-            return res.blob().then((b) => b.size);
-          })
-          .then((bytes) => {
-            if (isCancelled || !bytes) return;
-            const sizeStr =
-              bytes >= 1048576
-                ? `${(bytes / 1048576).toFixed(2)} MB`
-                : `${Math.round(bytes / 1024)} KB`;
-            setAccImageMetaCache((prev) => ({
-              ...prev,
-              [src]: {
-                ...(prev[src] || {}),
-                format: detectedFormat,
-                sizeStr,
-              },
-            }));
-          })
-          .catch(() => {});
-      }
-    });
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [showAccGalleryModal, filteredPredefinedAccessories]);
-
   const [stAccessoryOptions, setStAccessoryOptions] = useState(
     DEFAULT_STANDALONE_ACCESSORY_OPTIONS,
   );
@@ -6178,8 +6090,8 @@ export default function QuotationModule({
           <div
             style={{
               ...styles.modalCard,
-              maxWidth: 1040,
-              width: "96%",
+              maxWidth: 880,
+              width: "95%",
               maxHeight: "88vh",
               display: "flex",
               flexDirection: "column",
@@ -6539,11 +6451,11 @@ export default function QuotationModule({
               style={{
                 flex: 1,
                 overflowY: "auto",
-                padding: "16px 4px",
+                padding: "14px 2px",
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(215px, 1fr))",
-                gap: 16,
-                maxHeight: "58vh",
+                gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+                gap: 12,
+                maxHeight: "55vh",
               }}
             >
               {/* "+ Add More" interactive card in grid when form is closed */}
@@ -6552,52 +6464,50 @@ export default function QuotationModule({
                   onClick={() => setShowAddCustomModalItem(true)}
                   style={{
                     border: "2px dashed #7A131A",
-                    borderRadius: 10,
+                    borderRadius: 8,
                     backgroundColor: "#fffafa",
                     cursor: "pointer",
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center",
                     justifyContent: "center",
-                    padding: 20,
-                    minHeight: 280,
+                    padding: 16,
+                    minHeight: 180,
                     textAlign: "center",
-                    transition: "all 0.2s ease",
+                    transition: "all 0.15s ease",
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = "#fee2e2";
-                    e.currentTarget.style.transform = "translateY(-2px)";
-                    e.currentTarget.style.boxShadow = "0 8px 16px -2px rgba(122, 19, 26, 0.15)";
+                    e.currentTarget.style.transform = "translateY(-1px)";
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.backgroundColor = "#fffafa";
                     e.currentTarget.style.transform = "translateY(0)";
-                    e.currentTarget.style.boxShadow = "none";
                   }}
                   title="Click to add more custom hardware accessories"
                 >
                   <div
                     style={{
-                      width: 52,
-                      height: 52,
+                      width: 44,
+                      height: 44,
                       borderRadius: "50%",
                       backgroundColor: "#fee2e2",
                       color: "#7A131A",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      fontSize: 24,
+                      fontSize: 22,
                       fontWeight: 700,
-                      marginBottom: 10,
+                      marginBottom: 8,
                     }}
                   >
                     ➕
                   </div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: "#7A131A" }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#7A131A" }}>
                     + Add More
                   </div>
-                  <div style={{ fontSize: 11, color: "#64748b", marginTop: 4, maxWidth: 160 }}>
-                    Upload custom hardware photos &amp; dimensions
+                  <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
+                    Upload custom hardware or photos
                   </div>
                 </div>
               )}
@@ -6607,7 +6517,7 @@ export default function QuotationModule({
                   style={{
                     gridColumn: "1 / -1",
                     textAlign: "center",
-                    padding: "40px 20px",
+                    padding: "30px 20px",
                     color: "#64748b",
                     fontSize: 13,
                   }}
@@ -6619,7 +6529,6 @@ export default function QuotationModule({
                   const isSelected = modalSelectedItems.some(
                     (it) => it.id === item.id || it.image === item.image
                   );
-                  const meta = accImageMetaCache[item.image];
                   return (
                     <div
                       key={item.id}
@@ -6627,31 +6536,29 @@ export default function QuotationModule({
                       style={{
                         position: "relative",
                         border: isSelected
-                          ? "2.5px solid #7A131A"
+                          ? "2px solid #7A131A"
                           : "1px solid #e2e8f0",
-                        borderRadius: 10,
+                        borderRadius: 8,
                         backgroundColor: isSelected ? "#fff5f5" : "#ffffff",
                         cursor: "pointer",
                         display: "flex",
                         flexDirection: "column",
                         overflow: "hidden",
-                        transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                        transition: "all 0.15s ease",
                         boxShadow: isSelected
-                          ? "0 6px 16px -2px rgba(122, 19, 26, 0.25)"
-                          : "0 1px 3px rgba(0,0,0,0.06)",
+                          ? "0 4px 6px -1px rgba(122, 19, 26, 0.2)"
+                          : "0 1px 3px rgba(0,0,0,0.05)",
                       }}
                       onMouseEnter={(e) => {
                         if (!isSelected) {
-                          e.currentTarget.style.borderColor = "#7A131A";
-                          e.currentTarget.style.transform = "translateY(-3px)";
-                          e.currentTarget.style.boxShadow = "0 10px 20px -3px rgba(0, 0, 0, 0.1)";
+                          e.currentTarget.style.borderColor = "#94a3b8";
+                          e.currentTarget.style.transform = "translateY(-1px)";
                         }
                       }}
                       onMouseLeave={(e) => {
                         if (!isSelected) {
                           e.currentTarget.style.borderColor = "#e2e8f0";
                           e.currentTarget.style.transform = "translateY(0)";
-                          e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.06)";
                         }
                       }}
                     >
@@ -6668,12 +6575,11 @@ export default function QuotationModule({
                             border: "1px solid #fecdd3",
                             borderRadius: 4,
                             color: "#dc2626",
-                            padding: "3px 7px",
+                            padding: "2px 6px",
                             fontSize: 10,
                             fontWeight: 700,
                             cursor: "pointer",
-                            zIndex: 4,
-                            boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
+                            zIndex: 3,
                           }}
                           title="Delete this custom accessory from catalog"
                         >
@@ -6681,66 +6587,40 @@ export default function QuotationModule({
                         </button>
                       )}
 
-                      {/* Format Badge (JPG, PNG, WEBP) */}
-                      <div
-                        style={{
-                          position: "absolute",
-                          top: 8,
-                          left: item.isCustom ? 84 : 8,
-                          backgroundColor: "rgba(15, 23, 42, 0.75)",
-                          backdropFilter: "blur(4px)",
-                          color: "#ffffff",
-                          padding: "2px 6px",
-                          borderRadius: 4,
-                          fontSize: 9,
-                          fontWeight: 800,
-                          letterSpacing: 0.5,
-                          zIndex: 3,
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        {meta?.format || "IMG"}
-                      </div>
-
-                      {/* Visible Selection Checkbox on Top-Right */}
+                      {/* Selection Checkmark Badge on Top-Right */}
                       <div
                         style={{
                           position: "absolute",
                           top: 8,
                           right: 8,
-                          width: 24,
-                          height: 24,
+                          width: 22,
+                          height: 22,
                           borderRadius: "50%",
-                          backgroundColor: isSelected ? "#7A131A" : "rgba(255, 255, 255, 0.95)",
-                          border: isSelected ? "2px solid #7A131A" : "2px solid #94a3b8",
+                          backgroundColor: isSelected ? "#7A131A" : "rgba(255,255,255,0.9)",
+                          border: isSelected ? "2px solid #7A131A" : "2px solid #cbd5e1",
                           color: "#ffffff",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          fontSize: 13,
-                          fontWeight: 800,
-                          zIndex: 3,
-                          boxShadow: "0 2px 4px rgba(0,0,0,0.15)",
-                          transition: "all 0.15s ease",
+                          fontSize: 12,
+                          fontWeight: 700,
+                          zIndex: 2,
+                          boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
                         }}
-                        title={isSelected ? "Selected" : "Click to select"}
                       >
                         {isSelected ? "✓" : ""}
                       </div>
 
-                      {/* Large, Clear Image Thumbnail Container (Consistent Dimensions & Aspect Ratio) */}
+                      {/* Image Thumbnail Container */}
                       <div
                         style={{
-                          height: 180,
-                          width: "100%",
+                          height: 110,
                           backgroundColor: "#f8fafc",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          padding: 10,
+                          padding: 8,
                           borderBottom: "1px solid #f1f5f9",
-                          position: "relative",
-                          overflow: "hidden",
                         }}
                       >
                         <img
@@ -6749,65 +6629,16 @@ export default function QuotationModule({
                           style={{
                             maxHeight: "100%",
                             maxWidth: "100%",
-                            width: "auto",
-                            height: "auto",
                             objectFit: "contain",
-                            display: "block",
-                            margin: "auto",
-                            transition: "transform 0.25s ease",
                           }}
                           loading="lazy"
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = "scale(1.04)";
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = "scale(1)";
-                          }}
                         />
-
-                        {/* Interactive Full Preview Button */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setPreviewModalItem(item);
-                          }}
-                          style={{
-                            position: "absolute",
-                            bottom: 8,
-                            right: 8,
-                            backgroundColor: "rgba(15, 23, 42, 0.75)",
-                            backdropFilter: "blur(4px)",
-                            border: "none",
-                            borderRadius: 4,
-                            color: "#ffffff",
-                            padding: "3px 8px",
-                            fontSize: 10,
-                            fontWeight: 600,
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 4,
-                            cursor: "pointer",
-                            zIndex: 3,
-                            transition: "background-color 0.15s ease",
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = "#7A131A";
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = "rgba(15, 23, 42, 0.75)";
-                          }}
-                          title="Open high-resolution preview with details"
-                        >
-                          <span>🔍</span>
-                          <span>Preview</span>
-                        </button>
                       </div>
 
-                      {/* Content & Metadata */}
+                      {/* Content */}
                       <div
                         style={{
-                          padding: "10px 12px 12px 12px",
+                          padding: "10px",
                           flex: 1,
                           display: "flex",
                           flexDirection: "column",
@@ -6818,7 +6649,7 @@ export default function QuotationModule({
                         <div>
                           <div
                             style={{
-                              fontSize: 13,
+                              fontSize: 12,
                               fontWeight: 700,
                               color: isSelected ? "#7A131A" : "#1e293b",
                               lineHeight: 1.3,
@@ -6829,34 +6660,11 @@ export default function QuotationModule({
                           </div>
                           <div
                             style={{
-                              fontSize: 11,
+                              fontSize: 10,
                               color: "#64748b",
                             }}
                           >
                             {item.category}
-                          </div>
-
-                          {/* Dynamic Image Metadata Bar (Dimensions & File Size) */}
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              padding: "4px 8px",
-                              backgroundColor: "#f1f5f9",
-                              borderRadius: 4,
-                              fontSize: 10,
-                              color: "#475569",
-                              fontWeight: 600,
-                              marginTop: 6,
-                            }}
-                          >
-                            <span title="Actual Image Dimensions (Width × Height)">
-                              📐 {meta?.width ? `${meta.width} × ${meta.height} px` : "Dimensions..."}
-                            </span>
-                            <span title="Actual File Size" style={{ color: "#0f172a", fontWeight: 700 }}>
-                              💾 {meta?.sizeStr || "Size..."}
-                            </span>
                           </div>
                         </div>
 
@@ -6868,35 +6676,21 @@ export default function QuotationModule({
                           }}
                           style={{
                             width: "100%",
-                            padding: "6px 8px",
+                            padding: "5px 8px",
                             fontSize: 11,
-                            fontWeight: 700,
-                            borderRadius: 6,
+                            fontWeight: 600,
+                            borderRadius: 4,
                             cursor: "pointer",
                             border: isSelected
                               ? "1px solid #dc2626"
                               : "1px solid #cbd5e1",
                             backgroundColor: isSelected ? "#fee2e2" : "#ffffff",
                             color: isSelected ? "#dc2626" : "#334155",
-                            marginTop: 6,
+                            marginTop: 4,
                             transition: "all 0.15s ease",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            gap: 4,
                           }}
                         >
-                          {isSelected ? (
-                            <>
-                              <span>✕</span>
-                              <span>Remove Photo</span>
-                            </>
-                          ) : (
-                            <>
-                              <span>✓</span>
-                              <span>Select Photo</span>
-                            </>
-                          )}
+                          {isSelected ? "✕ Remove Photo" : "Select Photo"}
                         </button>
                       </div>
                     </div>
@@ -7018,266 +6812,6 @@ export default function QuotationModule({
                   }}
                 >
                   Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* FULL-RESOLUTION PREVIEW LIGHTBOX MODAL */}
-      {previewModalItem && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(15, 23, 42, 0.82)",
-            backdropFilter: "blur(6px)",
-            zIndex: 100000,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 20,
-          }}
-          onClick={() => setPreviewModalItem(null)}
-        >
-          <div
-            style={{
-              backgroundColor: "#ffffff",
-              borderRadius: 12,
-              maxWidth: 760,
-              width: "95%",
-              maxHeight: "92vh",
-              display: "flex",
-              flexDirection: "column",
-              overflow: "hidden",
-              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.4)",
-              border: "1px solid #e2e8f0",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Lightbox Header */}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                padding: "14px 20px",
-                borderBottom: "1px solid #e2e8f0",
-                backgroundColor: "#ffffff",
-              }}
-            >
-              <div>
-                <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#0f172a" }}>
-                  {previewModalItem.name}
-                </h4>
-                <span style={{ fontSize: 12, color: "#64748b" }}>
-                  {previewModalItem.category}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPreviewModalItem(null)}
-                style={{
-                  background: "#f1f5f9",
-                  border: "none",
-                  borderRadius: "50%",
-                  width: 32,
-                  height: 32,
-                  cursor: "pointer",
-                  fontSize: 14,
-                  fontWeight: 700,
-                  color: "#475569",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  transition: "background-color 0.15s ease",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "#fee2e2";
-                  e.currentTarget.style.color = "#dc2626";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "#f1f5f9";
-                  e.currentTarget.style.color = "#475569";
-                }}
-                title="Close Preview (or click outside)"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* High-Resolution Preview Container */}
-            <div
-              style={{
-                flex: 1,
-                backgroundColor: "#f8fafc",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: 24,
-                minHeight: 340,
-                maxHeight: "62vh",
-                overflow: "hidden",
-                position: "relative",
-              }}
-            >
-              <img
-                src={previewModalItem.image}
-                alt={previewModalItem.name}
-                style={{
-                  maxWidth: "100%",
-                  maxHeight: "100%",
-                  width: "auto",
-                  height: "auto",
-                  objectFit: "contain",
-                  borderRadius: 6,
-                  boxShadow: "0 4px 14px rgba(0,0,0,0.08)",
-                }}
-              />
-            </div>
-
-            {/* Lightbox Footer & Metadata */}
-            <div
-              style={{
-                padding: "14px 20px",
-                borderTop: "1px solid #e2e8f0",
-                backgroundColor: "#ffffff",
-                display: "flex",
-                flexWrap: "wrap",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 12,
-              }}
-            >
-              {/* Dynamic Metadata Badges */}
-              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                {accImageMetaCache[previewModalItem.image]?.width ? (
-                  <span
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 700,
-                      color: "#1e293b",
-                      backgroundColor: "#f1f5f9",
-                      padding: "4px 10px",
-                      borderRadius: 6,
-                      border: "1px solid #e2e8f0",
-                    }}
-                    title="Actual Image Resolution"
-                  >
-                    📐 {accImageMetaCache[previewModalItem.image].width} ×{" "}
-                    {accImageMetaCache[previewModalItem.image].height} px
-                  </span>
-                ) : null}
-
-                <span
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 800,
-                    color: "#7A131A",
-                    backgroundColor: "#fee2e2",
-                    padding: "4px 10px",
-                    borderRadius: 6,
-                    border: "1px solid #fecdd3",
-                    textTransform: "uppercase",
-                  }}
-                  title="Image Format"
-                >
-                  Format: {accImageMetaCache[previewModalItem.image]?.format || "PNG"}
-                </span>
-
-                {accImageMetaCache[previewModalItem.image]?.sizeStr && (
-                  <span
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 700,
-                      color: "#0f172a",
-                      backgroundColor: "#f1f5f9",
-                      padding: "4px 10px",
-                      borderRadius: 6,
-                      border: "1px solid #e2e8f0",
-                    }}
-                    title="Actual File Size"
-                  >
-                    💾 {accImageMetaCache[previewModalItem.image].sizeStr}
-                  </span>
-                )}
-              </div>
-
-              {/* Action Buttons */}
-              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleToggleModalItemSelect(previewModalItem);
-                  }}
-                  style={{
-                    padding: "8px 18px",
-                    borderRadius: 6,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    backgroundColor: modalSelectedItems.some(
-                      (it) =>
-                        it.id === previewModalItem.id ||
-                        it.image === previewModalItem.image
-                    )
-                      ? "#fee2e2"
-                      : "#7A131A",
-                    color: modalSelectedItems.some(
-                      (it) =>
-                        it.id === previewModalItem.id ||
-                        it.image === previewModalItem.image
-                    )
-                      ? "#dc2626"
-                      : "#ffffff",
-                    border: modalSelectedItems.some(
-                      (it) =>
-                        it.id === previewModalItem.id ||
-                        it.image === previewModalItem.image
-                    )
-                      ? "1px solid #fecdd3"
-                      : "none",
-                    boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                  }}
-                >
-                  {modalSelectedItems.some(
-                    (it) =>
-                      it.id === previewModalItem.id ||
-                      it.image === previewModalItem.image
-                  ) ? (
-                    <>
-                      <span>✕</span>
-                      <span>Remove from Selection</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>✓</span>
-                      <span>Select This Photo</span>
-                    </>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPreviewModalItem(null)}
-                  style={{
-                    padding: "8px 16px",
-                    borderRadius: 6,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    backgroundColor: "#ffffff",
-                    color: "#475569",
-                    border: "1px solid #cbd5e1",
-                  }}
-                >
-                  Done
                 </button>
               </div>
             </div>
