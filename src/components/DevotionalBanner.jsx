@@ -8,6 +8,7 @@ const DEITIES = [
     subtitle: '🙏 Khatu Shyam Ji',
     accent: '#fbbf24',
     objectPos: 'center center',
+    imgScale: 1,
     message: 'जिसके सिर पर हाथ हो श्याम का, उसका जीवन खुशियों से भर जाता है।',
   },
   {
@@ -17,6 +18,7 @@ const DEITIES = [
     subtitle: '🙏 Shri Balaji Sarkar • Salasar & Mehndipur Dham',
     accent: '#f97316',
     objectPos: 'center center',
+    imgScale: 1,
     message: 'संकट मोचन श्री बालाजी महाराज आपके सभी संकट और कष्ट दूर करें। जय श्री राम!',
   },
   {
@@ -25,7 +27,9 @@ const DEITIES = [
     title: 'ॐ नमः शिवाय 🔱',
     subtitle: '🙏 Har Har Mahadev • Kailash Pati',
     accent: '#38bdf8',
-    objectPos: 'center center',
+    objectPos: 'center 35%',
+    imgScale: 0.86,
+    maxHeight: '94%',
     message: 'भोलेनाथ और माता पार्वती की असीम कृपा से आपके जीवन में सुख, शांति और समृद्धि आए।',
   },
   {
@@ -34,7 +38,9 @@ const DEITIES = [
     title: '॥ श्री ॥ राधे कृष्ण 🦚',
     subtitle: '🙏 Shri Radha Krishna Ji • Vrindavan Dham',
     accent: '#4ade80',
-    objectPos: 'center center',
+    objectPos: 'center 35%',
+    imgScale: 0.86,
+    maxHeight: '94%',
     message: 'राधे कृष्ण के पावन प्रेम और आशीर्वाद से आपका घर-आँगन सदैव आनंदित और खुशहाल रहे।',
   },
   {
@@ -44,6 +50,7 @@ const DEITIES = [
     subtitle: '🙏 Maa Durga Ji • Navdurga',
     accent: '#f43f5e',
     objectPos: 'center 15%',
+    imgScale: 1,
     message: 'माँ भगवती की कृपा से आपके जीवन से सभी कष्ट दूर हों और यश-वैभव प्राप्त हो।',
   },
 ];
@@ -58,8 +65,8 @@ const CSS = `
   .dbanner-wrap {
     position: relative;
     width: 100%;
-    height: 340px;
-    border-radius: 20px;
+    height: 290px;
+    border-radius: 18px;
     overflow: hidden;
     margin-bottom: 24px;
     box-shadow: 0 16px 40px rgba(0,0,0,0.28);
@@ -67,10 +74,10 @@ const CSS = `
     background: #020c10;
   }
   @media (max-width: 1024px) {
-    .dbanner-wrap { height: 280px; border-radius: 16px; }
+    .dbanner-wrap { height: 260px; border-radius: 16px; }
   }
   @media (max-width: 640px) {
-    .dbanner-wrap { height: 230px; border-radius: 12px; }
+    .dbanner-wrap { height: 220px; border-radius: 12px; }
   }
   .dbanner-track {
     display: flex;
@@ -108,7 +115,7 @@ const CSS = `
     transition: transform 0.6s ease;
   }
   .dbanner-wrap:hover .dbanner-slide img {
-    transform: scale(1.02);
+    filter: brightness(1.03);
   }
   .dbanner-overlay {
     position: absolute;
@@ -228,6 +235,8 @@ const DevotionalBanner = () => {
                 alt={deity.title}
                 style={{
                   objectPosition: deity.objectPos || 'center center',
+                  transform: deity.imgScale ? `scale(${deity.imgScale})` : 'none',
+                  maxHeight: deity.maxHeight || '100%',
                 }}
                 onError={e => { e.currentTarget.style.display = 'none'; }}
               />
