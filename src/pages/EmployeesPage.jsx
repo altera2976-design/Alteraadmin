@@ -80,18 +80,20 @@ export default function EmployeesPage() {
     }
   };
 
-  // App Permissions Modal State
+  // Application Access / App Permissions Modal State
   const [appPermsModalEmp, setAppPermsModalEmp] = useState(null);
   const [appPermsForm, setAppPermsForm] = useState({
     dashboard: true,
-    tasks: false,
-    attendance: true,
-    salary: false,
     crm: false,
+    employees: false,
+    attendance: true,
     projects: false,
-    quotation: false,
+    tasks: false,
     reports: false,
     bikeTracking: false,
+    settings: true,
+    salary: false,
+    quotation: false,
   });
   const [appPermsSubmitting, setAppPermsSubmitting] = useState(false);
 
@@ -100,14 +102,16 @@ export default function EmployeesPage() {
     const existing = emp.employeeAppPermissions || {};
     setAppPermsForm({
       dashboard: existing.dashboard !== undefined ? Boolean(existing.dashboard) : true,
-      tasks: existing.tasks !== undefined ? Boolean(existing.tasks) : false,
-      attendance: existing.attendance !== undefined ? Boolean(existing.attendance) : true,
-      salary: existing.salary !== undefined ? Boolean(existing.salary) : false,
       crm: existing.crm !== undefined ? Boolean(existing.crm) : false,
+      employees: existing.employees !== undefined ? Boolean(existing.employees) : false,
+      attendance: existing.attendance !== undefined ? Boolean(existing.attendance) : true,
       projects: existing.projects !== undefined ? Boolean(existing.projects) : false,
-      quotation: existing.quotation !== undefined ? Boolean(existing.quotation) : (existing.quotations !== undefined ? Boolean(existing.quotations) : false),
+      tasks: existing.tasks !== undefined ? Boolean(existing.tasks) : false,
       reports: existing.reports !== undefined ? Boolean(existing.reports) : false,
       bikeTracking: existing.bikeTracking !== undefined ? Boolean(existing.bikeTracking) : false,
+      settings: existing.settings !== undefined ? Boolean(existing.settings) : true,
+      salary: existing.salary !== undefined ? Boolean(existing.salary) : false,
+      quotation: existing.quotation !== undefined ? Boolean(existing.quotation) : (existing.quotations !== undefined ? Boolean(existing.quotations) : false),
     });
   };
 
@@ -324,8 +328,9 @@ export default function EmployeesPage() {
                           <button
                             className="btn btn-sm btn-primary"
                             onClick={() => handleOpenAppPermissionsModal(emp)}
+                            title="Application Access & Module Permissions"
                           >
-                            ⚙️ App Permissions
+                            🛡️ Application Access
                           </button>
                         </div>
                       </td>
@@ -456,9 +461,9 @@ export default function EmployeesPage() {
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, borderBottom: '1px solid #E2E8F0', paddingBottom: 12 }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#0F172A' }}>Employee Native App Permissions</h3>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#0F172A' }}>Application Access & Module Permissions</h3>
                 <p style={{ margin: '4px 0 0 0', fontSize: 12, color: '#64748B' }}>
-                  Configure module access for <strong>{appPermsModalEmp.name}</strong> ({appPermsModalEmp.employeeId || 'EMP'})
+                  Assign or revoke module access for <strong>{appPermsModalEmp.name}</strong> ({appPermsModalEmp.employeeId || 'EMP'})
                 </p>
               </div>
               <button onClick={() => setAppPermsModalEmp(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#64748B' }}>✕</button>
@@ -475,21 +480,50 @@ export default function EmployeesPage() {
             </div>
 
             <form onSubmit={handleSaveAppPermissions} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <p style={{ margin: 0, fontSize: 12, color: '#475569', fontWeight: 600 }}>
-                Enable or disable each module specifically for this employee's Native Mobile App:
-              </p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <p style={{ margin: 0, fontSize: 12, color: '#475569', fontWeight: 600 }}>
+                  Toggle ON/OFF to assign or revoke module access:
+                </p>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const allOn = { ...appPermsForm };
+                      Object.keys(allOn).forEach((k) => { allOn[k] = true; });
+                      setAppPermsForm(allOn);
+                    }}
+                    style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#f8fafc', cursor: 'pointer', fontWeight: 600 }}
+                  >
+                    Select All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const allOff = { ...appPermsForm };
+                      Object.keys(allOff).forEach((k) => { allOff[k] = false; });
+                      allOff.dashboard = true; // Dashboard default
+                      setAppPermsForm(allOff);
+                    }}
+                    style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#f8fafc', cursor: 'pointer', fontWeight: 600 }}
+                  >
+                    Reset (Min)
+                  </button>
+                </div>
+              </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
                 {[
-                  { key: 'dashboard', label: 'Dashboard', desc: 'Employee Home Overview' },
-                  { key: 'tasks', label: 'Tasks', desc: 'Assigned Tasks & PDF Attachment' },
-                  { key: 'attendance', label: 'Attendance', desc: 'GPS Check-in & History' },
-                  { key: 'salary', label: 'Salary', desc: 'Salary Details & Payslips' },
-                  { key: 'crm', label: 'CRM', desc: 'Leads & Client Interactions' },
-                  { key: 'projects', label: 'Projects', desc: 'Assigned Projects View' },
-                  { key: 'quotation', label: 'Quotations', desc: 'Quotations & Proposals' },
-                  { key: 'reports', label: 'Reports', desc: 'Daily Work Summaries' },
-                  { key: 'bikeTracking', label: 'Bike Tracking', desc: 'GPS Meter & Trip Tracking' },
+                  { key: 'dashboard', label: '1. Dashboard', desc: 'Home overview & quick stats' },
+                  { key: 'crm', label: '2. CRM', desc: 'Leads, client management & consultations' },
+                  { key: 'employees', label: '3. Employees', desc: 'Employee directory & staff list' },
+                  { key: 'attendance', label: '4. Attendance', desc: 'GPS check-in, history & punch logs' },
+                  { key: 'projects', label: '5. Projects', desc: 'Assigned project progress & stages' },
+                  { key: 'tasks', label: '6. Tasks', desc: 'Assigned daily tasks & attachments' },
+                  { key: 'reports', label: '7. Reports', desc: 'Daily work summaries & analytics' },
+                  { key: 'bikeTracking', label: '8. Bike Tracking', desc: 'Live GPS odometer & trip tracking' },
+                  { key: 'settings', label: '9. Settings', desc: 'Personal profile & account settings' },
+                  { key: 'salary', label: 'Salary & Payslips', desc: 'Monthly payslip & salary structure' },
+                  { key: 'quotation', label: 'Quotations', desc: 'Estimates & proposal management' },
                 ].map((item) => (
                   <label
                     key={item.key}
@@ -524,7 +558,7 @@ export default function EmployeesPage() {
               <div style={{ display: 'flex', gap: 10, marginTop: 16, justifyContent: 'flex-end', borderTop: '1px solid #E2E8F0', paddingTop: 14 }}>
                 <button type="button" onClick={() => setAppPermsModalEmp(null)} className="btn btn-secondary">Cancel</button>
                 <button type="submit" disabled={appPermsSubmitting} className="btn btn-primary" style={{ background: '#16A34A', border: 'none' }}>
-                  {appPermsSubmitting ? 'Saving...' : 'Save App Permissions'}
+                  {appPermsSubmitting ? 'Saving...' : 'Save Permissions'}
                 </button>
               </div>
             </form>
