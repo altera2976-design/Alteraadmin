@@ -109,13 +109,25 @@ export default function CRMScreen() {
   }, [fetchCRMData]);
 
   const handleAddLead = async () => {
-    if (!leadForm.name || !leadForm.phone) {
-      Alert.alert('Error', 'Name and Phone are required.');
+    const trimmedName = leadForm.name?.trim();
+    const trimmedPhone = leadForm.phone?.trim();
+    if (!trimmedName || !trimmedPhone) {
+      Alert.alert('Required Fields', 'Please enter both Name and Phone number.');
       return;
     }
+    if (isSubmitting) return;
+
     setIsSubmitting(true);
     try {
-      await api.post('/crm/leads', leadForm);
+      const payload = {
+        ...leadForm,
+        name: trimmedName,
+        phone: trimmedPhone,
+        location: leadForm.location?.trim() || '',
+        requirement: leadForm.requirement?.trim() || 'Full Home Interior',
+        leadSource: 'Mobile App',
+      };
+      await api.post('/crm/leads', payload);
       Alert.alert('Success', 'Lead added successfully!');
       setShowAddModal(false);
       setLeadForm({
@@ -128,9 +140,12 @@ export default function CRMScreen() {
         leadSource: 'Mobile App',
         budget: 800000
       });
-      fetchCRMData();
+      // Ensure we switch to or refresh Leads tab
+      setActiveTab('Leads');
+      fetchCRMData(true);
     } catch (err: any) {
-      Alert.alert('Error', err?.response?.data?.message || 'Failed to add lead.');
+      const errMsg = err?.response?.data?.message || err?.message || 'Failed to add lead. Please try again.';
+      Alert.alert('Error', errMsg);
     } finally {
       setIsSubmitting(false);
     }
