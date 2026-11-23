@@ -370,10 +370,14 @@ export default function CRMPage() {
               >
                 <option value="All">All Sources</option>
                 <option value="Website">Website</option>
+                <option value="Mobile App">Mobile App</option>
                 <option value="Instagram">Instagram</option>
                 <option value="Facebook">Facebook</option>
                 <option value="Referral">Referral</option>
                 <option value="Walk-in">Walk-in</option>
+                <option value="Google Ads">Google Ads</option>
+                <option value="Architect / Broker">Architect / Broker</option>
+                <option value="Other">Other</option>
               </select>
 
               <button
@@ -907,11 +911,14 @@ export default function CRMPage() {
                     onChange={(e) => setLeadForm({ ...leadForm, leadSource: e.target.value })}
                   >
                     <option value="Website">Official Website</option>
+                    <option value="Mobile App">Mobile App</option>
                     <option value="Instagram">Instagram Campaign</option>
                     <option value="Facebook">Facebook Ads</option>
                     <option value="Referral">Client Referral</option>
                     <option value="Walk-in">Studio Walk-in</option>
                     <option value="Google Ads">Google Ads</option>
+                    <option value="Architect / Broker">Architect / Broker</option>
+                    <option value="Other">Other</option>
                   </select>
                 </div>
               </div>
