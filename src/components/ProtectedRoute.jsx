@@ -18,8 +18,13 @@ export default function ProtectedRoute({ children, superAdminOnly = false, permi
 
   const isUserSuperAdmin = isSuperAdmin || user?.role === 'SUPER_ADMIN';
 
+  // Prevent ordinary Admin users from accessing Super Admin routes
+  if (!isUserSuperAdmin) {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+
   if (superAdminOnly && !isUserSuperAdmin) {
-    return <Navigate to="/super-admin/dashboard" replace />;
+    return <Navigate to="/admin/dashboard" replace />;
   }
 
   // Check specific permissions (if permissionKey is provided, and user is not Super Admin)

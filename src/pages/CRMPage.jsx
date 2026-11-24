@@ -1,12 +1,85 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { io } from 'socket.io-client';
 import AdminLayout from '../layouts/AdminLayout';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { useAuth } from '../context/AuthContext';
 import api, { SOCKET_URL } from '../services/api';
 
 export default function CRMPage() {
-  const [activeTab, setActiveTab] = useState('leads'); // 'leads', 'clients', 'followups', 'consultations', 'pipeline'
+  const { user, isSuperAdmin } = useAuth();
+
+  const hasPerm = (moduleKey, action = 'view') => {
+    if (isSuperAdmin || user?.role === 'SUPER_ADMIN') return true;
+    if (!user?.permissions || Object.keys(user.permissions).length === 0) return true;
+
+    const mod = user.permissions[moduleKey];
+    if (mod !== undefined) {
+      if (typeof mod === 'boolean') return mod;
+      if (typeof mod === 'object' && mod !== null) {
+        if (mod[action] !== undefined) return Boolean(mod[action]);
+        if (action === 'view') {
+          return mod.view === true || Object.values(mod).some(v => v === true);
+        }
+        return false;
+      }
+    }
+
+    const crm = user.permissions.crm;
+    if (crm !== undefined) {
+      if (typeof crm === 'boolean') return crm;
+      if (typeof crm === 'object' && crm !== null) {
+        if (crm[action] !== undefined) return Boolean(crm[action]);
+        if (action === 'view') {
+          return crm.view === true || Object.values(crm).some(v => v === true);
+        }
+        return false;
+      }
+    }
+
+    return false;
+  };
+
+  const canViewLeads = hasPerm('crm_leads', 'view');
+  const canCreateLead = hasPerm('crm_leads', 'create');
+  const canEditLead = hasPerm('crm_leads', 'edit');
+  const canDeleteLead = hasPerm('crm_leads', 'delete');
+
+  const canViewClients = hasPerm('crm_customers', 'view') || hasPerm('crm_clients', 'view');
+  const canCreateClient = hasPerm('crm_customers', 'create') || hasPerm('crm_clients', 'create');
+  const canEditClient = hasPerm('crm_customers', 'edit') || hasPerm('crm_clients', 'edit');
+  const canDeleteClient = hasPerm('crm_customers', 'delete') || hasPerm('crm_clients', 'delete');
+
+  const canViewFollowUps = hasPerm('crm_followups', 'view');
+  const canCreateFollowUp = hasPerm('crm_followups', 'create');
+  const canEditFollowUp = hasPerm('crm_followups', 'edit');
+
+  const canViewConsultations = hasPerm('crm_consultations', 'view');
+  const canCreateConsultation = hasPerm('crm_consultations', 'create');
+  const canEditConsultation = hasPerm('crm_consultations', 'edit');
+
+  const canViewPipeline = hasPerm('crm_pipeline', 'view');
+  const canManagePipeline = hasPerm('crm_pipeline', 'manage') || hasPerm('crm_pipeline', 'edit');
+
+  const hasAnyCrmAccess = canViewLeads || canViewClients || canViewFollowUps || canViewConsultations || canViewPipeline;
+
+  const allowedTabs = useMemo(() => {
+    const list = [];
+    if (canViewLeads) list.push('leads');
+    if (canViewClients) list.push('clients');
+    if (canViewFollowUps) list.push('followups');
+    if (canViewConsultations) list.push('consultations');
+    if (canViewPipeline) list.push('pipeline');
+    return list;
+  }, [canViewLeads, canViewClients, canViewFollowUps, canViewConsultations, canViewPipeline]);
+
+  const [activeTab, setActiveTab] = useState(() => allowedTabs[0] || 'leads'); // 'leads', 'clients', 'followups', 'consultations', 'pipeline'
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (allowedTabs.length > 0 && !allowedTabs.includes(activeTab)) {
+      setActiveTab(allowedTabs[0]);
+    }
+  }, [allowedTabs, activeTab]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -211,22 +284,26 @@ export default function CRMPage() {
           </div>
 
           <div style={styles.heroActions}>
-            <button
-              className="btn"
-              style={styles.heroBtnPrimary}
-              onClick={() => setShowAddLeadModal(true)}
-            >
-              <span>➕</span>
-              <span>Create New Lead</span>
-            </button>
-            <button
-              className="btn"
-              style={styles.heroBtnSecondary}
-              onClick={() => setShowAddConsultationModal(true)}
-            >
-              <span>📅</span>
-              <span>Book Consultation</span>
-            </button>
+            {canCreateLead && (
+              <button
+                className="btn"
+                style={styles.heroBtnPrimary}
+                onClick={() => setShowAddLeadModal(true)}
+              >
+                <span>➕</span>
+                <span>Create New Lead</span>
+              </button>
+            )}
+            {canCreateConsultation && (
+              <button
+                className="btn"
+                style={styles.heroBtnSecondary}
+                onClick={() => setShowAddConsultationModal(true)}
+              >
+                <span>📅</span>
+                <span>Book Consultation</span>
+              </button>
+            )}
             <button
               className="btn"
               style={styles.heroBtnGhost}
@@ -240,89 +317,120 @@ export default function CRMPage() {
 
         {/* Hero Quick KPI Strip */}
         <div style={styles.heroKpiStrip}>
-          <div style={styles.kpiPill}>
-            <div style={styles.kpiPillIcon}>🎯</div>
-            <div>
-              <div style={styles.kpiPillNum}>{leads.length}</div>
-              <div style={styles.kpiPillLabel}>Active Leads</div>
+          {canViewLeads && (
+            <div style={styles.kpiPill}>
+              <div style={styles.kpiPillIcon}>🎯</div>
+              <div>
+                <div style={styles.kpiPillNum}>{leads.length}</div>
+                <div style={styles.kpiPillLabel}>Active Leads</div>
+              </div>
             </div>
-          </div>
-          <div style={styles.kpiPill}>
-            <div style={styles.kpiPillIcon}>👤</div>
-            <div>
-              <div style={styles.kpiPillNum}>{clients.length}</div>
-              <div style={styles.kpiPillLabel}>Converted Clients</div>
+          )}
+          {canViewClients && (
+            <div style={styles.kpiPill}>
+              <div style={styles.kpiPillIcon}>👤</div>
+              <div>
+                <div style={styles.kpiPillNum}>{clients.length}</div>
+                <div style={styles.kpiPillLabel}>Converted Clients</div>
+              </div>
             </div>
-          </div>
-          <div style={styles.kpiPill}>
-            <div style={styles.kpiPillIcon}>📞</div>
-            <div>
-              <div style={styles.kpiPillNum}>{followUps.filter(f => f.status !== 'Completed').length}</div>
-              <div style={styles.kpiPillLabel}>Pending Follow-ups</div>
+          )}
+          {canViewFollowUps && (
+            <div style={styles.kpiPill}>
+              <div style={styles.kpiPillIcon}>📞</div>
+              <div>
+                <div style={styles.kpiPillNum}>{followUps.filter(f => f.status !== 'Completed').length}</div>
+                <div style={styles.kpiPillLabel}>Pending Follow-ups</div>
+              </div>
             </div>
-          </div>
-          <div style={styles.kpiPill}>
-            <div style={styles.kpiPillIcon}>📅</div>
-            <div>
-              <div style={styles.kpiPillNum}>{consultations.length}</div>
-              <div style={styles.kpiPillLabel}>Consultations</div>
+          )}
+          {canViewConsultations && (
+            <div style={styles.kpiPill}>
+              <div style={styles.kpiPillIcon}>📅</div>
+              <div>
+                <div style={styles.kpiPillNum}>{consultations.length}</div>
+                <div style={styles.kpiPillLabel}>Consultations</div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
-      {/* ── TAB BAR NAVIGATION ────────────────────────────────── */}
-      <div style={styles.tabContainer}>
-        <div style={styles.tabBar}>
-          <button
-            style={activeTab === 'leads' ? styles.tabBtnActive : styles.tabBtn}
-            onClick={() => setActiveTab('leads')}
-          >
-            <span style={styles.tabIcon}>🎯</span>
-            <span>Leads</span>
-            <span style={activeTab === 'leads' ? styles.tabCountActive : styles.tabCount}>
-              {leads.length}
-            </span>
-          </button>
-          <button
-            style={activeTab === 'clients' ? styles.tabBtnActive : styles.tabBtn}
-            onClick={() => setActiveTab('clients')}
-          >
-            <span style={styles.tabIcon}>👤</span>
-            <span>Clients</span>
-            <span style={activeTab === 'clients' ? styles.tabCountActive : styles.tabCount}>
-              {clients.length}
-            </span>
-          </button>
-          <button
-            style={activeTab === 'followups' ? styles.tabBtnActive : styles.tabBtn}
-            onClick={() => setActiveTab('followups')}
-          >
-            <span style={styles.tabIcon}>📞</span>
-            <span>Follow-ups</span>
-            <span style={activeTab === 'followups' ? styles.tabCountActive : styles.tabCount}>
-              {followUps.length}
-            </span>
-          </button>
-          <button
-            style={activeTab === 'consultations' ? styles.tabBtnActive : styles.tabBtn}
-            onClick={() => setActiveTab('consultations')}
-          >
-            <span style={styles.tabIcon}>📅</span>
-            <span>Consultations</span>
-            <span style={activeTab === 'consultations' ? styles.tabCountActive : styles.tabCount}>
-              {consultations.length}
-            </span>
-          </button>
-          <button
-            style={activeTab === 'pipeline' ? styles.tabBtnActive : styles.tabBtn}
-            onClick={() => setActiveTab('pipeline')}
-          >
-            <span style={styles.tabIcon}>📊</span>
-            <span>Sales Funnel</span>
-          </button>
+      {/* Access Denied Banner if no sub-modules allowed */}
+      {!loading && !hasAnyCrmAccess && (
+        <div style={{ padding: 36, textAlign: 'center', background: '#FFFFFF', borderRadius: 12, border: '1px solid #E2E8F0', margin: '20px 0' }}>
+          <div style={{ fontSize: 42, marginBottom: 12 }}>🔒</div>
+          <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', marginBottom: 6 }}>Access Denied — No CRM Permissions</h3>
+          <p style={{ color: '#64748B', fontSize: 13, margin: 0 }}>
+            Your Admin account does not currently have permission to access CRM modules (Leads, Clients, Follow-ups, Consultations, or Pipeline). Please request access from the Super Administrator.
+          </p>
         </div>
-      </div>
+      )}
+
+      {/* ── TAB BAR NAVIGATION ────────────────────────────────── */}
+      {hasAnyCrmAccess && (
+        <div style={styles.tabContainer}>
+          <div style={styles.tabBar}>
+            {canViewLeads && (
+              <button
+                style={activeTab === 'leads' ? styles.tabBtnActive : styles.tabBtn}
+                onClick={() => setActiveTab('leads')}
+              >
+                <span style={styles.tabIcon}>🎯</span>
+                <span>Leads</span>
+                <span style={activeTab === 'leads' ? styles.tabCountActive : styles.tabCount}>
+                  {leads.length}
+                </span>
+              </button>
+            )}
+            {canViewClients && (
+              <button
+                style={activeTab === 'clients' ? styles.tabBtnActive : styles.tabBtn}
+                onClick={() => setActiveTab('clients')}
+              >
+                <span style={styles.tabIcon}>👤</span>
+                <span>Clients</span>
+                <span style={activeTab === 'clients' ? styles.tabCountActive : styles.tabCount}>
+                  {clients.length}
+                </span>
+              </button>
+            )}
+            {canViewFollowUps && (
+              <button
+                style={activeTab === 'followups' ? styles.tabBtnActive : styles.tabBtn}
+                onClick={() => setActiveTab('followups')}
+              >
+                <span style={styles.tabIcon}>📞</span>
+                <span>Follow-ups</span>
+                <span style={activeTab === 'followups' ? styles.tabCountActive : styles.tabCount}>
+                  {followUps.length}
+                </span>
+              </button>
+            )}
+            {canViewConsultations && (
+              <button
+                style={activeTab === 'consultations' ? styles.tabBtnActive : styles.tabBtn}
+                onClick={() => setActiveTab('consultations')}
+              >
+                <span style={styles.tabIcon}>📅</span>
+                <span>Consultations</span>
+                <span style={activeTab === 'consultations' ? styles.tabCountActive : styles.tabCount}>
+                  {consultations.length}
+                </span>
+              </button>
+            )}
+            {canViewPipeline && (
+              <button
+                style={activeTab === 'pipeline' ? styles.tabBtnActive : styles.tabBtn}
+                onClick={() => setActiveTab('pipeline')}
+              >
+                <span style={styles.tabIcon}>📊</span>
+                <span>Sales Funnel</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Notifications */}
       {error && <div className="alert alert-error" style={{ marginBottom: 20 }}>⚠️ {error}</div>}
@@ -370,10 +478,14 @@ export default function CRMPage() {
               >
                 <option value="All">All Sources</option>
                 <option value="Website">Website</option>
+                <option value="Mobile App">Mobile App</option>
                 <option value="Instagram">Instagram</option>
                 <option value="Facebook">Facebook</option>
                 <option value="Referral">Referral</option>
                 <option value="Walk-in">Walk-in</option>
+                <option value="Google Ads">Google Ads</option>
+                <option value="Architect / Broker">Architect / Broker</option>
+                <option value="Other">Other</option>
               </select>
 
               <button
@@ -385,14 +497,16 @@ export default function CRMPage() {
               </button>
             </div>
 
-            <button
-              className="btn btn-primary"
-              onClick={() => setShowAddLeadModal(true)}
-              style={{ height: 38 }}
-            >
-              <span>➕</span>
-              <span>New Lead</span>
-            </button>
+            {canCreateLead && (
+              <button
+                className="btn btn-primary"
+                onClick={() => setShowAddLeadModal(true)}
+                style={{ height: 38 }}
+              >
+                <span>➕</span>
+                <span>New Lead</span>
+              </button>
+            )}
           </div>
 
           {loading ? (
@@ -406,9 +520,11 @@ export default function CRMPage() {
               <p style={{ color: '#6F6960', fontSize: 13, margin: '0 0 16px', maxWidth: 420 }}>
                 There are no leads matching your current search criteria. Click below to add a new homeowner inquiry.
               </p>
-              <button className="btn btn-primary" onClick={() => setShowAddLeadModal(true)}>
-                ➕ Create First Lead
-              </button>
+              {canCreateLead && (
+                <button className="btn btn-primary" onClick={() => setShowAddLeadModal(true)}>
+                  ➕ Create First Lead
+                </button>
+              )}
             </div>
           ) : (
             <div className="card" style={styles.tableCard}>
@@ -468,7 +584,7 @@ export default function CRMPage() {
                         </td>
                         <td style={{ textAlign: 'right' }}>
                           <div style={{ display: 'inline-flex', gap: 6 }}>
-                            {lead.status !== 'Converted' && (
+                            {lead.status !== 'Converted' && canEditLead && (
                               <button
                                 className="btn btn-primary"
                                 style={styles.actionBtnConvert}
@@ -481,22 +597,24 @@ export default function CRMPage() {
                                 <span>➔</span>
                               </button>
                             )}
-                            <button
-                              className="btn btn-secondary"
-                              style={styles.actionBtnIcon}
-                              onClick={() => {
-                                setFollowUpForm((f) => ({
-                                  ...f,
-                                  targetId: lead._id,
-                                  targetName: lead.name,
-                                  targetPhone: lead.phone,
-                                }));
-                                setShowAddFollowUpModal(true);
-                              }}
-                              title="Schedule Follow-up"
-                            >
-                              📞
-                            </button>
+                            {canCreateFollowUp && (
+                              <button
+                                className="btn btn-secondary"
+                                style={styles.actionBtnIcon}
+                                onClick={() => {
+                                  setFollowUpForm((f) => ({
+                                    ...f,
+                                    targetId: lead._id,
+                                    targetName: lead.name,
+                                    targetPhone: lead.phone,
+                                  }));
+                                  setShowAddFollowUpModal(true);
+                                }}
+                                title="Schedule Follow-up"
+                              >
+                                📞
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -590,9 +708,11 @@ export default function CRMPage() {
                 Never miss an inquiry callback, quotation review, or design site visit.
               </p>
             </div>
-            <button className="btn btn-primary" onClick={() => setShowAddFollowUpModal(true)}>
-              ➕ Schedule Follow-up
-            </button>
+            {canCreateFollowUp && (
+              <button className="btn btn-primary" onClick={() => setShowAddFollowUpModal(true)}>
+                ➕ Schedule Follow-up
+              </button>
+            )}
           </div>
 
           {loading ? (
@@ -606,9 +726,11 @@ export default function CRMPage() {
               <p style={{ color: '#6F6960', fontSize: 13, margin: '0 0 16px' }}>
                 Schedule a phone call, WhatsApp touchpoint, or site visit with your prospective clients.
               </p>
-              <button className="btn btn-primary" onClick={() => setShowAddFollowUpModal(true)}>
-                ➕ Schedule First Call
-              </button>
+              {canCreateFollowUp && (
+                <button className="btn btn-primary" onClick={() => setShowAddFollowUpModal(true)}>
+                  ➕ Schedule First Call
+                </button>
+              )}
             </div>
           ) : (
             <div style={styles.gridFollowups}>
@@ -677,9 +799,11 @@ export default function CRMPage() {
                 Booked homeowner sessions with interior architects and 3D visualizers.
               </p>
             </div>
-            <button className="btn btn-primary" onClick={() => setShowAddConsultationModal(true)}>
-              ➕ Book Consultation
-            </button>
+            {canCreateConsultation && (
+              <button className="btn btn-primary" onClick={() => setShowAddConsultationModal(true)}>
+                ➕ Book Consultation
+              </button>
+            )}
           </div>
 
           {loading ? (
@@ -693,9 +817,11 @@ export default function CRMPage() {
               <p style={{ color: '#6F6960', fontSize: 13, margin: '0 0 16px' }}>
                 Book an initial studio meeting, moodboard review, or site inspection with your clients.
               </p>
-              <button className="btn btn-primary" onClick={() => setShowAddConsultationModal(true)}>
-                ➕ Book First Consultation
-              </button>
+              {canCreateConsultation && (
+                <button className="btn btn-primary" onClick={() => setShowAddConsultationModal(true)}>
+                  ➕ Book First Consultation
+                </button>
+              )}
             </div>
           ) : (
             <div className="card" style={styles.tableCard}>
@@ -907,11 +1033,14 @@ export default function CRMPage() {
                     onChange={(e) => setLeadForm({ ...leadForm, leadSource: e.target.value })}
                   >
                     <option value="Website">Official Website</option>
+                    <option value="Mobile App">Mobile App</option>
                     <option value="Instagram">Instagram Campaign</option>
                     <option value="Facebook">Facebook Ads</option>
                     <option value="Referral">Client Referral</option>
                     <option value="Walk-in">Studio Walk-in</option>
                     <option value="Google Ads">Google Ads</option>
+                    <option value="Architect / Broker">Architect / Broker</option>
+                    <option value="Other">Other</option>
                   </select>
                 </div>
               </div>

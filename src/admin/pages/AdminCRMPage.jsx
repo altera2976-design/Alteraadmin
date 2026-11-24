@@ -1,10 +1,52 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminAppLayout from '../layouts/AdminAppLayout';
+import Admin403 from '../components/Admin403';
+import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 
 export default function AdminCRMPage({ activeTab = 'leads', leadId = null }) {
   const navigate = useNavigate();
+  const { user, isSuperAdmin } = useAuth();
+
+  const hasPerm = (moduleKey, action = 'view') => {
+    if (isSuperAdmin || user?.role === 'SUPER_ADMIN') return true;
+    if (!user?.permissions || Object.keys(user.permissions).length === 0) return true;
+
+    const mod = user.permissions[moduleKey];
+    if (mod !== undefined) {
+      if (typeof mod === 'boolean') return mod;
+      if (typeof mod === 'object' && mod !== null) {
+        if (mod[action] !== undefined) return Boolean(mod[action]);
+        if (action === 'view') {
+          return mod.view === true || Object.values(mod).some(v => v === true);
+        }
+        return false;
+      }
+    }
+
+    const crm = user.permissions.crm;
+    if (crm !== undefined) {
+      if (typeof crm === 'boolean') return crm;
+      if (typeof crm === 'object' && crm !== null) {
+        if (crm[action] !== undefined) return Boolean(crm[action]);
+        if (action === 'view') {
+          return crm.view === true || Object.values(crm).some(v => v === true);
+        }
+        return false;
+      }
+    }
+
+    return false;
+  };
+
+  const canViewLeads = hasPerm('crm_leads', 'view');
+  const canCreateLead = hasPerm('crm_leads', 'create');
+  const canEditLead = hasPerm('crm_leads', 'edit');
+  const canDeleteLead = hasPerm('crm_leads', 'delete');
+  const canViewFollowups = hasPerm('crm_followups', 'view');
+  const hasAnyCrmAccess = canViewLeads || canViewFollowups;
+
   const [leads, setLeads] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -96,16 +138,28 @@ export default function AdminCRMPage({ activeTab = 'leads', leadId = null }) {
   const inProgressCount = leads.filter((l) => ['Contacted', 'Consultation', 'Design'].includes(l.status)).length;
   const convertedCount = leads.filter((l) => l.status === 'Converted').length;
 
+  if (!loading && !hasAnyCrmAccess) {
+    return (
+      <AdminAppLayout title="CRM Lead & Customer Management">
+        <Admin403 message="Access Denied — You do not have permission to access CRM modules." />
+      </AdminAppLayout>
+    );
+  }
+
   return (
     <AdminAppLayout title="CRM Lead & Customer Management">
       {/* Navigation Tabs */}
       <div style={styles.tabHeader}>
-        <button onClick={() => navigate('/admin/crm/leads')} style={{ ...styles.tabBtn, ...(activeTab === 'leads' ? styles.tabBtnActive : {}) }}>
-          👥 Lead Pipeline & Directory ({leads.length})
-        </button>
-        <button onClick={() => navigate('/admin/crm/followups')} style={{ ...styles.tabBtn, ...(activeTab === 'followups' ? styles.tabBtnActive : {}) }}>
-          📞 Follow-ups Schedule
-        </button>
+        {canViewLeads && (
+          <button onClick={() => navigate('/admin/crm/leads')} style={{ ...styles.tabBtn, ...(activeTab === 'leads' ? styles.tabBtnActive : {}) }}>
+            👥 Lead Pipeline & Directory ({leads.length})
+          </button>
+        )}
+        {canViewFollowups && (
+          <button onClick={() => navigate('/admin/crm/followups')} style={{ ...styles.tabBtn, ...(activeTab === 'followups' ? styles.tabBtnActive : {}) }}>
+            📞 Follow-ups Schedule
+          </button>
+        )}
       </div>
 
       {/* KPI Cards */}
@@ -167,9 +221,11 @@ export default function AdminCRMPage({ activeTab = 'leads', leadId = null }) {
               </select>
             </div>
 
-            <button onClick={() => setShowAddModal(true)} style={styles.primaryBtn}>
-              + Add New Lead
-            </button>
+            {canCreateLead && (
+              <button onClick={() => setShowAddModal(true)} style={styles.primaryBtn}>
+                + Add New Lead
+              </button>
+            )}
           </div>
 
           {/* Table */}
@@ -204,6 +260,7 @@ export default function AdminCRMPage({ activeTab = 'leads', leadId = null }) {
                         <td style={styles.td}>
                           <select
                             value={lead.status || 'New Lead'}
+                            disabled={!canEditLead}
                             onChange={(e) => handleUpdateStatus(lead._id, e.target.value)}
                             style={{
                               padding: '4px 8px',
@@ -211,6 +268,8 @@ export default function AdminCRMPage({ activeTab = 'leads', leadId = null }) {
                               fontSize: 12,
                               fontWeight: 700,
                               border: '1px solid #CBD5E1',
+                              cursor: canEditLead ? 'pointer' : 'not-allowed',
+                              opacity: canEditLead ? 1 : 0.7,
                               background: lead.status === 'Converted' ? '#DCFCE7' : lead.status === 'New Lead' ? '#EFF6FF' : '#FEF3C7',
                               color: lead.status === 'Converted' ? '#15803D' : lead.status === 'New Lead' ? '#9F0B22' : '#B45309'
                             }}

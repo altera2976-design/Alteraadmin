@@ -159,7 +159,12 @@ export default function App() {
           <Route path="/admin/payroll" element={<AdminProtectedRoute permissionKey="payroll" altPermissionKey="salary"><AdminPayrollPage /></AdminProtectedRoute>} />
           <Route path="/admin/payroll/:id" element={<AdminProtectedRoute permissionKey="payroll" altPermissionKey="salary"><AdminPayrollViewWrapper /></AdminProtectedRoute>} />
           <Route path="/admin/tasks" element={<AdminProtectedRoute permissionKey="tasks"><TaskManagementPage /></AdminProtectedRoute>} />
-          <Route path="/admin/crm" element={<AdminProtectedRoute permissionKey="crm"><AdminCRMPage /></AdminProtectedRoute>} />
+          <Route path="/admin/crm" element={<AdminProtectedRoute permissionKey="crm"><AdminCRMPage activeTab="leads" /></AdminProtectedRoute>} />
+          <Route path="/admin/crm/leads" element={<AdminProtectedRoute permissionKey="crm_leads" altPermissionKey="crm"><AdminCRMPage activeTab="leads" /></AdminProtectedRoute>} />
+          <Route path="/admin/crm/clients" element={<AdminProtectedRoute permissionKey="crm_customers" altPermissionKey="crm"><AdminCRMPage activeTab="clients" /></AdminProtectedRoute>} />
+          <Route path="/admin/crm/customers" element={<AdminProtectedRoute permissionKey="crm_customers" altPermissionKey="crm"><AdminCRMPage activeTab="clients" /></AdminProtectedRoute>} />
+          <Route path="/admin/crm/followups" element={<AdminProtectedRoute permissionKey="crm_followups" altPermissionKey="crm"><AdminCRMPage activeTab="followups" /></AdminProtectedRoute>} />
+          <Route path="/admin/crm/pipeline" element={<AdminProtectedRoute permissionKey="crm_pipeline" altPermissionKey="crm"><AdminCRMPage activeTab="pipeline" /></AdminProtectedRoute>} />
           <Route path="/admin/crm/:id" element={<AdminProtectedRoute permissionKey="crm"><AdminCRMViewWrapper /></AdminProtectedRoute>} />
           <Route path="/admin/transactions" element={<AdminProtectedRoute permissionKey="transactions"><AdminTransactionsPage /></AdminProtectedRoute>} />
           <Route path="/admin/quotations" element={<AdminProtectedRoute permissionKey="quotations" altPermissionKey="quotation"><AdminQuotationsPage /></AdminProtectedRoute>} />
