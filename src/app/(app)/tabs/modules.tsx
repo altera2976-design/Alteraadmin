@@ -106,6 +106,14 @@ export default function ModulesScreen() {
 
   const visibleModules = allModules.filter((m) => {
     if (isAdmin) return true;
+    if (m.id === 'crm') return user?.employeeAppPermissions?.crm === true;
+    if (m.id === 'reports') return user?.employeeAppPermissions?.reports === true;
+    if (m.id === 'quotation') return user?.employeeAppPermissions?.quotation === true;
+    if (m.id === 'bike') return user?.employeeAppPermissions?.bikeTracking === true;
+    if (m.id === 'salary') return user?.employeeAppPermissions?.salary === true;
+    if (m.id === 'attendance') return (user?.employeeAppPermissions?.attendance ?? true);
+    if (m.id === 'projects') return (user?.employeeAppPermissions?.projects ?? true);
+    if (m.id === 'settings') return (user?.employeeAppPermissions?.settings ?? true);
     if (m.adminOnly) return false;
     return true;
   });

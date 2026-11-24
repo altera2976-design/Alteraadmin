@@ -71,7 +71,8 @@ export default function LoginScreen() {
       if (GoogleSignin && GOOGLE_WEB_CLIENT_ID) {
         GoogleSignin.configure({
           webClientId: GOOGLE_WEB_CLIENT_ID,
-          offlineAccess: true,
+          offlineAccess: false,
+          scopes: ['profile', 'email'],
         });
       }
     } catch (e) {
@@ -120,6 +121,7 @@ export default function LoginScreen() {
   };
 
   const handleGoogleLogin = async () => {
+    if (googleLoading || loading) return;
     setError("");
     setGoogleLoading(true);
 
@@ -135,13 +137,22 @@ export default function LoginScreen() {
       if (GOOGLE_WEB_CLIENT_ID) {
         GoogleSignin.configure({
           webClientId: GOOGLE_WEB_CLIENT_ID,
-          offlineAccess: true,
+          offlineAccess: false,
+          scopes: ['profile', 'email'],
         });
       }
 
       await GoogleSignin.hasPlayServices({
         showPlayServicesUpdateDialog: true,
       });
+
+      // Clear any prior cached session so account selection prompt always appears
+      try {
+        await GoogleSignin.signOut();
+      } catch {
+        // Safe to ignore if no user is signed in
+      }
+
       const response = await GoogleSignin.signIn();
 
       if (response && (response as any).type === "cancelled") {
@@ -160,13 +171,25 @@ export default function LoginScreen() {
 
       await googleLogin(idToken);
     } catch (err: any) {
-      if (err?.code === statusCodes?.SIGN_IN_CANCELLED) {
+      if (
+        err?.code === statusCodes?.SIGN_IN_CANCELLED ||
+        err?.message?.includes("SIGN_IN_CANCELLED")
+      ) {
         return;
       } else if (err?.code === statusCodes?.IN_PROGRESS) {
         return;
       } else if (err?.code === statusCodes?.PLAY_SERVICES_NOT_AVAILABLE) {
         setError(
           "Google Play Services is not available or outdated on this device.",
+        );
+      } else if (
+        err?.message?.includes("DEVELOPER_ERROR") ||
+        err?.code === "10" ||
+        err?.code === 10
+      ) {
+        console.error("Google Sign-In DEVELOPER_ERROR:", err);
+        setError(
+          "Google Sign-In DEVELOPER_ERROR: Please verify your Android SHA-1 fingerprint is added in Google Cloud / Firebase Console for package: com.alterainterior.alterainteriors",
         );
       } else {
         const isExpoGo =

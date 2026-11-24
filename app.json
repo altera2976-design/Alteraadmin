@@ -19,7 +19,8 @@
         "android.permission.RECORD_AUDIO",
         "android.permission.INTERNET"
       ],
-      "package": "com.alterainterior.alterainteriors"
+      "package": "com.alterainterior.alterainteriors",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "single",

@@ -93,6 +93,7 @@ export default function TabsLayout() {
               />
             </View>
           ),
+          href: (isAdmin || (user?.employeeAppPermissions?.dashboard ?? true)) ? undefined : null,
           tabBarIcon: ({ color, size }) => (
             <Ionicons
               name="home-outline"
@@ -107,7 +108,7 @@ export default function TabsLayout() {
         options={{
           title: 'CRM',
           headerTitle: 'CRM',
-          href: isAdmin ? undefined : null,
+          href: (isAdmin || user?.employeeAppPermissions?.crm === true) ? undefined : null,
           tabBarIcon: ({ color, size }) => (
             <Ionicons
               name="people-outline"
@@ -122,6 +123,7 @@ export default function TabsLayout() {
         options={{
           title: 'Projects',
           headerTitle: 'Projects',
+          href: (isAdmin || (user?.employeeAppPermissions?.projects ?? true)) ? undefined : null,
           tabBarIcon: ({ color, size }) => (
             <Ionicons
               name="briefcase-outline"
@@ -136,6 +138,7 @@ export default function TabsLayout() {
         options={{
           title: 'Bike',
           headerTitle: 'Bike Tracking',
+          href: (isAdmin || user?.employeeAppPermissions?.bikeTracking === true) ? undefined : null,
           tabBarIcon: ({ color, size }) => (
             <Ionicons
               name="bicycle-outline"
@@ -150,7 +153,7 @@ export default function TabsLayout() {
         options={{
           title: 'Reports',
           headerTitle: 'Reports',
-          href: isAdmin ? undefined : null,
+          href: (isAdmin || user?.employeeAppPermissions?.reports === true) ? undefined : null,
           tabBarIcon: ({ color, size }) => (
             <Ionicons
               name="pie-chart-outline"

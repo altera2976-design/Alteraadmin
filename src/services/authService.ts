@@ -2,14 +2,16 @@ import api from './api';
 
 export interface EmployeeAppPermissions {
   dashboard: boolean;
-  tasks: boolean;
-  attendance: boolean;
-  salary: boolean;
   crm: boolean;
+  employees?: boolean;
+  attendance: boolean;
   projects: boolean;
-  quotation: boolean;
+  tasks?: boolean;
   reports: boolean;
   bikeTracking: boolean;
+  settings?: boolean;
+  salary?: boolean;
+  quotation?: boolean;
 }
 
 export interface User {

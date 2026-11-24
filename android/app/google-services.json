@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "205668201564",
+    "project_id": "alterainterior-943bd",
+    "storage_bucket": "alterainterior-943bd.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:205668201564:android:com_alterainterior_alterainteriors",
+        "android_client_info": {
+          "package_name": "com.alterainterior.alterainteriors"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "205668201564-tllj3s854jgk8qrn515hr2reo88qpj6g.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": ""
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "205668201564-tllj3s854jgk8qrn515hr2reo88qpj6g.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

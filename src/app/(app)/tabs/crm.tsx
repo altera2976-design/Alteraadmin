@@ -17,8 +17,20 @@ import {
 import { THEME } from '../../../constants/theme';
 import api from '../../../services/api';
 import { getSocket } from '../../../services/socket';
+import { useAuth } from '../../../context/AuthContext';
 
 export default function CRMScreen() {
+  const { user } = useAuth();
+  const userRole = (user as any)?.role;
+  const isAdmin =
+    userRole === 'ADMIN' ||
+    userRole === 'SUPER_ADMIN' ||
+    userRole?.toUpperCase() === 'ADMIN' ||
+    userRole?.toUpperCase() === 'SUPER_ADMIN' ||
+    user?.email?.toLowerCase() === 'alterakitcheninteriorr@gmail.com' ||
+    user?.email?.toLowerCase()?.includes('admin');
+  const hasAccess = isAdmin || user?.employeeAppPermissions?.crm === true;
+
   const [activeTab, setActiveTab] = useState('All Clients'); // 'All Clients', 'Leads', 'Projects'
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -40,6 +52,10 @@ export default function CRMScreen() {
   });
 
   const fetchCRMData = useCallback(async (isRefresh = false, currentSearch = search) => {
+    if (!hasAccess) {
+      setLoading(false);
+      return;
+    }
     if (!isRefresh) setLoading(true);
     try {
       if (activeTab === 'Leads') {
@@ -184,6 +200,18 @@ export default function CRMScreen() {
       </View>
     );
   };
+
+  if (!hasAccess) {
+    return (
+      <View style={styles.restrictedContainer}>
+        <Ionicons name="lock-closed-outline" size={64} color={THEME.colors.primary} />
+        <Text style={styles.restrictedTitle}>Access Restricted</Text>
+        <Text style={styles.restrictedSubtitle}>
+          You do not have permission to access the CRM module. Please contact your administrator.
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.root}>
@@ -463,5 +491,25 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600'
-  }
+  },
+  restrictedContainer: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
+  restrictedTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  restrictedSubtitle: {
+    fontSize: 14,
+    color: '#64748b',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
 });

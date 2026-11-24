@@ -29,6 +29,7 @@ import {
   buildReportCsv,
   stringToBase64,
 } from '../../../services/reportExport';
+import { useAuth } from '../../../context/AuthContext';
 
 const { width } = Dimensions.get('window');
 
@@ -105,6 +106,17 @@ function generateMonthOptions(): MonthOption[] {
 }
 
 export default function ReportsScreen() {
+  const { user } = useAuth();
+  const userRole = (user as any)?.role;
+  const isAdmin =
+    userRole === 'ADMIN' ||
+    userRole === 'SUPER_ADMIN' ||
+    userRole?.toUpperCase() === 'ADMIN' ||
+    userRole?.toUpperCase() === 'SUPER_ADMIN' ||
+    user?.email?.toLowerCase() === 'alterakitcheninteriorr@gmail.com' ||
+    user?.email?.toLowerCase()?.includes('admin');
+  const hasAccess = isAdmin || user?.employeeAppPermissions?.reports === true;
+
   const monthOptions = useMemo(() => generateMonthOptions(), []);
 
   // Default to current month or May 2024 if preferred
@@ -135,6 +147,10 @@ export default function ReportsScreen() {
 
   // Load summary data
   const fetchSummary = useCallback(async (isRefresh = false) => {
+    if (!hasAccess) {
+      setLoading(false);
+      return;
+    }
     try {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
@@ -312,6 +328,18 @@ export default function ReportsScreen() {
         return ['All'];
     }
   }, [activeType]);
+
+  if (!hasAccess) {
+    return (
+      <View style={styles.restrictedContainer}>
+        <Ionicons name="lock-closed-outline" size={64} color={THEME.colors.primary} />
+        <Text style={styles.restrictedTitle}>Access Restricted</Text>
+        <Text style={styles.restrictedSubtitle}>
+          You do not have permission to access the Reports module. Please contact your administrator.
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.root}>
@@ -1562,5 +1590,25 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#fff',
+  },
+  restrictedContainer: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
+  restrictedTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  restrictedSubtitle: {
+    fontSize: 14,
+    color: '#64748b',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });

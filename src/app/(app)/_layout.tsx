@@ -172,12 +172,14 @@ function CustomDrawerContent(props: any) {
             </>
           ) : (
             <>
-              <DrawerMenuItem
-                icon="grid-outline"
-                label="Dashboard"
-                isActive={isItemActive("/(app)/tabs/dashboard")}
-                onPress={() => navigateTo("/(app)/tabs/dashboard")}
-              />
+              {(user?.employeeAppPermissions?.dashboard ?? true) && (
+                <DrawerMenuItem
+                  icon="grid-outline"
+                  label="Dashboard"
+                  isActive={isItemActive("/(app)/tabs/dashboard")}
+                  onPress={() => navigateTo("/(app)/tabs/dashboard")}
+                />
+              )}
               {(user?.employeeAppPermissions?.projects ?? true) && (
                 <DrawerMenuItem
                   icon="git-network-outline"
@@ -234,12 +236,14 @@ function CustomDrawerContent(props: any) {
                   onPress={() => navigateTo("/(app)/tabs/reports")}
                 />
               )}
-              <DrawerMenuItem
-                icon="settings-outline"
-                label="Settings"
-                isActive={isItemActive("/(app)/tabs/profile")}
-                onPress={() => navigateTo("/(app)/tabs/profile")}
-              />
+              {(user?.employeeAppPermissions?.settings ?? true) && (
+                <DrawerMenuItem
+                  icon="settings-outline"
+                  label="Settings"
+                  isActive={isItemActive("/(app)/tabs/profile")}
+                  onPress={() => navigateTo("/(app)/tabs/profile")}
+                />
+              )}
             </>
           )}
 
