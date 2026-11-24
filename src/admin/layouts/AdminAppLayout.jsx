@@ -5,12 +5,15 @@ import { useConfig } from "../../context/ConfigContext";
 
 const ADMIN_NAV_ITEMS = [
   { to: "/admin/dashboard", label: "Dashboard", key: "dashboard" },
+  { to: "/admin/crm", label: "CRM Pipeline", key: "crm" },
+  { to: "/admin/crm/leads", label: "Leads", key: "crm_leads" },
+  { to: "/admin/crm/clients", label: "Customers", key: "crm_customers", altKey: "crm_clients" },
+  { to: "/admin/crm/followups", label: "Follow-ups", key: "crm_followups" },
   { to: "/admin/employees", label: "Employees", key: "employees", altKey: "administration" },
   { to: "/admin/attendance", label: "Attendance", key: "attendance" },
   { to: "/admin/bike-tracking", label: "Bike Tracking", key: "tracking" },
   { to: "/admin/payroll", label: "Payroll", key: "payroll", altKey: "salary" },
   { to: "/admin/tasks", label: "Tasks", key: "tasks" },
-  { to: "/admin/crm", label: "CRM", key: "crm" },
   { to: "/admin/transactions", label: "Transactions", key: "transactions" },
   { to: "/admin/quotations", label: "Quotations", key: "quotations", altKey: "quotation" },
   { to: "/admin/offer-letters", label: "Offer Letters", key: "offer_letters", altKey: "offerLetters" },
@@ -67,7 +70,10 @@ export default function AdminAppLayout({ children, title = "Admin Dashboard" }) 
       if (!item.allowedRoles.includes(uRole)) return false;
     }
 
-    if (!user?.permissions || Object.keys(user.permissions).length === 0) return true;
+    // Must be actively authorized by Super Admin
+    if (user?.isAdminPanelEnabled !== true || user?.status !== 'ACTIVE') return false;
+
+    if (!user?.permissions || Object.keys(user.permissions).length === 0) return false;
 
     const key = item.key;
     const altKey = item.altKey;
@@ -87,21 +93,52 @@ export default function AdminAppLayout({ children, title = "Admin Dashboard" }) 
       return undefined;
     };
 
-    const res1 = checkKey(key);
-    if (res1 !== undefined) return res1;
-    const res2 = checkKey(altKey);
-    if (res2 !== undefined) return res2;
-
-    // Special check for CRM in sidebar
-    if (key === 'crm') {
-      const crmSubKeys = ['crm', 'crm_leads', 'crm_customers', 'crm_followups', 'crm_pipeline', 'crm_consultations', 'crm_campaigns', 'crm_team', 'crm_settings', 'crm_reports'];
-      const anySub = crmSubKeys.some((sk) => checkKey(sk) === true);
-      if (anySub) return true;
-      const allSubFalse = crmSubKeys.filter(sk => checkKey(sk) !== undefined).length > 0 && crmSubKeys.every(sk => checkKey(sk) === false);
-      if (allSubFalse) return false;
+    // Dashboard check: allowed unless explicitly false
+    if (key === 'dashboard') {
+      const p = checkKey('dashboard');
+      return p !== false;
     }
 
-    return true;
+    // Profile check: always available to authenticated Admin
+    if (key === 'profile') return true;
+
+    // Check specific CRM sub-modules
+    if (key === 'crm_leads') {
+      const p = checkKey('crm_leads');
+      if (p !== undefined) return p === true;
+      return checkKey('crm') === true;
+    }
+
+    if (key === 'crm_customers') {
+      const p = checkKey('crm_customers') !== undefined ? checkKey('crm_customers') : checkKey('crm_clients');
+      if (p !== undefined) return p === true;
+      return checkKey('crm') === true;
+    }
+
+    if (key === 'crm_followups') {
+      const p = checkKey('crm_followups');
+      if (p !== undefined) return p === true;
+      return checkKey('crm') === true;
+    }
+
+    // Master CRM Pipeline item: show only if master 'crm' is true
+    if (key === 'crm') {
+      return checkKey('crm') === true;
+    }
+
+    // Check key and altKey
+    const res1 = checkKey(key);
+    if (res1 === true) return true;
+    if (res1 === false) return false;
+
+    if (altKey) {
+      const res2 = checkKey(altKey);
+      if (res2 === true) return true;
+      if (res2 === false) return false;
+    }
+
+    // STRICT: If not explicitly granted by Super Admin, DO NOT show in sidebar
+    return false;
   };
 
   const filteredNavItems = dynamicNavItems.filter(hasPermission);

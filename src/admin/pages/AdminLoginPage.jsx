@@ -58,6 +58,18 @@ export default function AdminLoginPage() {
         return;
       }
 
+      if (role !== 'SUPER_ADMIN' && user?.isAdminPanelEnabled !== true) {
+        setError('Your account has not been authorized by Super Admin. Please contact Super Admin.');
+        setLoading(false);
+        return;
+      }
+
+      if (user?.status !== 'ACTIVE') {
+        setError('Your account has not been authorized by Super Admin. Please contact Super Admin.');
+        setLoading(false);
+        return;
+      }
+
       navigate('/admin/dashboard');
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Login failed. Please check credentials.');

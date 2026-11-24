@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react';
-import api from '../services/api';
+import { io } from 'socket.io-client';
+import api, { SOCKET_URL } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -72,8 +73,10 @@ export function AuthProvider({ children }) {
     if (effectiveRole === 'EMPLOYEE') {
       throw new Error('Employee accounts are not permitted to access the Admin Panel.');
     }
-    if (effectiveRole !== 'SUPER_ADMIN' && newUser?.isAdminPanelEnabled === false) {
-      throw new Error('Admin Panel access has not been granted by Super Admin.');
+    if (effectiveRole !== 'SUPER_ADMIN') {
+      if (newUser?.isAdminPanelEnabled !== true || newUser?.status !== 'ACTIVE') {
+        throw new Error('Your account has not been authorized by Super Admin. Please contact Super Admin.');
+      }
     }
 
     localStorage.setItem('ems_token', newToken);
@@ -88,7 +91,8 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('ems_user');
     setToken(null);
     setUser(null);
-    window.location.href = '/login';
+    const isAdminPath = window.location.pathname.startsWith('/admin');
+    window.location.href = isAdminPath ? '/admin/login' : '/super-admin/login';
   };
 
   const resendVerification = async () => {
@@ -116,6 +120,39 @@ export function AuthProvider({ children }) {
     }
     return null;
   };
+
+  // Real-time synchronization of permissions from Super Admin
+  useEffect(() => {
+    if (!user?._id) return;
+
+    let socket;
+    try {
+      socket = io(SOCKET_URL, { autoConnect: true });
+      socket.on('employee_permissions_updated', (data) => {
+        if (data && (data.employeeId === user._id || data.employee?._id === user._id)) {
+          refreshUser();
+        }
+      });
+      socket.on('employee_updated', (data) => {
+        if (data && (data.employee?._id === user._id || data.userId === user._id)) {
+          refreshUser();
+        }
+      });
+    } catch (err) {
+      console.warn('AuthContext socket sync warning:', err);
+    }
+
+    // Tab focus check: re-sync permissions whenever user returns to the tab
+    const handleFocus = () => {
+      refreshUser();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      if (socket) socket.disconnect();
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [user?._id]);
 
   const isSuperAdmin =
     user?.role === 'SUPER_ADMIN' ||

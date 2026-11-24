@@ -154,6 +154,8 @@ export default function AdminDashboardPage() {
 
   const hasPerm = (key, altKey) => {
     if (isSuper) return true;
+    if (!user?.permissions || user?.isAdminPanelEnabled !== true) return false;
+
     const check = (k) => {
       if (!k) return undefined;
       const val = user?.permissions?.[k];
@@ -165,11 +167,40 @@ export default function AdminDashboardPage() {
       }
       return undefined;
     };
+
+    if (key === 'dashboard') {
+      const d = check('dashboard');
+      return d !== false;
+    }
+
+    if (key === 'crm') {
+      const crmSubKeys = [
+        'crm',
+        'crm_leads',
+        'crm_customers',
+        'crm_clients',
+        'crm_followups',
+        'crm_pipeline',
+        'crm_consultations',
+        'crm_campaigns',
+        'crm_team',
+        'crm_settings',
+        'crm_reports',
+      ];
+      if (crmSubKeys.some((sk) => check(sk) === true)) return true;
+    }
+
     const r1 = check(key);
-    if (r1 !== undefined) return r1;
-    const r2 = altKey ? check(altKey) : undefined;
-    if (r2 !== undefined) return r2;
-    return true;
+    if (r1 === true) return true;
+    if (r1 === false) return false;
+
+    if (altKey) {
+      const r2 = check(altKey);
+      if (r2 === true) return true;
+      if (r2 === false) return false;
+    }
+
+    return false;
   };
 
   return (
@@ -227,135 +258,145 @@ export default function AdminDashboardPage() {
         </div>
 
       {/* Analytics & Charts Summary Section */}
-      <div style={styles.sectionTitle}>Analytics &amp; Statistics</div>
-      <div style={styles.chartsGrid}>
-        {/* Weekly & Monthly Attendance Chart */}
-        <div style={styles.chartCard}>
-          <div style={styles.chartHeader}>
-            <div>
-              <div style={styles.chartTitle}>Attendance Overview</div>
-              <div style={styles.chartSub}>Weekly &amp; Monthly Trend Analysis</div>
-            </div>
-            <span style={styles.chartBadge}>Realtime</span>
-          </div>
-          <div style={styles.barContainer}>
-            {[
-              { day: 'Mon', val: Math.min(100, (attendancePct * 0.95).toFixed(0)) },
-              { day: 'Tue', val: Math.min(100, (attendancePct * 0.98).toFixed(0)) },
-              { day: 'Wed', val: Math.min(100, (attendancePct * 1.02).toFixed(0)) },
-              { day: 'Thu', val: Math.min(100, (attendancePct * 0.97).toFixed(0)) },
-              { day: 'Fri', val: attendancePct },
-              { day: 'Sat', val: Math.min(100, (attendancePct * 0.75).toFixed(0)) },
-            ].map((bar, i) => (
-              <div key={i} style={styles.barCol}>
-                <div style={styles.barTrack}>
-                  <div style={{ ...styles.barFill, height: `${bar.val}%`, background: i === 4 ? '#7A131A' : '#94A3B8' }} />
+      {(hasPerm('attendance') || hasPerm('crm')) && (
+        <>
+          <div style={styles.sectionTitle}>Analytics &amp; Statistics</div>
+          <div style={styles.chartsGrid}>
+            {/* Weekly & Monthly Attendance Chart */}
+            {hasPerm('attendance') && (
+              <div style={styles.chartCard}>
+                <div style={styles.chartHeader}>
+                  <div>
+                    <div style={styles.chartTitle}>Attendance Overview</div>
+                    <div style={styles.chartSub}>Weekly &amp; Monthly Trend Analysis</div>
+                  </div>
+                  <span style={styles.chartBadge}>Realtime</span>
                 </div>
-                <span style={styles.barLabel}>{bar.day}</span>
-                <span style={styles.barVal}>{bar.val}%</span>
+                <div style={styles.barContainer}>
+                  {[
+                    { day: 'Mon', val: Math.min(100, (attendancePct * 0.95).toFixed(0)) },
+                    { day: 'Tue', val: Math.min(100, (attendancePct * 0.98).toFixed(0)) },
+                    { day: 'Wed', val: Math.min(100, (attendancePct * 1.02).toFixed(0)) },
+                    { day: 'Thu', val: Math.min(100, (attendancePct * 0.97).toFixed(0)) },
+                    { day: 'Fri', val: attendancePct },
+                    { day: 'Sat', val: Math.min(100, (attendancePct * 0.75).toFixed(0)) },
+                  ].map((bar, i) => (
+                    <div key={i} style={styles.barCol}>
+                      <div style={styles.barTrack}>
+                        <div style={{ ...styles.barFill, height: `${bar.val}%`, background: i === 4 ? '#7A131A' : '#94A3B8' }} />
+                      </div>
+                      <span style={styles.barLabel}>{bar.day}</span>
+                      <span style={styles.barVal}>{bar.val}%</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
+            )}
 
-        {/* CRM Lead Statistics */}
-        <div style={styles.chartCard}>
-          <div style={styles.chartHeader}>
-            <div>
-              <div style={styles.chartTitle}>CRM Lead Statistics</div>
-              <div style={styles.chartSub}>Pipeline Conversion Metrics</div>
-            </div>
-            <span style={styles.chartBadge}>CRM</span>
+            {/* CRM Lead Statistics */}
+            {hasPerm('crm') && (
+              <div style={styles.chartCard}>
+                <div style={styles.chartHeader}>
+                  <div>
+                    <div style={styles.chartTitle}>CRM Lead Statistics</div>
+                    <div style={styles.chartSub}>Pipeline Conversion Metrics</div>
+                  </div>
+                  <span style={styles.chartBadge}>CRM</span>
+                </div>
+                <div style={styles.statsRow}>
+                  <div style={styles.statBox}>
+                    <div style={styles.statVal}>{stats?.newLeads || 0}</div>
+                    <div style={styles.statLbl}>New Leads</div>
+                  </div>
+                  <div style={styles.statBox}>
+                    <div style={styles.statVal}>{stats?.conversionRate || 0}%</div>
+                    <div style={styles.statLbl}>Conversion Rate</div>
+                  </div>
+                  <div style={styles.statBox}>
+                    <div style={styles.statVal}>{stats?.totalClients || 0}</div>
+                    <div style={styles.statLbl}>Total Clients</div>
+                  </div>
+                </div>
+                <div style={{ marginTop: 20 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
+                    <span>Pipeline Stage Health</span>
+                    <span>{totalLeads} Total Leads</span>
+                  </div>
+                  <div style={{ height: 8, background: '#E2E8F0', borderRadius: 4, overflow: 'hidden', display: 'flex' }}>
+                    <div style={{ width: '40%', background: '#7A131A' }} title="New Leads" />
+                    <div style={{ width: '35%', background: '#F59E0B' }} title="In Discussion" />
+                    <div style={{ width: '25%', background: '#7A131A' }} title="Converted" />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-          <div style={styles.statsRow}>
-            <div style={styles.statBox}>
-              <div style={styles.statVal}>{stats?.newLeads || 0}</div>
-              <div style={styles.statLbl}>New Leads</div>
-            </div>
-            <div style={styles.statBox}>
-              <div style={styles.statVal}>{stats?.conversionRate || 0}%</div>
-              <div style={styles.statLbl}>Conversion Rate</div>
-            </div>
-            <div style={styles.statBox}>
-              <div style={styles.statVal}>{stats?.totalClients || 0}</div>
-              <div style={styles.statLbl}>Total Clients</div>
-            </div>
-          </div>
-          <div style={{ marginTop: 20 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
-              <span>Pipeline Stage Health</span>
-              <span>{totalLeads} Total Leads</span>
-            </div>
-            <div style={{ height: 8, background: '#E2E8F0', borderRadius: 4, overflow: 'hidden', display: 'flex' }}>
-              <div style={{ width: '40%', background: '#7A131A' }} title="New Leads" />
-              <div style={{ width: '35%', background: '#F59E0B' }} title="In Discussion" />
-              <div style={{ width: '25%', background: '#7A131A' }} title="Converted" />
-            </div>
-          </div>
-        </div>
-      </div>
+        </>
+      )}
 
       {/* Tables Section: Today's Attendance & Activity / Notifications */}
       <div style={styles.columns2}>
         {/* Today's Attendance Table */}
-        <div style={styles.tableCard}>
-          <div style={styles.tableHeader}>
-            <h3 style={styles.tableTitle}>Today's Check-ins</h3>
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#64748B' }}>Live Employee Pings</span>
-          </div>
+        {hasPerm('attendance') && (
+          <div style={styles.tableCard}>
+            <div style={styles.tableHeader}>
+              <h3 style={styles.tableTitle}>Today's Check-ins</h3>
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#64748B' }}>Live Employee Pings</span>
+            </div>
 
-          {todayAttendance.length === 0 ? (
-            <div style={{ padding: 30, textAlign: 'center', color: '#94A3B8', fontSize: 13 }}>
-              No attendance check-ins recorded today yet.
-            </div>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={styles.table}>
-                <thead>
-                  <tr style={styles.thRow}>
-                    <th style={styles.th}>Employee</th>
-                    <th style={styles.th}>Check-in</th>
-                    <th style={styles.th}>Check-out</th>
-                    <th style={styles.th}>Status</th>
-                    <th style={styles.th}>Late Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {todayAttendance.map((rec, i) => (
-                    <tr key={rec._id || i} style={styles.tr}>
-                      <td style={{ ...styles.td, fontWeight: 600, color: '#0F172A' }}>
-                        {rec.employeeName || rec.user?.name || 'Employee'}
-                      </td>
-                      <td style={styles.td}>{rec.checkInTime || rec.inTime || '—'}</td>
-                      <td style={styles.td}>{rec.checkOutTime || rec.outTime || '—'}</td>
-                      <td style={styles.td}>
-                        <span
-                          style={{
-                            padding: '3px 8px',
-                            borderRadius: 6,
-                            fontSize: 11,
-                            fontWeight: 700,
-                            background: rec.status === 'PRESENT' ? '#DCFCE7' : rec.status === 'LATE' ? '#FEF3C7' : '#FEE2E2',
-                            color: rec.status === 'PRESENT' ? '#15803D' : rec.status === 'LATE' ? '#B45309' : '#B91C1C',
-                          }}
-                        >
-                          {rec.status || 'PRESENT'}
-                        </span>
-                      </td>
-                      <td style={styles.td}>
-                        {rec.isLate ? (
-                          <span style={{ color: '#D97706', fontWeight: 600, fontSize: 12 }}>Late ({rec.lateMinutes || 15}m)</span>
-                        ) : (
-                          <span style={{ color: '#7A131A', fontWeight: 600, fontSize: 12 }}>On Time</span>
-                        )}
-                      </td>
+            {todayAttendance.length === 0 ? (
+              <div style={{ padding: 30, textAlign: 'center', color: '#94A3B8', fontSize: 13 }}>
+                No attendance check-ins recorded today yet.
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={styles.table}>
+                  <thead>
+                    <tr style={styles.thRow}>
+                      <th style={styles.th}>Employee</th>
+                      <th style={styles.th}>Check-in</th>
+                      <th style={styles.th}>Check-out</th>
+                      <th style={styles.th}>Status</th>
+                      <th style={styles.th}>Late Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                  </thead>
+                  <tbody>
+                    {todayAttendance.map((rec, i) => (
+                      <tr key={rec._id || i} style={styles.tr}>
+                        <td style={{ ...styles.td, fontWeight: 600, color: '#0F172A' }}>
+                          {rec.employeeName || rec.user?.name || 'Employee'}
+                        </td>
+                        <td style={styles.td}>{rec.checkInTime || rec.inTime || '—'}</td>
+                        <td style={styles.td}>{rec.checkOutTime || rec.outTime || '—'}</td>
+                        <td style={styles.td}>
+                          <span
+                            style={{
+                              padding: '3px 8px',
+                              borderRadius: 6,
+                              fontSize: 11,
+                              fontWeight: 700,
+                              background: rec.status === 'PRESENT' ? '#DCFCE7' : rec.status === 'LATE' ? '#FEF3C7' : '#FEE2E2',
+                              color: rec.status === 'PRESENT' ? '#15803D' : rec.status === 'LATE' ? '#B45309' : '#B91C1C',
+                            }}
+                          >
+                            {rec.status || 'PRESENT'}
+                          </span>
+                        </td>
+                        <td style={styles.td}>
+                          {rec.isLate ? (
+                            <span style={{ color: '#D97706', fontWeight: 600, fontSize: 12 }}>Late ({rec.lateMinutes || 15}m)</span>
+                          ) : (
+                            <span style={{ color: '#7A131A', fontWeight: 600, fontSize: 12 }}>On Time</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Recent Activity & Notifications Widget */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
