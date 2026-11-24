@@ -58,9 +58,26 @@ export default function AdminProtectedRoute({ children, permissionKey = null, al
       return undefined;
     };
 
-    const res1 = checkPerm(permissionKey);
-    const res2 = altPermissionKey ? checkPerm(altPermissionKey) : undefined;
-    const finalPerm = res1 !== undefined ? res1 : (res2 !== undefined ? res2 : true);
+    let finalPerm = checkPerm(permissionKey);
+    if (finalPerm === undefined && altPermissionKey) {
+      finalPerm = checkPerm(altPermissionKey);
+    }
+
+    // Special handling for CRM master and sub-modules
+    if (permissionKey === 'crm' || permissionKey === 'crm_leads') {
+      const crmSubKeys = ['crm', 'crm_leads', 'crm_customers', 'crm_followups', 'crm_pipeline', 'crm_consultations', 'crm_campaigns', 'crm_team', 'crm_settings', 'crm_reports'];
+      const hasAnySubAllowed = crmSubKeys.some((k) => checkPerm(k) === true);
+      const allExplicitlyDenied = crmSubKeys.filter(k => checkPerm(k) !== undefined).length > 0 && crmSubKeys.every(k => {
+        const v = checkPerm(k);
+        return v === false || v === undefined;
+      });
+
+      if (hasAnySubAllowed) {
+        finalPerm = true;
+      } else if (allExplicitlyDenied || finalPerm === false) {
+        finalPerm = false;
+      }
+    }
 
     if (finalPerm === false) {
       return <Admin403 message="Access Denied — You don't have permission to access this module." />;

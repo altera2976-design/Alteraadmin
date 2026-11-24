@@ -91,6 +91,16 @@ export default function AdminAppLayout({ children, title = "Admin Dashboard" }) 
     if (res1 !== undefined) return res1;
     const res2 = checkKey(altKey);
     if (res2 !== undefined) return res2;
+
+    // Special check for CRM in sidebar
+    if (key === 'crm') {
+      const crmSubKeys = ['crm', 'crm_leads', 'crm_customers', 'crm_followups', 'crm_pipeline', 'crm_consultations', 'crm_campaigns', 'crm_team', 'crm_settings', 'crm_reports'];
+      const anySub = crmSubKeys.some((sk) => checkKey(sk) === true);
+      if (anySub) return true;
+      const allSubFalse = crmSubKeys.filter(sk => checkKey(sk) !== undefined).length > 0 && crmSubKeys.every(sk => checkKey(sk) === false);
+      if (allSubFalse) return false;
+    }
+
     return true;
   };
 

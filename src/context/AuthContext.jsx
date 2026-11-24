@@ -96,6 +96,27 @@ export function AuthProvider({ children }) {
     return res.data;
   };
 
+  const refreshUser = async () => {
+    const storedToken = localStorage.getItem('ems_token');
+    if (!storedToken) return null;
+    try {
+      const meRes = await api.get('/auth/me');
+      const freshUser = meRes.data?.user || meRes.data;
+      if (freshUser) {
+        const isSuperEmail =
+          freshUser.email?.toLowerCase() === 'alterakitcheninteriorr@gmail.com';
+        const effectiveRole = isSuperEmail ? 'SUPER_ADMIN' : (freshUser.role || 'EMPLOYEE');
+        const normalized = { ...freshUser, role: effectiveRole };
+        setUser(normalized);
+        localStorage.setItem('ems_user', JSON.stringify(normalized));
+        return normalized;
+      }
+    } catch {
+      // ignore
+    }
+    return null;
+  };
+
   const isSuperAdmin =
     user?.role === 'SUPER_ADMIN' ||
     user?.email?.toLowerCase() === 'alterakitcheninteriorr@gmail.com';
@@ -111,6 +132,7 @@ export function AuthProvider({ children }) {
         isSuperAdmin,
         login,
         logout,
+        refreshUser,
         resendVerification,
       }}
     >
