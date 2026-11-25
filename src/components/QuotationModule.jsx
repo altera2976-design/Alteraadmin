@@ -2563,6 +2563,37 @@ export default function QuotationModule({
                         style={styles.formInput}
                         placeholder="Residential / Commercial"
                       />
+                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>
+                        {[
+                          "Residential",
+                          "Commercial",
+                          "Interior",
+                          "Modular Kitchen",
+                          "Modular Wardrobe",
+                          "Wardrobe/Kitchen",
+                          "Modular Work",
+                          "Architecture",
+                          "Renovation",
+                        ].map((pt) => (
+                          <button
+                            key={pt}
+                            type="button"
+                            onClick={() => setProjectType(pt)}
+                            style={{
+                              padding: "2px 8px",
+                              fontSize: 10,
+                              borderRadius: 4,
+                              border: "1px solid #cbd5e1",
+                              background: projectType === pt ? "#0f172a" : "#f8fafc",
+                              color: projectType === pt ? "#ffffff" : "#475569",
+                              cursor: "pointer",
+                              fontWeight: projectType === pt ? 600 : 400,
+                            }}
+                          >
+                            {pt}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                     <div>
                       <label style={styles.label}>Site Location / City</label>
