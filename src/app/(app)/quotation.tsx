@@ -3163,6 +3163,44 @@ export default function QuotationScreen() {
                     value={projectType}
                     onChangeText={setProjectType}
                   />
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={{ marginTop: 6, marginBottom: 8 }}
+                    contentContainerStyle={{ gap: 6 }}
+                  >
+                    {[
+                      "Residential",
+                      "Commercial",
+                      "Interior",
+                      "Modular Kitchen",
+                      "Modular Wardrobe",
+                      "Wardrobe/Kitchen",
+                      "Modular Work",
+                      "Architecture",
+                      "Renovation",
+                    ].map((pt) => (
+                      <TouchableOpacity
+                        key={pt}
+                        style={[
+                          styles.smallPill,
+                          projectType === pt && styles.smallPillActive,
+                          { paddingHorizontal: 10, paddingVertical: 4 },
+                        ]}
+                        onPress={() => setProjectType(pt)}
+                      >
+                        <Text
+                          style={[
+                            styles.smallPillText,
+                            projectType === pt && styles.smallPillTextActive,
+                            { fontSize: 11 },
+                          ]}
+                        >
+                          {pt}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
 
                   <Text style={styles.inputLabel}>Site Location / City</Text>
                   <TextInput

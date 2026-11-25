@@ -89,12 +89,12 @@ export default function CRMScreen() {
   }, [activeTab]);
 
   useEffect(() => {
-    // Only fetch after navigation transition completes for smooth UX
-    const frameId = requestAnimationFrame(() => {
+    // Debounce search by 350ms to prevent excessive API requests per keystroke
+    const timer = setTimeout(() => {
       fetchCRMData(false, search);
-    });
+    }, search ? 350 : 0);
 
-    return () => cancelAnimationFrame(frameId);
+    return () => clearTimeout(timer);
   }, [fetchCRMData, search]);
 
   useEffect(() => {
