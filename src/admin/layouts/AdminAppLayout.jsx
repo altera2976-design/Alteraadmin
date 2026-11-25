@@ -45,17 +45,25 @@ export default function AdminAppLayout({ children, title = "Admin Dashboard" }) 
   const isCompactTablet = isTablet && !tabletExpanded;
 
   const dynamicNavItems = useMemo(() => {
+    const items = [...ADMIN_NAV_ITEMS];
     if (modules && modules.length > 0) {
-      return modules
+      modules
         .filter((m) => m.enabled !== false && m.webVisible !== false)
-        .map((m) => ({
-          to: m.webPath || `/admin/${m.id}`,
-          label: m.label,
-          key: m.id,
-          allowedRoles: m.allowedRoles,
-        }));
+        .forEach((m) => {
+          const exists = items.some(
+            (it) => it.key === m.id || it.to === m.webPath
+          );
+          if (!exists) {
+            items.push({
+              to: m.webPath || `/admin/${m.id}`,
+              label: m.label,
+              key: m.id,
+              allowedRoles: m.allowedRoles,
+            });
+          }
+        });
     }
-    return ADMIN_NAV_ITEMS;
+    return items;
   }, [modules]);
 
   const hasPermission = (item) => {

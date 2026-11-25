@@ -1,50 +1,54 @@
+import { Suspense, lazy } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
+import LoadingSpinner from './components/LoadingSpinner';
 import { AuthProvider } from './context/AuthContext';
 import { ConfigProvider } from './context/ConfigContext';
 
-import AddEmployeePage from './pages/AddEmployeePage';
-import AdminAccessPage from './pages/AdminAccessPage';
-import AdministrationPage from './pages/AdministrationPage';
-import AdminPortalPage from './pages/AdminPortalPage';
-import AttendancePage from './pages/AttendancePage';
-import CRMPage from './pages/CRMPage';
-import DashboardPage from './pages/DashboardPage';
-import EditEmployeePage from './pages/EditEmployeePage';
-import EmployeesPage from './pages/EmployeesPage';
-import FinancePage from './pages/FinancePage';
-import LocationsPage from './pages/LocationsPage';
-import LoginPage from './pages/LoginPage';
-import ForgotPasswordPage from './pages/ForgotPasswordPage';
-import ManagerPortalPage from './pages/ManagerPortalPage';
-import PayrollPage from './pages/PayrollPage';
-import ProjectsManagementPage from './pages/ProjectsManagementPage';
-import QuotationsPage from './pages/QuotationsPage';
-import ReportsPage from './pages/ReportsPage';
-import StaffPortalPage from './pages/StaffPortalPage';
-import TaskManagementPage from './pages/TaskManagementPage';
-import TransactionHistoryPage from './pages/TransactionHistoryPage';
-import ViewEmployeePage from './pages/ViewEmployeePage';
-import FestivalsPage from './pages/FestivalsPage';
+// Super Admin Pages (Lazy Loaded for high performance and minimal initial bundle size)
+const AddEmployeePage = lazy(() => import('./pages/AddEmployeePage'));
+const AdminAccessPage = lazy(() => import('./pages/AdminAccessPage'));
+const AdministrationPage = lazy(() => import('./pages/AdministrationPage'));
+const AdminPortalPage = lazy(() => import('./pages/AdminPortalPage'));
+const AttendancePage = lazy(() => import('./pages/AttendancePage'));
+const CRMPage = lazy(() => import('./pages/CRMPage'));
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const EditEmployeePage = lazy(() => import('./pages/EditEmployeePage'));
+const EmployeesPage = lazy(() => import('./pages/EmployeesPage'));
+const FinancePage = lazy(() => import('./pages/FinancePage'));
+const LocationsPage = lazy(() => import('./pages/LocationsPage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
+const ManagerPortalPage = lazy(() => import('./pages/ManagerPortalPage'));
+const PayrollPage = lazy(() => import('./pages/PayrollPage'));
+const ProjectsManagementPage = lazy(() => import('./pages/ProjectsManagementPage'));
+const QuotationsPage = lazy(() => import('./pages/QuotationsPage'));
+const ReportsPage = lazy(() => import('./pages/ReportsPage'));
+const StaffPortalPage = lazy(() => import('./pages/StaffPortalPage'));
+const TaskManagementPage = lazy(() => import('./pages/TaskManagementPage'));
+const TransactionHistoryPage = lazy(() => import('./pages/TransactionHistoryPage'));
+const ViewEmployeePage = lazy(() => import('./pages/ViewEmployeePage'));
+const FestivalsPage = lazy(() => import('./pages/FestivalsPage'));
 
-// Admin Portal Components & Pages
+// Admin Portal Components & Pages (Lazy Loaded)
 import AdminProtectedRoute from './admin/components/AdminProtectedRoute';
 import Admin403 from './admin/components/Admin403';
 import Admin404 from './admin/components/Admin404';
-import AdminLoginPage from './admin/pages/AdminLoginPage';
-import AdminDashboardPage from './admin/pages/AdminDashboardPage';
-import AdminEmployeesPage from './admin/pages/AdminEmployeesPage';
-import AdminAttendancePage from './admin/pages/AdminAttendancePage';
-import AdminPayrollPage from './admin/pages/AdminPayrollPage';
-import AdminBikeTrackingPage from './admin/pages/AdminBikeTrackingPage';
-import AdminCRMPage from './admin/pages/AdminCRMPage';
-import AdminTransactionsPage from './admin/pages/AdminTransactionsPage';
-import AdminQuotationsPage from './admin/pages/AdminQuotationsPage';
-import AdminOfferLettersPage from './admin/pages/AdminOfferLettersPage';
-import AdminReportsPage from './admin/pages/AdminReportsPage';
-import AdminNotificationsPage from './admin/pages/AdminNotificationsPage';
-import AdminProfilePage from './admin/pages/AdminProfilePage';
-import AdminSettingsPage from './admin/pages/AdminSettingsPage';
+
+const AdminLoginPage = lazy(() => import('./admin/pages/AdminLoginPage'));
+const AdminDashboardPage = lazy(() => import('./admin/pages/AdminDashboardPage'));
+const AdminEmployeesPage = lazy(() => import('./admin/pages/AdminEmployeesPage'));
+const AdminAttendancePage = lazy(() => import('./admin/pages/AdminAttendancePage'));
+const AdminPayrollPage = lazy(() => import('./admin/pages/AdminPayrollPage'));
+const AdminBikeTrackingPage = lazy(() => import('./admin/pages/AdminBikeTrackingPage'));
+const AdminCRMPage = lazy(() => import('./admin/pages/AdminCRMPage'));
+const AdminTransactionsPage = lazy(() => import('./admin/pages/AdminTransactionsPage'));
+const AdminQuotationsPage = lazy(() => import('./admin/pages/AdminQuotationsPage'));
+const AdminOfferLettersPage = lazy(() => import('./admin/pages/AdminOfferLettersPage'));
+const AdminReportsPage = lazy(() => import('./admin/pages/AdminReportsPage'));
+const AdminNotificationsPage = lazy(() => import('./admin/pages/AdminNotificationsPage'));
+const AdminProfilePage = lazy(() => import('./admin/pages/AdminProfilePage'));
+const AdminSettingsPage = lazy(() => import('./admin/pages/AdminSettingsPage'));
 
 // Wrapper helpers for route params
 function AdminEmployeeViewWrapper({ subRoute }) {
@@ -82,7 +86,8 @@ export default function App() {
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <ConfigProvider>
         <AuthProvider>
-          <Routes>
+          <Suspense fallback={<LoadingSpinner message="Loading Portal..." />}>
+            <Routes>
           {/* ───────────────────────────────────────────────────────────────── */}
           {/* 1. SUPER ADMIN PANEL ROUTES (/super-admin/*)                      */}
           {/* ───────────────────────────────────────────────────────────────── */}
@@ -185,6 +190,7 @@ export default function App() {
           <Route path="/" element={<Navigate to="/super-admin/dashboard" replace />} />
           <Route path="*" element={<Navigate to="/super-admin/dashboard" replace />} />
         </Routes>
+        </Suspense>
         </AuthProvider>
       </ConfigProvider>
     </BrowserRouter>
