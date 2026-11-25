@@ -1,34 +1,91 @@
-import { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import api, { SOCKET_URL } from '../services/api';
 
 const AuthContext = createContext(null);
 
-export function AuthProvider({ children }) {
-  const [token, setToken] = useState(() => localStorage.getItem('ems_token'));
-  const [user, setUser]   = useState(() => {
+export const getActivePortalKeys = (pathname = typeof window !== 'undefined' ? window.location.pathname : '') => {
+  const isAdmin = (pathname || '').startsWith('/admin');
+  return {
+    isAdmin,
+    tokenKey: isAdmin ? 'ems_admin_token' : 'ems_super_token',
+    userKey: isAdmin ? 'ems_admin_user' : 'ems_super_user',
+  };
+};
+
+const getStoredToken = (pathname) => {
+  const { isAdmin, tokenKey } = getActivePortalKeys(pathname);
+  const token = localStorage.getItem(tokenKey);
+  if (token) return token;
+
+  // Fallback to legacy ems_token if role aligns with portal
+  const legacyToken = localStorage.getItem('ems_token');
+  if (legacyToken) {
     try {
-      const stored = localStorage.getItem('ems_user');
-      return stored ? JSON.parse(stored) : null;
+      const legacyUser = JSON.parse(localStorage.getItem('ems_user') || '{}');
+      const isSuper =
+        legacyUser.role === 'SUPER_ADMIN' ||
+        legacyUser.email?.toLowerCase() === 'alterakitcheninteriorr@gmail.com';
+      if (isAdmin && !isSuper) return legacyToken;
+      if (!isAdmin && isSuper) return legacyToken;
     } catch {
-      return null;
+      // ignore
     }
-  });
-  // loading=true only when a token exists and we're verifying it server-side
-  const [loading, setLoading] = useState(() => !!localStorage.getItem('ems_token'));
+  }
+  return null;
+};
+
+const getStoredUser = (pathname) => {
+  const { isAdmin, userKey } = getActivePortalKeys(pathname);
+  try {
+    const stored = localStorage.getItem(userKey);
+    if (stored) return JSON.parse(stored);
+
+    // Fallback to legacy ems_user if role aligns with portal
+    const legacyStr = localStorage.getItem('ems_user');
+    if (legacyStr) {
+      const legacyUser = JSON.parse(legacyStr);
+      const isSuper =
+        legacyUser.role === 'SUPER_ADMIN' ||
+        legacyUser.email?.toLowerCase() === 'alterakitcheninteriorr@gmail.com';
+      if (isAdmin && !isSuper) return legacyUser;
+      if (!isAdmin && isSuper) return legacyUser;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+};
+
+export function AuthProvider({ children }) {
+  const location = useLocation();
+  const currentPath = location.pathname;
+
+  const [token, setToken] = useState(() => getStoredToken(typeof window !== 'undefined' ? window.location.pathname : ''));
+  const [user, setUser]   = useState(() => getStoredUser(typeof window !== 'undefined' ? window.location.pathname : ''));
+  const [loading, setLoading] = useState(() => !!getStoredToken(typeof window !== 'undefined' ? window.location.pathname : ''));
+
+  // Sync state whenever portal path changes (e.g. navigation from /admin to /super-admin or vice-versa)
+  useEffect(() => {
+    const portalToken = getStoredToken(currentPath);
+    const portalUser = getStoredUser(currentPath);
+    setToken(portalToken);
+    setUser(portalUser);
+  }, [currentPath]);
 
   // Guard against double-invocation in React StrictMode (dev)
   const sessionRestored = useRef(false);
 
-  // Verify session freshness with backend on mount (lazy init already populated state)
+  // Verify session freshness with backend on mount
   useEffect(() => {
     if (sessionRestored.current) return;
     sessionRestored.current = true;
 
     const verifySession = async () => {
-      const storedToken = localStorage.getItem('ems_token');
+      const targetPath = typeof window !== 'undefined' ? window.location.pathname : '';
+      const storedToken = getStoredToken(targetPath);
       if (!storedToken) {
-        // No token — not logged in, nothing to verify
         setLoading(false);
         return;
       }
@@ -41,19 +98,18 @@ export function AuthProvider({ children }) {
             freshUser.email?.toLowerCase() === 'alterakitcheninteriorr@gmail.com';
           const effectiveRole = isSuperEmail ? 'SUPER_ADMIN' : (freshUser.role || 'EMPLOYEE');
           const normalized = { ...freshUser, role: effectiveRole };
+          const { userKey } = getActivePortalKeys(targetPath);
+          localStorage.setItem(userKey, JSON.stringify(normalized));
           setUser(normalized);
-          localStorage.setItem('ems_user', JSON.stringify(normalized));
         }
       } catch (err) {
-        // Only force logout on explicit auth rejection (401/403)
-        // Network errors / server down: keep cached user so page doesn't flicker
         if (err.response?.status === 401 || err.response?.status === 403) {
-          localStorage.removeItem('ems_token');
-          localStorage.removeItem('ems_user');
+          const { tokenKey, userKey } = getActivePortalKeys(targetPath);
+          localStorage.removeItem(tokenKey);
+          localStorage.removeItem(userKey);
           setToken(null);
           setUser(null);
         }
-        // Any other error (network timeout, 500, etc.) — keep cached state
       } finally {
         setLoading(false);
       }
@@ -62,7 +118,10 @@ export function AuthProvider({ children }) {
     verifySession();
   }, []);
 
-  const login = async (email, password) => {
+  const login = async (email, password, portalScope = null) => {
+    const targetPath = portalScope || (typeof window !== 'undefined' ? window.location.pathname : '');
+    const { isAdmin, tokenKey, userKey } = getActivePortalKeys(targetPath);
+
     const res = await api.post('/auth/login', { email, password });
     const { token: newToken, user: newUser } = res.data;
     const isSuperAdminEmail =
@@ -79,20 +138,36 @@ export function AuthProvider({ children }) {
       }
     }
 
-    localStorage.setItem('ems_token', newToken);
-    localStorage.setItem('ems_user', JSON.stringify(normalizedUser));
+    // Save strictly to the designated portal storage
+    localStorage.setItem(tokenKey, newToken);
+    localStorage.setItem(userKey, JSON.stringify(normalizedUser));
+
+    // Only mirror to legacy keys if Super Admin is logging in on Super Admin portal
+    if (!isAdmin && effectiveRole === 'SUPER_ADMIN') {
+      localStorage.setItem('ems_token', newToken);
+      localStorage.setItem('ems_user', JSON.stringify(normalizedUser));
+    }
+
     setToken(newToken);
     setUser(normalizedUser);
     return normalizedUser;
   };
 
-  const logout = () => {
-    localStorage.removeItem('ems_token');
-    localStorage.removeItem('ems_user');
+  const logout = (redirectPath) => {
+    const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+    const { isAdmin, tokenKey, userKey } = getActivePortalKeys(currentPath);
+
+    localStorage.removeItem(tokenKey);
+    localStorage.removeItem(userKey);
+
+    if (!isAdmin) {
+      localStorage.removeItem('ems_token');
+      localStorage.removeItem('ems_user');
+    }
+
     setToken(null);
     setUser(null);
-    const isAdminPath = window.location.pathname.startsWith('/admin');
-    window.location.href = isAdminPath ? '/admin/login' : '/super-admin/login';
+    window.location.href = redirectPath || (isAdmin ? '/admin/login' : '/super-admin/login');
   };
 
   const resendVerification = async () => {
@@ -100,8 +175,9 @@ export function AuthProvider({ children }) {
     return res.data;
   };
 
-  const refreshUser = async () => {
-    const storedToken = localStorage.getItem('ems_token');
+  const refreshUser = useCallback(async (pathOverride) => {
+    const targetPath = pathOverride || (typeof window !== 'undefined' ? window.location.pathname : '');
+    const storedToken = getStoredToken(targetPath);
     if (!storedToken) return null;
     try {
       const meRes = await api.get('/auth/me');
@@ -111,15 +187,16 @@ export function AuthProvider({ children }) {
           freshUser.email?.toLowerCase() === 'alterakitcheninteriorr@gmail.com';
         const effectiveRole = isSuperEmail ? 'SUPER_ADMIN' : (freshUser.role || 'EMPLOYEE');
         const normalized = { ...freshUser, role: effectiveRole };
+        const { userKey } = getActivePortalKeys(targetPath);
+        localStorage.setItem(userKey, JSON.stringify(normalized));
         setUser(normalized);
-        localStorage.setItem('ems_user', JSON.stringify(normalized));
         return normalized;
       }
     } catch {
       // ignore
     }
     return null;
-  };
+  }, []);
 
   // Real-time synchronization of permissions from Super Admin
   useEffect(() => {
@@ -142,7 +219,7 @@ export function AuthProvider({ children }) {
       console.warn('AuthContext socket sync warning:', err);
     }
 
-    // Tab focus check: re-sync permissions whenever user returns to the tab
+    // Tab focus check: re-sync permissions only for current tab's active portal
     const handleFocus = () => {
       refreshUser();
     };
@@ -152,7 +229,7 @@ export function AuthProvider({ children }) {
       if (socket) socket.disconnect();
       window.removeEventListener('focus', handleFocus);
     };
-  }, [user?._id]);
+  }, [user?._id, refreshUser]);
 
   const isSuperAdmin =
     user?.role === 'SUPER_ADMIN' ||

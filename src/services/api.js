@@ -31,7 +31,19 @@ api.interceptors.request.use(
       config.url?.includes("/auth/google") ||
       config.url?.includes("/auth/superadmin/");
     if (!isAuthRoute) {
-      const token = localStorage.getItem("ems_token");
+      const isAdminPath =
+        typeof window !== "undefined" &&
+        window.location.pathname.startsWith("/admin");
+      let token = null;
+      if (isAdminPath) {
+        token =
+          localStorage.getItem("ems_admin_token") ||
+          localStorage.getItem("ems_token");
+      } else {
+        token =
+          localStorage.getItem("ems_super_token") ||
+          localStorage.getItem("ems_token");
+      }
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -52,12 +64,22 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem("ems_token");
-      localStorage.removeItem("ems_user");
+      const isAdminPath =
+        typeof window !== "undefined" &&
+        window.location.pathname.startsWith("/admin");
+      if (isAdminPath) {
+        localStorage.removeItem("ems_admin_token");
+        localStorage.removeItem("ems_admin_user");
+      } else {
+        localStorage.removeItem("ems_super_token");
+        localStorage.removeItem("ems_super_user");
+        localStorage.removeItem("ems_token");
+        localStorage.removeItem("ems_user");
+      }
       if (!window.location.pathname.includes('/login')) {
-        window.location.href = window.location.pathname.startsWith('/admin')
+        window.location.href = isAdminPath
           ? '/admin/login'
-          : '/login';
+          : '/super-admin/login';
       }
     }
     return Promise.reject(error);
