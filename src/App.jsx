@@ -29,6 +29,7 @@ const TaskManagementPage = lazy(() => import('./pages/TaskManagementPage'));
 const TransactionHistoryPage = lazy(() => import('./pages/TransactionHistoryPage'));
 const ViewEmployeePage = lazy(() => import('./pages/ViewEmployeePage'));
 const FestivalsPage = lazy(() => import('./pages/FestivalsPage'));
+const CandidateOfferAcceptancePage = lazy(() => import('./pages/CandidateOfferAcceptancePage'));
 
 // Admin Portal Components & Pages (Lazy Loaded)
 import AdminProtectedRoute from './admin/components/AdminProtectedRoute';
@@ -185,6 +186,11 @@ export default function App() {
           {/* Admin Error Pages */}
           <Route path="/admin/403" element={<Admin403 />} />
           <Route path="/admin/*" element={<Admin404 />} />
+
+          {/* Public Candidate Offer Letter Acceptance Portal */}
+          <Route path="/offer-acceptance/:token" element={<CandidateOfferAcceptancePage />} />
+          <Route path="/offer-letter/:token" element={<CandidateOfferAcceptancePage />} />
+          <Route path="/offer/:token" element={<CandidateOfferAcceptancePage />} />
 
           {/* Default redirect to Super Admin Panel */}
           <Route path="/" element={<Navigate to="/super-admin/dashboard" replace />} />
