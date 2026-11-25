@@ -30,10 +30,55 @@ import { API_URL, STORAGE_KEYS } from '../../../constants/config';
 
 const STATUS_FILTERS = ['All', 'In Progress', 'Planning', 'Completed', 'On Hold', 'Cancelled'];
 
+const COMMON_PROJECT_TYPES = [
+  'Interior',
+  'Modular Kitchen',
+  'Modular Wardrobe',
+  'Wardrobe/Kitchen',
+  'Modular Work',
+  'Residential',
+  'Commercial',
+  'Architecture',
+  'Renovation',
+  'Other',
+];
+
+const normalizeClientProjectType = (val?: string): string => {
+  if (!val || typeof val !== 'string') return 'Interior';
+  const clean = val.trim();
+  const lower = clean.toLowerCase();
+  const exact = COMMON_PROJECT_TYPES.find((t) => t.toLowerCase() === lower);
+  if (exact) return exact;
+  if (
+    (lower.includes('wardrobe') && lower.includes('kitchen')) ||
+    lower.includes('wardrobe/kitchen') ||
+    lower.includes('kitchen/wardrobe')
+  ) {
+    return 'Wardrobe/Kitchen';
+  }
+  if (lower.includes('modular') && lower.includes('kitchen')) return 'Modular Kitchen';
+  if (lower.includes('modular') && (lower.includes('wardrobe') || lower.includes('closet'))) return 'Modular Wardrobe';
+  if (lower.includes('wardrobe')) return 'Modular Wardrobe';
+  if (lower.includes('kitchen')) return 'Modular Kitchen';
+  if (lower.includes('modular') && (lower.includes('work') || lower === 'modular')) return 'Modular Work';
+  if (lower.includes('residential') || lower.includes('home') || lower.includes('villa')) return 'Residential';
+  if (lower.includes('commercial') || lower.includes('office') || lower.includes('retail')) return 'Commercial';
+  if (lower.includes('renovat') || lower.includes('civil')) return 'Renovation';
+  if (lower.includes('architect')) return 'Architecture';
+  if (lower.includes('interior')) return 'Interior';
+  return clean || 'Interior';
+};
+
 export default function ProjectsScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const isAdmin = user?.role === 'ADMIN';
+  const roleUpper = (user?.role || '').toUpperCase();
+  const isSuperAdmin =
+    roleUpper === 'SUPER_ADMIN' ||
+    roleUpper === 'SUPERADMIN' ||
+    user?.email?.toLowerCase() === 'alterakitcheninteriorr@gmail.com' ||
+    user?.employeeId === 'EMP001';
+  const isAdmin = isSuperAdmin || roleUpper === 'ADMIN' || user?.isAdminPanelEnabled === true;
   const hasTaskPermission = isAdmin || user?.employeeAppPermissions?.tasks === true;
 
   const [activeTab, setActiveTab] = useState<'projects' | 'tasks' | 'history'>('projects');
@@ -92,7 +137,6 @@ export default function ProjectsScreen() {
     try {
       const projPromise = projectApi.getProjects({
         search: searchQuery.trim() || undefined,
-        status: selectedStatus !== 'All' ? selectedStatus : undefined,
       }).catch(() => null);
 
       const taskPromise = hasTaskPermission
@@ -102,7 +146,18 @@ export default function ProjectsScreen() {
       const [projRes, tasksRes] = await Promise.all([projPromise, taskPromise]);
 
       if (projRes?.success) {
-        setProjects(projRes.data || []);
+        const incoming: Project[] = Array.isArray(projRes.data) ? projRes.data : [];
+        setProjects((prev) => {
+          const seen = new Set<string>();
+          const deduped: Project[] = [];
+          for (const p of incoming) {
+            if (p?._id && !seen.has(p._id)) {
+              seen.add(p._id);
+              deduped.push(p);
+            }
+          }
+          return deduped;
+        });
       }
       if (tasksRes?.success) {
         setTasks(tasksRes.data || []);
@@ -115,7 +170,7 @@ export default function ProjectsScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [searchQuery, selectedStatus, hasTaskPermission, isAdmin]);
+  }, [searchQuery, hasTaskPermission, isAdmin]);
 
   useEffect(() => {
     const frameId = requestAnimationFrame(() => {
@@ -462,7 +517,7 @@ Local file URI: ${downloadRes.uri}`);
     try {
       setCreating(true);
       const val = Number(formBudget) || 0;
-      await projectApi.createProject({
+      const res = await projectApi.createProject({
         name: formName.trim(),
         client: formClient.trim(),
         clientContact: {
@@ -470,7 +525,7 @@ Local file URI: ${downloadRes.uri}`);
           email: formEmail.trim(),
         },
         projectAddress: formAddress.trim(),
-        projectType: formType as any,
+        projectType: normalizeClientProjectType(formType) as any,
         value: val,
         budget: {
           estimatedBudget: val,
@@ -487,6 +542,8 @@ Local file URI: ${downloadRes.uri}`);
         status: 'Planning',
       });
 
+      const newProj = res?.data;
+
       setCreateModalVisible(false);
       // Reset form
       setFormName('');
@@ -499,7 +556,19 @@ Local file URI: ${downloadRes.uri}`);
       setFormExpectedEnd('');
       setFormDescription('');
 
-      loadData();
+      // Switch to projects tab and All filter so user sees the newly created project immediately
+      setActiveTab('projects');
+      setSelectedStatus('All');
+      setSearchQuery('');
+
+      if (newProj && newProj._id) {
+        setProjects((prev) => {
+          const exists = prev.some((p) => p._id === newProj._id);
+          return exists ? prev : [newProj, ...prev];
+        });
+      }
+
+      await loadData();
       Alert.alert('Success', 'Project created successfully!');
     } catch (err: any) {
       Alert.alert('Error', err.response?.data?.message || 'Failed to create project.');
@@ -508,8 +577,20 @@ Local file URI: ${downloadRes.uri}`);
     }
   };
 
-  const activeProjects = projects.filter(p => p.status !== 'Completed');
-  const historyProjects = projects.filter(p => p.status === 'Completed');
+  const displayedProjects = React.useMemo(() => {
+    if (selectedStatus === 'Completed') {
+      return projects.filter((p) => p.status === 'Completed');
+    }
+    if (selectedStatus !== 'All') {
+      return projects.filter(
+        (p) => (p.status || '').toLowerCase() === selectedStatus.toLowerCase()
+      );
+    }
+    return projects.filter((p) => p.status !== 'Completed');
+  }, [projects, selectedStatus]);
+
+  const activeProjectsCount = projects.filter((p) => p.status !== 'Completed').length;
+  const historyProjects = projects.filter((p) => p.status === 'Completed');
 
   return (
     <View style={styles.root}>
@@ -555,7 +636,7 @@ Local file URI: ${downloadRes.uri}`);
               >
                 <Ionicons name="briefcase-outline" size={16} color={activeTab === 'projects' ? '#fff' : '#555'} />
                 <Text style={[styles.tabToggleText, activeTab === 'projects' && styles.tabToggleTextActive]}>
-                  Projects ({activeProjects.length})
+                  Projects ({activeProjectsCount})
                 </Text>
               </TouchableOpacity>
 
@@ -598,14 +679,16 @@ Local file URI: ${downloadRes.uri}`);
         >
           <View style={styles.listHeaderRow}>
             <Text style={styles.listHeaderTitle}>
-              {isAdmin ? 'All Projects' : 'My Assigned Projects'}
+              {isAdmin
+                ? (selectedStatus === 'All' ? 'All Projects' : `${selectedStatus} Projects`)
+                : (selectedStatus === 'All' ? 'My Assigned Projects' : `${selectedStatus} Projects`)}
             </Text>
             <Text style={styles.listHeaderCount}>
-              {activeProjects.length} {activeProjects.length === 1 ? 'Project' : 'Projects'}
+              {displayedProjects.length} {displayedProjects.length === 1 ? 'Project' : 'Projects'}
             </Text>
           </View>
 
-          {activeProjects.length === 0 ? (
+          {displayedProjects.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Ionicons name="briefcase-outline" size={54} color="#ccc" />
               <Text style={styles.emptyTitle}>No Projects Found</Text>
@@ -616,7 +699,7 @@ Local file URI: ${downloadRes.uri}`);
               </Text>
             </View>
           ) : (
-            activeProjects.map((project) => {
+            displayedProjects.map((project) => {
               const myRole = project.myRole || (project.assignedTeam?.find(m => m.userId === user?._id)?.role);
               return (
                 <TouchableOpacity
@@ -1042,6 +1125,34 @@ Local file URI: ${downloadRes.uri}`);
                     value={formType}
                     onChangeText={setFormType}
                   />
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={{ marginTop: 6 }}
+                    contentContainerStyle={{ gap: 6 }}
+                  >
+                    {COMMON_PROJECT_TYPES.map((pt) => (
+                      <TouchableOpacity
+                        key={pt}
+                        style={[
+                          styles.filterChip,
+                          formType === pt && styles.filterChipActive,
+                          { paddingHorizontal: 10, paddingVertical: 4 },
+                        ]}
+                        onPress={() => setFormType(pt)}
+                      >
+                        <Text
+                          style={[
+                            styles.filterChipText,
+                            formType === pt && styles.filterChipTextActive,
+                            { fontSize: 11 },
+                          ]}
+                        >
+                          {pt}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.inputLabel}>Project Value / Budget (₹)</Text>

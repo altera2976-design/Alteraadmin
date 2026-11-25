@@ -19,7 +19,7 @@ export interface User {
   name: string;
   email: string;
   phone: string;
-  role: 'ADMIN' | 'EMPLOYEE';
+  role: 'ADMIN' | 'EMPLOYEE' | 'SUPER_ADMIN' | string;
   employeeId: string;
   department: string;
   designation: string;
@@ -27,6 +27,7 @@ export interface User {
   salary: number;
   workingHours: number;
   status: 'ACTIVE' | 'INACTIVE';
+  isAdminPanelEnabled?: boolean;
   accessStatus?: 'PENDING' | 'APPROVED' | 'ACTIVE' | 'SUSPENDED' | 'REJECTED';
   salaryStatus?: 'NOT_SET' | 'ACTIVE' | 'UPDATED' | 'INACTIVE';
   employeeAppPermissions?: EmployeeAppPermissions;
