@@ -24,3 +24,14 @@ admin-web/
 scratch/
 expo-env.d.ts
 # @end expo-cli
+
+# Binaries & APKs
+*.apk
+*.aab
+
+# Local database files
+data/
+
+# Android / Kotlin build caches
+android/.kotlin/
+.kotlin/
